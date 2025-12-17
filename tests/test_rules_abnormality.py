@@ -208,6 +208,44 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestIsodicentricBreakpointRule(unittest.TestCase):
+    def test_valid_isodicentric_one_breakpoint(self):
+        """Isodicentric with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import isodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("idic", "Y", [bp1], None, False, None, "idic(Y)(q11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_isodicentric_no_breakpoint(self):
+        """Isodicentric must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import isodicentric_breakpoint_rule
+        abn = Abnormality("idic", "Y", [], None, False, None, "idic(Y)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_invalid_isodicentric_two_breakpoints(self):
+        """Isodicentric cannot have two breakpoints."""
+        from iscn_authenticator.rules.abnormality import isodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 1, None, False)
+        bp2 = Breakpoint("p", 1, 1, None, False)
+        abn = Abnormality("idic", "Y", [bp1, bp2], None, False, None, "idic(Y)(q11p11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_isodicentric(self):
+        """Rule only applies to isodicentric chromosomes."""
+        from iscn_authenticator.rules.abnormality import isodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        abn = Abnormality("i", "17", [bp1], None, False, None, "i(17)(q10)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestDicentricBreakpointRule(unittest.TestCase):
     def test_valid_dicentric_two_chromosomes_two_breakpoints(self):
         """Dicentric with two chromosomes and two breakpoints."""

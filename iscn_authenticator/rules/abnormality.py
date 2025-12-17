@@ -217,6 +217,23 @@ def _validate_dicentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormality)
     return []
 
 
+def _validate_isodicentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate isodicentric chromosome breakpoints.
+
+    Isodicentric chromosomes have exactly 1 breakpoint.
+    """
+    if abnormality.type != "idic":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    # Must have exactly 1 breakpoint
+    if bp_count != 1:
+        return [f"Isodicentric requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -295,6 +312,13 @@ dicentric_breakpoint_rule = Rule(
     validate=_validate_dicentric_breakpoints
 )
 
+isodicentric_breakpoint_rule = Rule(
+    id="ABN_IDIC_BP",
+    category="abnormality",
+    description="Isodicentric must have exactly 1 breakpoint",
+    validate=_validate_isodicentric_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -308,4 +332,5 @@ ALL_ABNORMALITY_RULES = [
     triplication_breakpoint_rule,
     quadruplication_breakpoint_rule,
     dicentric_breakpoint_rule,
+    isodicentric_breakpoint_rule,
 ]
