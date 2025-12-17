@@ -741,5 +741,35 @@ class TestParserRobertsonianTranslocation(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserQuadruplication(unittest.TestCase):
+    """Tests for quadruplication (qdp) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_quadruplication(self):
+        """Test qdp(1)(q21q32) - quadruplication of segment."""
+        result = self.parser.parse("46,XX,qdp(1)(q21q32)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "qdp")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_quadruplication_x_chromosome(self):
+        """Test qdp(X)(p21p11) - quadruplication on X."""
+        result = self.parser.parse("46,XX,qdp(X)(p21p11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "qdp")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_quadruplication_with_inheritance(self):
+        """Test qdp(1)(q21q32)dn - de novo quadruplication."""
+        result = self.parser.parse("46,XY,qdp(1)(q21q32)dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "qdp")
+        self.assertEqual(abn.inheritance, "dn")
+
+
 if __name__ == '__main__':
     unittest.main()

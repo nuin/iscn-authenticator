@@ -53,6 +53,8 @@ class KaryotypeParser:
     FRAGILE_SITE_PATTERN = re.compile(r'^fra\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Robertsonian translocation: rob(13;14)(q10;q10)
     ROBERTSONIAN_PATTERN = re.compile(r'^rob\(([^)]+)\)\(([^)]+)\)$')
+    # Quadruplication: qdp(1)(q21q32)
+    QUADRUPLICATION_PATTERN = re.compile(r'^qdp\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -578,6 +580,37 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_quadruplication(self, part: str) -> Abnormality:
+        """Parse a quadruplication abnormality.
+
+        Format: qdp(1)(q21q32) - quadruplication of segment q21 to q32 on chr 1
+        """
+        match = self.QUADRUPLICATION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid quadruplication format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+
+        # Parse two breakpoints (segment boundaries)
+        breakpoints = []
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            raise ParseError(f"Quadruplication requires two breakpoints: '{part}'")
+
+        return Abnormality(
+            type="qdp",
+            chromosome=chromosome,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -685,6 +718,15 @@ class KaryotypeParser:
             # Try triplication (must check before translocation since both start with 't')
             if part.startswith('trp('):
                 abn = self._parse_triplication(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try quadruplication
+            if part.startswith('qdp('):
+                abn = self._parse_quadruplication(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part
