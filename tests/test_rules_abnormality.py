@@ -114,6 +114,58 @@ class TestInversionTwoBreakpointsRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestDeletionBreakpointRule(unittest.TestCase):
+    def test_valid_terminal_deletion_one_breakpoint(self):
+        """Terminal deletion has one breakpoint."""
+        from iscn_authenticator.rules.abnormality import deletion_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 3, None, False)
+        abn = Abnormality("del", "5", [bp1], None, False, None, "del(5)(q13)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = deletion_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_interstitial_deletion_two_breakpoints_same_arm(self):
+        """Interstitial deletion has two breakpoints on same arm."""
+        from iscn_authenticator.rules.abnormality import deletion_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 3, None, False)
+        bp2 = Breakpoint("q", 3, 3, None, False)
+        abn = Abnormality("del", "5", [bp1, bp2], None, False, None, "del(5)(q13q33)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = deletion_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_interstitial_deletion_different_arms(self):
+        """Interstitial deletion cannot have breakpoints on different arms."""
+        from iscn_authenticator.rules.abnormality import deletion_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 2, None, False)
+        bp2 = Breakpoint("q", 1, 3, None, False)
+        abn = Abnormality("del", "5", [bp1, bp2], None, False, None, "del(5)(p12q13)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = deletion_breakpoint_rule.validate(ast, abn)
+        self.assertIn("same arm", errors[0].lower())
+
+    def test_invalid_deletion_three_breakpoints(self):
+        """Deletion cannot have three breakpoints."""
+        from iscn_authenticator.rules.abnormality import deletion_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 3, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        bp3 = Breakpoint("q", 3, 3, None, False)
+        abn = Abnormality("del", "5", [bp1, bp2, bp3], None, False, None, "del(5)(q13q21q33)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = deletion_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one or two breakpoints", errors[0].lower())
+
+    def test_skips_non_deletion(self):
+        """Rule only applies to deletions."""
+        from iscn_authenticator.rules.abnormality import deletion_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 3, None, False)
+        bp2 = Breakpoint("q", 3, 3, None, False)
+        abn = Abnormality("dup", "5", [bp1, bp2], None, False, None, "dup(5)(q13q33)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = deletion_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestTranslocationBreakpointCountRule(unittest.TestCase):
     def test_valid_two_chromosome_two_breakpoint(self):
         bp1 = Breakpoint("q", 3, 4, None, False)
