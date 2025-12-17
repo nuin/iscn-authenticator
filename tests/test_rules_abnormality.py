@@ -208,6 +208,48 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestRobertsonianBreakpointRule(unittest.TestCase):
+    def test_valid_robertsonian_two_chromosomes_two_breakpoints(self):
+        """Robertsonian with two chromosomes and two breakpoints."""
+        from iscn_authenticator.rules.abnormality import robertsonian_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        bp2 = Breakpoint("q", 1, 0, None, False)
+        abn = Abnormality("rob", "13;14", [bp1, bp2], None, False, None, "rob(13;14)(q10;q10)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = robertsonian_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_robertsonian_two_chromosomes_one_breakpoint(self):
+        """Robertsonian with two chromosomes but one breakpoint."""
+        from iscn_authenticator.rules.abnormality import robertsonian_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        abn = Abnormality("rob", "13;14", [bp1], None, False, None, "rob(13;14)(q10)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = robertsonian_breakpoint_rule.validate(ast, abn)
+        self.assertIn("breakpoints", errors[0].lower())
+
+    def test_invalid_robertsonian_two_chromosomes_three_breakpoints(self):
+        """Robertsonian with two chromosomes but three breakpoints."""
+        from iscn_authenticator.rules.abnormality import robertsonian_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        bp2 = Breakpoint("q", 1, 0, None, False)
+        bp3 = Breakpoint("p", 1, 0, None, False)
+        abn = Abnormality("rob", "13;14", [bp1, bp2, bp3], None, False, None, "rob(13;14)(q10;q10;p10)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = robertsonian_breakpoint_rule.validate(ast, abn)
+        self.assertIn("breakpoints", errors[0].lower())
+
+    def test_skips_non_robertsonian(self):
+        """Rule only applies to Robertsonian translocations."""
+        from iscn_authenticator.rules.abnormality import robertsonian_breakpoint_rule
+        bp1 = Breakpoint("q", 3, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = robertsonian_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestIsodicentricBreakpointRule(unittest.TestCase):
     def test_valid_isodicentric_one_breakpoint(self):
         """Isodicentric with one breakpoint."""

@@ -234,6 +234,26 @@ def _validate_isodicentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormali
     return []
 
 
+def _validate_robertsonian_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate Robertsonian translocation breakpoints.
+
+    Robertsonian translocations have breakpoint count matching chromosome count.
+    """
+    if abnormality.type != "rob":
+        return []
+
+    # Count chromosomes from the chromosome field (semicolon-separated)
+    chromosomes = abnormality.chromosome.split(";")
+    chr_count = len(chromosomes)
+    bp_count = len(abnormality.breakpoints)
+
+    if chr_count != bp_count:
+        return [
+            f"Robertsonian translocation has {chr_count} chromosomes but {bp_count} breakpoints in {abnormality.raw}"
+        ]
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -319,6 +339,13 @@ isodicentric_breakpoint_rule = Rule(
     validate=_validate_isodicentric_breakpoints
 )
 
+robertsonian_breakpoint_rule = Rule(
+    id="ABN_ROB_BP",
+    category="abnormality",
+    description="Robertsonian translocation breakpoint count must match chromosome count",
+    validate=_validate_robertsonian_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -333,4 +360,5 @@ ALL_ABNORMALITY_RULES = [
     quadruplication_breakpoint_rule,
     dicentric_breakpoint_rule,
     isodicentric_breakpoint_rule,
+    robertsonian_breakpoint_rule,
 ]
