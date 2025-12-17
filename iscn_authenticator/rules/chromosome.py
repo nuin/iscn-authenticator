@@ -46,13 +46,16 @@ def _validate_sex_chromosomes_coherence(ast: KaryotypeAST, _) -> list[str]:
 
     sex_count = len(sex)
 
-    # Basic coherence: for simple karyotypes without abnormalities,
-    # chromosome count should be 44 + sex chromosome count
-    # When abnormalities are present, this relationship changes
+    # Basic coherence check for common karyotypes without listed abnormalities.
+    # Only enforce strict coherence for 45 and 46 chromosome counts,
+    # as these are the most common and well-defined cases.
+    # Other counts (47+) often indicate aneuploidy that may not be fully
+    # specified in the sex chromosomes alone.
     if not ast.abnormalities:
-        expected_total = 44 + sex_count
-        if count != expected_total:
-            return [f"Chromosome count {count} requires {count - 44} sex chromosomes, but found {sex_count} ('{sex}')"]
+        if count == 46 and sex_count != 2:
+            return [f"Chromosome count 46 requires 2 sex chromosomes, but found {sex_count} ('{sex}')"]
+        if count == 45 and sex_count != 1:
+            return [f"Chromosome count 45 requires 1 sex chromosome, but found {sex_count} ('{sex}')"]
 
     return []
 

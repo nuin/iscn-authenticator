@@ -99,6 +99,12 @@ class TestCoherenceRule(unittest.TestCase):
         errors = sex_chromosomes_coherence_rule.validate(ast, ast)
         self.assertEqual(errors, [])
 
+    def test_47_with_xy_valid(self):
+        # 47,XY could indicate +21 or other trisomy not listed in sex chr
+        ast = KaryotypeAST(47, "XY", [], None, None)
+        errors = sex_chromosomes_coherence_rule.validate(ast, ast)
+        self.assertEqual(errors, [])
+
     def test_46_with_1_sex_chr_invalid(self):
         ast = KaryotypeAST(46, "X", [], None, None)
         errors = sex_chromosomes_coherence_rule.validate(ast, ast)
@@ -109,6 +115,11 @@ class TestCoherenceRule(unittest.TestCase):
         ast = KaryotypeAST(46, "XXY", [], None, None)
         errors = sex_chromosomes_coherence_rule.validate(ast, ast)
         self.assertIn("46", errors[0])
+
+    def test_45_with_2_sex_chr_invalid(self):
+        ast = KaryotypeAST(45, "XX", [], None, None)
+        errors = sex_chromosomes_coherence_rule.validate(ast, ast)
+        self.assertIn("45", errors[0])
 
     def test_range_notation_skips_coherence(self):
         ast = KaryotypeAST("45~48", "XX", [], None, None)
