@@ -111,6 +111,29 @@ def _validate_duplication_breakpoints(ast: KaryotypeAST, abnormality: Abnormalit
     return []
 
 
+def _validate_ring_chromosome_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate ring chromosome breakpoints.
+
+    Ring chromosomes require exactly 2 breakpoints on different arms (p and q).
+    """
+    if abnormality.type != "r":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    # Must have exactly 2 breakpoints
+    if bp_count != 2:
+        return [f"Ring chromosome requires two breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    # Breakpoints must be on different arms
+    arm1 = abnormality.breakpoints[0].arm
+    arm2 = abnormality.breakpoints[1].arm
+    if arm1 == arm2:
+        return [f"Ring chromosome breakpoints must be on different arms, found {arm1} and {arm2} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -154,6 +177,13 @@ duplication_breakpoint_rule = Rule(
     validate=_validate_duplication_breakpoints
 )
 
+ring_chromosome_breakpoint_rule = Rule(
+    id="ABN_RING_BP",
+    category="abnormality",
+    description="Ring chromosome must have 2 breakpoints on different arms",
+    validate=_validate_ring_chromosome_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -162,4 +192,5 @@ ALL_ABNORMALITY_RULES = [
     translocation_breakpoint_count_rule,
     deletion_breakpoint_rule,
     duplication_breakpoint_rule,
+    ring_chromosome_breakpoint_rule,
 ]

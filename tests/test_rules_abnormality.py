@@ -208,6 +208,58 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestRingChromosomeBreakpointRule(unittest.TestCase):
+    def test_valid_ring_two_breakpoints_different_arms(self):
+        """Ring chromosome requires two breakpoints on different arms."""
+        from iscn_authenticator.rules.abnormality import ring_chromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("r", "7", [bp1, bp2], None, False, None, "r(7)(p11q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_ring_one_breakpoint(self):
+        """Ring chromosome cannot have one breakpoint."""
+        from iscn_authenticator.rules.abnormality import ring_chromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        abn = Abnormality("r", "7", [bp1], None, False, None, "r(7)(p11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
+        self.assertIn("two breakpoints", errors[0].lower())
+
+    def test_invalid_ring_same_arm(self):
+        """Ring chromosome breakpoints must be on different arms."""
+        from iscn_authenticator.rules.abnormality import ring_chromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        bp2 = Breakpoint("p", 1, 3, None, False)
+        abn = Abnormality("r", "7", [bp1, bp2], None, False, None, "r(7)(p11p13)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
+        self.assertIn("different arms", errors[0].lower())
+
+    def test_invalid_ring_three_breakpoints(self):
+        """Ring chromosome cannot have three breakpoints."""
+        from iscn_authenticator.rules.abnormality import ring_chromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        bp3 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("r", "7", [bp1, bp2, bp3], None, False, None, "r(7)(p11q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
+        self.assertIn("two breakpoints", errors[0].lower())
+
+    def test_skips_non_ring(self):
+        """Rule only applies to ring chromosomes."""
+        from iscn_authenticator.rules.abnormality import ring_chromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 2, None, False)
+        bp2 = Breakpoint("q", 1, 3, None, False)
+        abn = Abnormality("inv", "9", [bp1, bp2], None, False, None, "inv(9)(p12q13)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestDuplicationBreakpointRule(unittest.TestCase):
     def test_valid_tandem_duplication_one_breakpoint(self):
         """Tandem duplication has one breakpoint."""
