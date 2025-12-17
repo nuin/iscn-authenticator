@@ -650,5 +650,35 @@ class TestParserDicentric(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserIsodicentric(unittest.TestCase):
+    """Tests for isodicentric chromosome (idic) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_isodicentric_y(self):
+        """Test idic(Y)(q11) - isodicentric Y chromosome."""
+        result = self.parser.parse("46,X,idic(Y)(q11)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "idic")
+        self.assertEqual(abn.chromosome, "Y")
+        self.assertEqual(len(abn.breakpoints), 1)
+
+    def test_parse_isodicentric_autosome(self):
+        """Test idic(15)(q13) - isodicentric chr 15."""
+        result = self.parser.parse("46,XX,idic(15)(q13)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "idic")
+        self.assertEqual(abn.chromosome, "15")
+
+    def test_parse_isodicentric_with_inheritance(self):
+        """Test idic(Y)(q11)dn - de novo isodicentric Y."""
+        result = self.parser.parse("46,X,idic(Y)(q11)dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "idic")
+        self.assertEqual(abn.inheritance, "dn")
+
+
 if __name__ == '__main__':
     unittest.main()

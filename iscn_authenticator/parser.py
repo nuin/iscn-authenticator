@@ -47,6 +47,8 @@ class KaryotypeParser:
     TRIPLICATION_PATTERN = re.compile(r'^trp\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Dicentric chromosome: dic(13;14)(q14;q11)
     DICENTRIC_PATTERN = re.compile(r'^dic\(([^)]+)\)\(([^)]+)\)$')
+    # Isodicentric chromosome: idic(Y)(q11)
+    ISODICENTRIC_PATTERN = re.compile(r'^idic\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -500,6 +502,29 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_isodicentric(self, part: str) -> Abnormality:
+        """Parse an isodicentric chromosome abnormality.
+
+        Format: idic(Y)(q11) - isodicentric Y with breakpoint at q11
+        """
+        match = self.ISODICENTRIC_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid isodicentric format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+        breakpoint = self._parse_breakpoint(breakpoint_str)
+
+        return Abnormality(
+            type="idic",
+            chromosome=chromosome,
+            breakpoints=[breakpoint],
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -571,6 +596,15 @@ class KaryotypeParser:
             # Try dicentric (must check before derivative since both start with 'd')
             if part.startswith('dic('):
                 abn = self._parse_dicentric(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try isodicentric (must check before isochromosome since both start with 'i')
+            if part.startswith('idic('):
+                abn = self._parse_isodicentric(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part
