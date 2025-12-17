@@ -368,6 +368,13 @@ class KaryotypeParser:
             if not part:
                 continue
 
+            # Check for uncertainty marker (?)
+            uncertain = False
+            original_part = part
+            if part.startswith('?'):
+                uncertain = True
+                part = part[1:]  # Remove the ? prefix
+
             # Try numerical abnormality (+21, -7, +X, -Y)
             num_match = self.NUMERICAL_ABNORMALITY_PATTERN.match(part)
             if num_match:
@@ -376,40 +383,58 @@ class KaryotypeParser:
                     chromosome=num_match.group(2),
                     breakpoints=[],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=None,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
             # Try deletion
             if part.startswith('del('):
-                abnormalities.append(self._parse_deletion(part))
+                abn = self._parse_deletion(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try duplication
             if part.startswith('dup('):
-                abnormalities.append(self._parse_duplication(part))
+                abn = self._parse_duplication(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try inversion
             if part.startswith('inv('):
-                abnormalities.append(self._parse_inversion(part))
+                abn = self._parse_inversion(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try translocation
             if part.startswith('t('):
-                abnormalities.append(self._parse_translocation(part))
+                abn = self._parse_translocation(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try isochromosome
             if part.startswith('i('):
-                abnormalities.append(self._parse_isochromosome(part))
+                abn = self._parse_isochromosome(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try ring chromosome
             if part.startswith('r('):
-                abnormalities.append(self._parse_ring(part))
+                abn = self._parse_ring(part)
+                abn.uncertain = uncertain
+                abn.raw = original_part
+                abnormalities.append(abn)
                 continue
 
             # Try marker chromosome (+mar, +2mar, +mar1)
@@ -424,9 +449,9 @@ class KaryotypeParser:
                     chromosome=chromosome,
                     breakpoints=[],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=copy_count,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
@@ -440,9 +465,9 @@ class KaryotypeParser:
                     chromosome=chromosome,
                     breakpoints=[],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=None,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
@@ -453,9 +478,9 @@ class KaryotypeParser:
                     chromosome="",
                     breakpoints=[],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=None,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
@@ -470,9 +495,9 @@ class KaryotypeParser:
                     chromosome=chromosome,
                     breakpoints=[breakpoint],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=None,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
@@ -483,9 +508,9 @@ class KaryotypeParser:
                     chromosome="",
                     breakpoints=[],
                     inheritance=None,
-                    uncertain=False,
+                    uncertain=uncertain,
                     copy_count=None,
-                    raw=part
+                    raw=original_part
                 ))
                 continue
 
@@ -495,8 +520,8 @@ class KaryotypeParser:
                 chromosome="",
                 breakpoints=[],
                 inheritance=None,
-                uncertain=False,
+                uncertain=uncertain,
                 copy_count=None,
-                raw=part
+                raw=original_part
             ))
         return abnormalities

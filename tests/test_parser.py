@@ -437,5 +437,38 @@ class TestParserMosaicism(unittest.TestCase):
         self.assertEqual(result.cell_lines[1].abnormalities[0].type, "del")
 
 
+class TestParserUncertainty(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_uncertain_numerical(self):
+        """Test ?+21 - uncertain trisomy."""
+        result = self.parser.parse("47,XX,?+21")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+")
+        self.assertEqual(abn.chromosome, "21")
+        self.assertTrue(abn.uncertain)
+
+    def test_parse_uncertain_deletion(self):
+        """Test ?del(5)(q13) - uncertain deletion."""
+        result = self.parser.parse("46,XX,?del(5)(q13)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "del")
+        self.assertTrue(abn.uncertain)
+
+    def test_parse_uncertain_translocation(self):
+        """Test ?t(9;22)(q34;q11) - uncertain translocation."""
+        result = self.parser.parse("46,XX,?t(9;22)(q34;q11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "t")
+        self.assertTrue(abn.uncertain)
+
+    def test_parse_certain_abnormality(self):
+        """Test del(5)(q13) - certain deletion (no ?)."""
+        result = self.parser.parse("46,XX,del(5)(q13)")
+        abn = result.abnormalities[0]
+        self.assertFalse(abn.uncertain)
+
+
 if __name__ == '__main__':
     unittest.main()
