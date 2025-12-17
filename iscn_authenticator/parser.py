@@ -39,6 +39,8 @@ class KaryotypeParser:
     # Homogeneously staining region: hsr or hsr(1)(p22)
     HSR_SIMPLE_PATTERN = re.compile(r'^hsr$')
     HSR_LOCATION_PATTERN = re.compile(r'^hsr\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Insertion: ins(5;2)(p14;q21q31) or ins(2)(p13q21q31)
+    INSERTION_PATTERN = re.compile(r'^ins\(([^)]+)\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -360,6 +362,58 @@ class KaryotypeParser:
 
         raise ParseError(f"Invalid ring chromosome format: '{part}'")
 
+    def _parse_insertion(self, part: str) -> Abnormality:
+        """Parse an insertion abnormality.
+
+        Formats:
+        - ins(5;2)(p14;q21q31) - interchromosomal: segment from chr 2 inserted into chr 5
+        - ins(2)(p13q21q31) - intrachromosomal: direct insertion within same chromosome
+        """
+        match = self.INSERTION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid insertion format: '{part}'")
+
+        chromosomes_str = match.group(1)  # e.g., "5;2" or "2"
+        breakpoints_str = match.group(2)  # e.g., "p14;q21q31" or "p13q21q31"
+
+        # Parse breakpoints
+        breakpoints = []
+        if ';' in breakpoints_str:
+            # Interchromosomal: breakpoints separated by semicolon
+            # Format: insertion_site;segment_start segment_end (e.g., "p14;q21q31")
+            bp_parts = breakpoints_str.split(';')
+            # First part is insertion site
+            breakpoints.append(self._parse_breakpoint(bp_parts[0].strip()))
+            # Second part contains two breakpoints (segment boundaries)
+            segment_str = bp_parts[1].strip()
+            double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', segment_str)
+            if double_bp:
+                breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+                breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+            else:
+                # Single breakpoint after semicolon
+                breakpoints.append(self._parse_breakpoint(segment_str))
+        else:
+            # Intrachromosomal: three consecutive breakpoints (e.g., "p13q21q31")
+            # Try to parse three breakpoints
+            triple_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoints_str)
+            if triple_bp:
+                breakpoints.append(self._parse_breakpoint(triple_bp.group(1)))
+                breakpoints.append(self._parse_breakpoint(triple_bp.group(2)))
+                breakpoints.append(self._parse_breakpoint(triple_bp.group(3)))
+            else:
+                raise ParseError(f"Invalid insertion breakpoints: '{breakpoints_str}'")
+
+        return Abnormality(
+            type="ins",
+            chromosome=chromosomes_str,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -431,6 +485,15 @@ class KaryotypeParser:
             # Try translocation
             if part.startswith('t('):
                 abn = self._parse_translocation(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try insertion (must check before isochromosome since both start with 'i')
+            if part.startswith('ins('):
+                abn = self._parse_insertion(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part

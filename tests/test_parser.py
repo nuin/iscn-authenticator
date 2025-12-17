@@ -510,5 +510,47 @@ class TestParserInheritance(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserInsertion(unittest.TestCase):
+    """Tests for insertion abnormality parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_interchromosomal_insertion(self):
+        """Test ins(5;2)(p14;q21q31) - segment from chr 2 inserted into chr 5."""
+        result = self.parser.parse("46,XX,ins(5;2)(p14;q21q31)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ins")
+        self.assertEqual(abn.chromosome, "5;2")
+        # Should have 3 breakpoints: insertion site and two segment ends
+        self.assertEqual(len(abn.breakpoints), 3)
+
+    def test_parse_intrachromosomal_insertion(self):
+        """Test ins(2)(p13q21q31) - direct insertion within same chromosome."""
+        result = self.parser.parse("46,XY,ins(2)(p13q21q31)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ins")
+        self.assertEqual(abn.chromosome, "2")
+        # Should have 3 breakpoints
+        self.assertEqual(len(abn.breakpoints), 3)
+
+    def test_parse_insertion_x_chromosome(self):
+        """Test insertion involving X chromosome."""
+        result = self.parser.parse("46,XX,ins(X;1)(q21;p31p36)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ins")
+        self.assertEqual(abn.chromosome, "X;1")
+
+    def test_parse_insertion_with_inheritance(self):
+        """Test ins(5;2)(p14;q21q31)mat - maternal insertion."""
+        result = self.parser.parse("46,XX,ins(5;2)(p14;q21q31)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ins")
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()
