@@ -15,6 +15,7 @@ class KaryotypeParser:
 
     # Regex patterns
     SEX_CHROMOSOMES_PATTERN = re.compile(r'^[XYU]+$')
+    NUMERICAL_ABNORMALITY_PATTERN = re.compile(r'^([+-])(\d{1,2}|[XY])$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -72,13 +73,28 @@ class KaryotypeParser:
         return sex_str
 
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
-        """Parse abnormality parts. Basic implementation for now."""
+        """Parse abnormality parts."""
         abnormalities = []
         for part in parts:
             part = part.strip()
             if not part:
                 continue
-            # For now, create a basic abnormality - will be expanded in Phase 2
+
+            # Try numerical abnormality (+21, -7, +X, -Y)
+            num_match = self.NUMERICAL_ABNORMALITY_PATTERN.match(part)
+            if num_match:
+                abnormalities.append(Abnormality(
+                    type=num_match.group(1),  # "+" or "-"
+                    chromosome=num_match.group(2),
+                    breakpoints=[],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=None,
+                    raw=part
+                ))
+                continue
+
+            # Unknown abnormality type (will be expanded in later tasks)
             abnormalities.append(Abnormality(
                 type="unknown",
                 chromosome="",

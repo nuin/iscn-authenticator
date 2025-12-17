@@ -69,5 +69,41 @@ class TestKaryotypeParserBasic(unittest.TestCase):
         self.assertEqual(result.sex_chromosomes, "XX")
 
 
+class TestParserNumericalAbnormalities(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_trisomy_21(self):
+        result = self.parser.parse("47,XX,+21")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+")
+        self.assertEqual(abn.chromosome, "21")
+
+    def test_parse_monosomy_7(self):
+        result = self.parser.parse("45,XY,-7")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "-")
+        self.assertEqual(abn.chromosome, "7")
+
+    def test_parse_multiple_numerical(self):
+        result = self.parser.parse("48,XY,+18,+21")
+        self.assertEqual(len(result.abnormalities), 2)
+        self.assertEqual(result.abnormalities[0].chromosome, "18")
+        self.assertEqual(result.abnormalities[1].chromosome, "21")
+
+    def test_parse_sex_chromosome_gain(self):
+        result = self.parser.parse("48,XXXY,+X")
+        self.assertEqual(len(result.abnormalities), 1)
+        self.assertEqual(result.abnormalities[0].chromosome, "X")
+
+    def test_parse_sex_chromosome_loss(self):
+        result = self.parser.parse("45,XY,-Y")
+        self.assertEqual(len(result.abnormalities), 1)
+        self.assertEqual(result.abnormalities[0].type, "-")
+        self.assertEqual(result.abnormalities[0].chromosome, "Y")
+
+
 if __name__ == '__main__':
     unittest.main()
