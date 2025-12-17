@@ -151,6 +151,29 @@ def _validate_isochromosome_breakpoints(ast: KaryotypeAST, abnormality: Abnormal
     return []
 
 
+def _validate_triplication_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate triplication breakpoints.
+
+    Triplications have exactly 2 breakpoints on the same arm.
+    """
+    if abnormality.type != "trp":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    # Must have exactly 2 breakpoints
+    if bp_count != 2:
+        return [f"Triplication requires two breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    # Breakpoints must be on the same arm
+    arm1 = abnormality.breakpoints[0].arm
+    arm2 = abnormality.breakpoints[1].arm
+    if arm1 != arm2:
+        return [f"Triplication breakpoints must be on same arm, found {arm1} and {arm2} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -208,6 +231,13 @@ isochromosome_breakpoint_rule = Rule(
     validate=_validate_isochromosome_breakpoints
 )
 
+triplication_breakpoint_rule = Rule(
+    id="ABN_TRP_BP",
+    category="abnormality",
+    description="Triplication must have 2 breakpoints on same arm",
+    validate=_validate_triplication_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -218,4 +248,5 @@ ALL_ABNORMALITY_RULES = [
     duplication_breakpoint_rule,
     ring_chromosome_breakpoint_rule,
     isochromosome_breakpoint_rule,
+    triplication_breakpoint_rule,
 ]

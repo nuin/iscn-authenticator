@@ -208,6 +208,58 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestTriplicationBreakpointRule(unittest.TestCase):
+    def test_valid_triplication_two_breakpoints_same_arm(self):
+        """Triplication with two breakpoints on same arm."""
+        from iscn_authenticator.rules.abnormality import triplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 2, None, False)
+        abn = Abnormality("trp", "1", [bp1, bp2], None, False, None, "trp(1)(q21q32)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = triplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_triplication_one_breakpoint(self):
+        """Triplication should have two breakpoints."""
+        from iscn_authenticator.rules.abnormality import triplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("trp", "1", [bp1], None, False, None, "trp(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = triplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("two breakpoints", errors[0].lower())
+
+    def test_invalid_triplication_different_arms(self):
+        """Triplication breakpoints must be on same arm."""
+        from iscn_authenticator.rules.abnormality import triplication_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 3, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("trp", "1", [bp1, bp2], None, False, None, "trp(1)(p13q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = triplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("same arm", errors[0].lower())
+
+    def test_invalid_triplication_three_breakpoints(self):
+        """Triplication cannot have three breakpoints."""
+        from iscn_authenticator.rules.abnormality import triplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 2, 5, None, False)
+        bp3 = Breakpoint("q", 3, 2, None, False)
+        abn = Abnormality("trp", "1", [bp1, bp2, bp3], None, False, None, "trp(1)(q21q25q32)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = triplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("two breakpoints", errors[0].lower())
+
+    def test_skips_non_triplication(self):
+        """Rule only applies to triplications."""
+        from iscn_authenticator.rules.abnormality import triplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1, bp2], None, False, None, "dup(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = triplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestIsochromosomeBreakpointRule(unittest.TestCase):
     def test_valid_isochromosome_q10(self):
         """Isochromosome with q10 breakpoint (centromere)."""
