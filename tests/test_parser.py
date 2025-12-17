@@ -396,5 +396,46 @@ class TestParserDoubleMinutesAndHSR(unittest.TestCase):
         self.assertEqual(abn.breakpoints[0].arm, "p")
 
 
+class TestParserMosaicism(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_mosaic_two_cell_lines(self):
+        """Test 47,XX,+21[10]/46,XX[20] - mosaic with counts."""
+        result = self.parser.parse("47,XX,+21[10]/46,XX[20]")
+        self.assertIsNotNone(result.cell_lines)
+        self.assertEqual(len(result.cell_lines), 2)
+        # First cell line: 47,XX,+21[10]
+        self.assertEqual(result.cell_lines[0].chromosome_count, 47)
+        self.assertEqual(result.cell_lines[0].sex_chromosomes, "XX")
+        self.assertEqual(len(result.cell_lines[0].abnormalities), 1)
+        self.assertEqual(result.cell_lines[0].count, 10)
+        # Second cell line: 46,XX[20]
+        self.assertEqual(result.cell_lines[1].chromosome_count, 46)
+        self.assertEqual(result.cell_lines[1].sex_chromosomes, "XX")
+        self.assertEqual(result.cell_lines[1].abnormalities, [])
+        self.assertEqual(result.cell_lines[1].count, 20)
+
+    def test_parse_mosaic_without_counts(self):
+        """Test 47,XX,+21/46,XX - mosaic without cell counts."""
+        result = self.parser.parse("47,XX,+21/46,XX")
+        self.assertIsNotNone(result.cell_lines)
+        self.assertEqual(len(result.cell_lines), 2)
+        self.assertEqual(result.cell_lines[0].count, 0)  # No count specified
+        self.assertEqual(result.cell_lines[1].count, 0)
+
+    def test_parse_mosaic_three_lines(self):
+        """Test mosaic with three cell lines."""
+        result = self.parser.parse("47,XX,+21[5]/46,XX,del(5)(q13)[10]/46,XX[15]")
+        self.assertIsNotNone(result.cell_lines)
+        self.assertEqual(len(result.cell_lines), 3)
+        self.assertEqual(result.cell_lines[0].count, 5)
+        self.assertEqual(result.cell_lines[1].count, 10)
+        self.assertEqual(result.cell_lines[2].count, 15)
+        # Second line has deletion
+        self.assertEqual(len(result.cell_lines[1].abnormalities), 1)
+        self.assertEqual(result.cell_lines[1].abnormalities[0].type, "del")
+
+
 if __name__ == '__main__':
     unittest.main()

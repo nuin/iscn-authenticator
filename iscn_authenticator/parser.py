@@ -4,6 +4,9 @@ import re
 from typing import Optional
 from iscn_authenticator.models import KaryotypeAST, Abnormality, Breakpoint, Modifiers, CellLine
 
+# Pattern for cell line count: [10], [20], etc.
+CELL_LINE_COUNT_PATTERN = re.compile(r'^(.+?)\[(\d+)\]$')
+
 
 class ParseError(Exception):
     """Raised when karyotype string cannot be parsed."""
@@ -44,6 +47,23 @@ class KaryotypeParser:
 
         karyotype = karyotype.strip()
 
+        # Check for mosaicism (cell lines separated by /)
+        if '/' in karyotype:
+            return self._parse_mosaic(karyotype)
+
+        return self._parse_single_karyotype(karyotype)
+
+    def _parse_single_karyotype(self, karyotype: str, extract_count: bool = False) -> tuple[KaryotypeAST, int] | KaryotypeAST:
+        """Parse a single karyotype string (non-mosaic)."""
+        count = 0
+
+        # Extract cell count if present (e.g., "46,XX[10]")
+        if extract_count:
+            count_match = CELL_LINE_COUNT_PATTERN.match(karyotype)
+            if count_match:
+                karyotype = count_match.group(1)
+                count = int(count_match.group(2))
+
         # Split on comma
         if ',' not in karyotype:
             raise ParseError("Missing comma separator between chromosome count and sex chromosomes")
@@ -61,11 +81,42 @@ class KaryotypeParser:
         if len(parts) > 2:
             abnormalities = self._parse_abnormalities(parts[2:])
 
-        return KaryotypeAST(
+        ast = KaryotypeAST(
             chromosome_count=chromosome_count,
             sex_chromosomes=sex_chromosomes,
             abnormalities=abnormalities,
             cell_lines=None,
+            modifiers=None
+        )
+
+        if extract_count:
+            return ast, count
+        return ast
+
+    def _parse_mosaic(self, karyotype: str) -> KaryotypeAST:
+        """Parse a mosaic karyotype with multiple cell lines."""
+        cell_line_strs = karyotype.split('/')
+        cell_lines = []
+
+        for line_str in cell_line_strs:
+            line_str = line_str.strip()
+            ast, count = self._parse_single_karyotype(line_str, extract_count=True)
+            cell_line = CellLine(
+                chromosome_count=ast.chromosome_count,
+                sex_chromosomes=ast.sex_chromosomes,
+                abnormalities=ast.abnormalities,
+                count=count,
+                is_donor=False
+            )
+            cell_lines.append(cell_line)
+
+        # Use the first cell line as the main karyotype info
+        first = cell_lines[0]
+        return KaryotypeAST(
+            chromosome_count=first.chromosome_count,
+            sex_chromosomes=first.sex_chromosomes,
+            abnormalities=first.abnormalities,
+            cell_lines=cell_lines,
             modifiers=None
         )
 
