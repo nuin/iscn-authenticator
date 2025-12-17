@@ -369,5 +369,32 @@ class TestParserDerivativeChromosomes(unittest.TestCase):
         self.assertEqual(abn.chromosome, "X")
 
 
+class TestParserDoubleMinutesAndHSR(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_dmin(self):
+        """Test dmin - double minutes."""
+        result = self.parser.parse("47,XX,+21,dmin")
+        # Find dmin abnormality
+        dmin_abn = [a for a in result.abnormalities if a.type == "dmin"][0]
+        self.assertEqual(dmin_abn.type, "dmin")
+
+    def test_parse_hsr(self):
+        """Test hsr - homogeneously staining region."""
+        result = self.parser.parse("46,XX,hsr")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "hsr")
+
+    def test_parse_hsr_with_location(self):
+        """Test hsr(1)(p22) - HSR at specific location."""
+        result = self.parser.parse("46,XY,hsr(1)(p22)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "hsr")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+
+
 if __name__ == '__main__':
     unittest.main()

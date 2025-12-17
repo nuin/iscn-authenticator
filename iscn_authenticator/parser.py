@@ -31,6 +31,11 @@ class KaryotypeParser:
     MARKER_PATTERN = re.compile(r'^\+(\d*)mar(\d*)$')
     # Derivative chromosome: der(22)t(9;22)(...) or der(1)del(1)(...)
     DERIVATIVE_PATTERN = re.compile(r'^der\((\d{1,2}|[XY])\)(.+)$')
+    # Double minutes: dmin
+    DMIN_PATTERN = re.compile(r'^dmin$')
+    # Homogeneously staining region: hsr or hsr(1)(p22)
+    HSR_SIMPLE_PATTERN = re.compile(r'^hsr$')
+    HSR_LOCATION_PATTERN = re.compile(r'^hsr\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -382,6 +387,49 @@ class KaryotypeParser:
                 abnormalities.append(Abnormality(
                     type="der",
                     chromosome=chromosome,
+                    breakpoints=[],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=None,
+                    raw=part
+                ))
+                continue
+
+            # Try double minutes (dmin)
+            if self.DMIN_PATTERN.match(part):
+                abnormalities.append(Abnormality(
+                    type="dmin",
+                    chromosome="",
+                    breakpoints=[],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=None,
+                    raw=part
+                ))
+                continue
+
+            # Try HSR with location (hsr(1)(p22))
+            hsr_loc_match = self.HSR_LOCATION_PATTERN.match(part)
+            if hsr_loc_match:
+                chromosome = hsr_loc_match.group(1)
+                breakpoint_str = hsr_loc_match.group(2)
+                breakpoint = self._parse_breakpoint(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="hsr",
+                    chromosome=chromosome,
+                    breakpoints=[breakpoint],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=None,
+                    raw=part
+                ))
+                continue
+
+            # Try simple HSR (hsr)
+            if self.HSR_SIMPLE_PATTERN.match(part):
+                abnormalities.append(Abnormality(
+                    type="hsr",
+                    chromosome="",
                     breakpoints=[],
                     inheritance=None,
                     uncertain=False,
