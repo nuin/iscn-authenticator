@@ -208,6 +208,54 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestIsochromosomeBreakpointRule(unittest.TestCase):
+    def test_valid_isochromosome_q10(self):
+        """Isochromosome with q10 breakpoint (centromere)."""
+        from iscn_authenticator.rules.abnormality import isochromosome_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        abn = Abnormality("i", "17", [bp1], None, False, None, "i(17)(q10)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isochromosome_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_isochromosome_p10(self):
+        """Isochromosome with p10 breakpoint (centromere)."""
+        from iscn_authenticator.rules.abnormality import isochromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 0, None, False)
+        abn = Abnormality("i", "17", [bp1], None, False, None, "i(17)(p10)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isochromosome_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_isochromosome_no_breakpoint(self):
+        """Isochromosome must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import isochromosome_breakpoint_rule
+        abn = Abnormality("i", "17", [], None, False, None, "i(17)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isochromosome_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_invalid_isochromosome_two_breakpoints(self):
+        """Isochromosome cannot have two breakpoints."""
+        from iscn_authenticator.rules.abnormality import isochromosome_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 0, None, False)
+        bp2 = Breakpoint("p", 1, 0, None, False)
+        abn = Abnormality("i", "17", [bp1, bp2], None, False, None, "i(17)(q10p10)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isochromosome_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_isochromosome(self):
+        """Rule only applies to isochromosomes."""
+        from iscn_authenticator.rules.abnormality import isochromosome_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 2, None, False)
+        bp2 = Breakpoint("q", 1, 3, None, False)
+        abn = Abnormality("inv", "9", [bp1, bp2], None, False, None, "inv(9)(p12q13)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = isochromosome_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestRingChromosomeBreakpointRule(unittest.TestCase):
     def test_valid_ring_two_breakpoints_different_arms(self):
         """Ring chromosome requires two breakpoints on different arms."""

@@ -134,6 +134,23 @@ def _validate_ring_chromosome_breakpoints(ast: KaryotypeAST, abnormality: Abnorm
     return []
 
 
+def _validate_isochromosome_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate isochromosome breakpoints.
+
+    Isochromosomes have exactly 1 breakpoint at the centromere region.
+    """
+    if abnormality.type != "i":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    # Must have exactly 1 breakpoint
+    if bp_count != 1:
+        return [f"Isochromosome requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -184,6 +201,13 @@ ring_chromosome_breakpoint_rule = Rule(
     validate=_validate_ring_chromosome_breakpoints
 )
 
+isochromosome_breakpoint_rule = Rule(
+    id="ABN_ISO_BP",
+    category="abnormality",
+    description="Isochromosome must have exactly 1 breakpoint",
+    validate=_validate_isochromosome_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -193,4 +217,5 @@ ALL_ABNORMALITY_RULES = [
     deletion_breakpoint_rule,
     duplication_breakpoint_rule,
     ring_chromosome_breakpoint_rule,
+    isochromosome_breakpoint_rule,
 ]
