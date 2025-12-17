@@ -281,5 +281,39 @@ class TestParserIsochromosomes(unittest.TestCase):
         self.assertEqual(abn.breakpoints[0].arm, "q")
 
 
+class TestParserRingChromosomes(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_ring_simple(self):
+        """Test r(1) - simple ring chromosome."""
+        result = self.parser.parse("46,XX,r(1)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "r")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 0)
+
+    def test_parse_ring_with_breakpoints(self):
+        """Test r(1)(p36q42) - ring with breakpoints."""
+        result = self.parser.parse("46,XY,r(1)(p36q42)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "r")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 2)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+        self.assertEqual(abn.breakpoints[0].region, 3)
+        self.assertEqual(abn.breakpoints[0].band, 6)
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[1].region, 4)
+        self.assertEqual(abn.breakpoints[1].band, 2)
+
+    def test_parse_ring_x_chromosome(self):
+        """Test r(X) - ring X chromosome."""
+        result = self.parser.parse("45,X,r(X)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "r")
+        self.assertEqual(abn.chromosome, "X")
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -24,6 +24,9 @@ class KaryotypeParser:
     # Isochromosome: i(17q) short form or i(17)(q10) long form
     ISOCHROMOSOME_SHORT_PATTERN = re.compile(r'^i\((\d{1,2}|[XY])([pq])\)$')
     ISOCHROMOSOME_LONG_PATTERN = re.compile(r'^i\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Ring chromosome: r(1) simple or r(1)(p36q42) with breakpoints
+    RING_SIMPLE_PATTERN = re.compile(r'^r\((\d{1,2}|[XY])\)$')
+    RING_BREAKPOINT_PATTERN = re.compile(r'^r\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -258,6 +261,45 @@ class KaryotypeParser:
 
         raise ParseError(f"Invalid isochromosome format: '{part}'")
 
+    def _parse_ring(self, part: str) -> Abnormality:
+        """Parse a ring chromosome abnormality."""
+        # Try simple form first: r(1)
+        simple_match = self.RING_SIMPLE_PATTERN.match(part)
+        if simple_match:
+            chromosome = simple_match.group(1)
+            return Abnormality(
+                type="r",
+                chromosome=chromosome,
+                breakpoints=[],
+                inheritance=None,
+                uncertain=False,
+                copy_count=None,
+                raw=part
+            )
+
+        # Try breakpoint form: r(1)(p36q42)
+        bp_match = self.RING_BREAKPOINT_PATTERN.match(part)
+        if bp_match:
+            chromosome = bp_match.group(1)
+            breakpoint_str = bp_match.group(2)
+            # Parse two breakpoints (p arm and q arm)
+            breakpoints = []
+            double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+            if double_bp:
+                breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+                breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+            return Abnormality(
+                type="r",
+                chromosome=chromosome,
+                breakpoints=breakpoints,
+                inheritance=None,
+                uncertain=False,
+                copy_count=None,
+                raw=part
+            )
+
+        raise ParseError(f"Invalid ring chromosome format: '{part}'")
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -303,6 +345,11 @@ class KaryotypeParser:
             # Try isochromosome
             if part.startswith('i('):
                 abnormalities.append(self._parse_isochromosome(part))
+                continue
+
+            # Try ring chromosome
+            if part.startswith('r('):
+                abnormalities.append(self._parse_ring(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)
