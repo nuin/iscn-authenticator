@@ -375,6 +375,18 @@ class KaryotypeParser:
                 uncertain = True
                 part = part[1:]  # Remove the ? prefix
 
+            # Check for inheritance notation (mat, pat, dn) at end
+            inheritance = None
+            if part.endswith('mat'):
+                inheritance = 'mat'
+                part = part[:-3]
+            elif part.endswith('pat'):
+                inheritance = 'pat'
+                part = part[:-3]
+            elif part.endswith('dn'):
+                inheritance = 'dn'
+                part = part[:-2]
+
             # Try numerical abnormality (+21, -7, +X, -Y)
             num_match = self.NUMERICAL_ABNORMALITY_PATTERN.match(part)
             if num_match:
@@ -382,7 +394,7 @@ class KaryotypeParser:
                     type=num_match.group(1),  # "+" or "-"
                     chromosome=num_match.group(2),
                     breakpoints=[],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=None,
                     raw=original_part
@@ -393,6 +405,7 @@ class KaryotypeParser:
             if part.startswith('del('):
                 abn = self._parse_deletion(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -401,6 +414,7 @@ class KaryotypeParser:
             if part.startswith('dup('):
                 abn = self._parse_duplication(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -409,6 +423,7 @@ class KaryotypeParser:
             if part.startswith('inv('):
                 abn = self._parse_inversion(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -417,6 +432,7 @@ class KaryotypeParser:
             if part.startswith('t('):
                 abn = self._parse_translocation(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -425,6 +441,7 @@ class KaryotypeParser:
             if part.startswith('i('):
                 abn = self._parse_isochromosome(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -433,6 +450,7 @@ class KaryotypeParser:
             if part.startswith('r('):
                 abn = self._parse_ring(part)
                 abn.uncertain = uncertain
+                abn.inheritance = inheritance
                 abn.raw = original_part
                 abnormalities.append(abn)
                 continue
@@ -448,7 +466,7 @@ class KaryotypeParser:
                     type="+mar",
                     chromosome=chromosome,
                     breakpoints=[],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=copy_count,
                     raw=original_part
@@ -464,7 +482,7 @@ class KaryotypeParser:
                     type="der",
                     chromosome=chromosome,
                     breakpoints=[],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=None,
                     raw=original_part
@@ -477,7 +495,7 @@ class KaryotypeParser:
                     type="dmin",
                     chromosome="",
                     breakpoints=[],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=None,
                     raw=original_part
@@ -494,7 +512,7 @@ class KaryotypeParser:
                     type="hsr",
                     chromosome=chromosome,
                     breakpoints=[breakpoint],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=None,
                     raw=original_part
@@ -507,7 +525,7 @@ class KaryotypeParser:
                     type="hsr",
                     chromosome="",
                     breakpoints=[],
-                    inheritance=None,
+                    inheritance=inheritance,
                     uncertain=uncertain,
                     copy_count=None,
                     raw=original_part
@@ -519,7 +537,7 @@ class KaryotypeParser:
                 type="unknown",
                 chromosome="",
                 breakpoints=[],
-                inheritance=None,
+                inheritance=inheritance,
                 uncertain=uncertain,
                 copy_count=None,
                 raw=original_part

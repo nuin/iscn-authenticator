@@ -470,5 +470,45 @@ class TestParserUncertainty(unittest.TestCase):
         self.assertFalse(abn.uncertain)
 
 
+class TestParserInheritance(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_maternal_deletion(self):
+        """Test del(5)(q13)mat - maternal inheritance."""
+        result = self.parser.parse("46,XX,del(5)(q13)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "del")
+        self.assertEqual(abn.inheritance, "mat")
+
+    def test_parse_paternal_translocation(self):
+        """Test t(9;22)(q34;q11)pat - paternal inheritance."""
+        result = self.parser.parse("46,XY,t(9;22)(q34;q11)pat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "t")
+        self.assertEqual(abn.inheritance, "pat")
+
+    def test_parse_de_novo_trisomy(self):
+        """Test +21dn - de novo trisomy."""
+        result = self.parser.parse("47,XX,+21dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+")
+        self.assertEqual(abn.chromosome, "21")
+        self.assertEqual(abn.inheritance, "dn")
+
+    def test_parse_no_inheritance(self):
+        """Test del(5)(q13) - no inheritance specified."""
+        result = self.parser.parse("46,XX,del(5)(q13)")
+        abn = result.abnormalities[0]
+        self.assertIsNone(abn.inheritance)
+
+    def test_parse_uncertain_with_inheritance(self):
+        """Test ?del(5)(q13)mat - uncertain maternal."""
+        result = self.parser.parse("46,XX,?del(5)(q13)mat")
+        abn = result.abnormalities[0]
+        self.assertTrue(abn.uncertain)
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()
