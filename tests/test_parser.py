@@ -210,5 +210,35 @@ class TestParserInversions(unittest.TestCase):
         self.assertEqual(abn.breakpoints[0].subband, "2")
 
 
+class TestParserTranslocations(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_reciprocal_translocation(self):
+        result = self.parser.parse("46,XX,t(9;22)(q34;q11.2)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "t")
+        self.assertEqual(abn.chromosome, "9;22")
+        self.assertEqual(len(abn.breakpoints), 2)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[1].subband, "2")
+
+    def test_parse_three_way_translocation(self):
+        result = self.parser.parse("46,XY,t(1;3;5)(p32;q21;q31)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.chromosome, "1;3;5")
+        self.assertEqual(len(abn.breakpoints), 3)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[2].arm, "q")
+
+    def test_parse_translocation_sex_chromosome(self):
+        result = self.parser.parse("46,X,t(X;18)(p11.2;q21)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.chromosome, "X;18")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+
 if __name__ == '__main__':
     unittest.main()

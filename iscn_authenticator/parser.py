@@ -19,6 +19,7 @@ class KaryotypeParser:
     DELETION_PATTERN = re.compile(r'^del\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     DUPLICATION_PATTERN = re.compile(r'^dup\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     INVERSION_PATTERN = re.compile(r'^inv\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    TRANSLOCATION_PATTERN = re.compile(r'^t\(([^)]+)\)\(([^)]+)\)$')
     BREAKPOINT_PATTERN = re.compile(r'^([pq])(\d+)(?:\.(\d+))?$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
@@ -188,6 +189,29 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_translocation(self, part: str) -> Abnormality:
+        """Parse a translocation abnormality."""
+        match = self.TRANSLOCATION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid translocation format: '{part}'")
+
+        chromosomes_str = match.group(1)  # e.g., "9;22" or "1;3;5"
+        breakpoints_str = match.group(2)  # e.g., "q34;q11.2" or "p32;q21;q31"
+
+        # Parse breakpoints (semicolon-separated)
+        bp_parts = breakpoints_str.split(';')
+        breakpoints = [self._parse_breakpoint(bp.strip()) for bp in bp_parts]
+
+        return Abnormality(
+            type="t",
+            chromosome=chromosomes_str,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -223,6 +247,11 @@ class KaryotypeParser:
             # Try inversion
             if part.startswith('inv('):
                 abnormalities.append(self._parse_inversion(part))
+                continue
+
+            # Try translocation
+            if part.startswith('t('):
+                abnormalities.append(self._parse_translocation(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)
