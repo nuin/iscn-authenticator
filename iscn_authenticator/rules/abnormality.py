@@ -1,0 +1,99 @@
+# iscn_authenticator/rules/abnormality.py
+"""Validation rules for karyotype abnormalities."""
+from iscn_authenticator.rules.base import Rule
+from iscn_authenticator.models import KaryotypeAST, Abnormality
+
+
+# Valid autosome numbers (1-22) and sex chromosomes (X, Y)
+VALID_CHROMOSOMES = {str(i) for i in range(1, 23)} | {"X", "Y"}
+
+
+def _validate_numerical_chromosome(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate that numerical abnormalities reference valid chromosomes."""
+    # Only apply to numerical abnormalities (+, -)
+    if abnormality.type not in ("+", "-"):
+        return []
+
+    chromosome = abnormality.chromosome
+    if chromosome not in VALID_CHROMOSOMES:
+        return [f"Invalid chromosome '{chromosome}' in {abnormality.raw}. Must be 1-22, X, or Y"]
+    return []
+
+
+def _validate_breakpoint_arm(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate that breakpoint arms are p or q."""
+    # Only apply to structural abnormalities with breakpoints
+    if abnormality.type in ("+", "-", "unknown"):
+        return []
+
+    errors = []
+    for bp in abnormality.breakpoints:
+        if bp.arm not in ("p", "q"):
+            errors.append(f"Invalid breakpoint arm '{bp.arm}' in {abnormality.raw}. Must be 'p' or 'q'")
+    return errors
+
+
+def _validate_inversion_two_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate that inversions have exactly two breakpoints."""
+    if abnormality.type != "inv":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+    if bp_count != 2:
+        return [f"Inversion requires two breakpoints, found {bp_count} in {abnormality.raw}"]
+    return []
+
+
+def _validate_translocation_breakpoint_count(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate that translocation breakpoint count matches chromosome count."""
+    if abnormality.type != "t":
+        return []
+
+    # Count chromosomes from the chromosome field (semicolon-separated)
+    chromosomes = abnormality.chromosome.split(";")
+    chr_count = len(chromosomes)
+    bp_count = len(abnormality.breakpoints)
+
+    if chr_count != bp_count:
+        return [
+            f"Translocation has {chr_count} chromosomes but {bp_count} breakpoints in {abnormality.raw}"
+        ]
+    return []
+
+
+# Rule instances
+numerical_chromosome_valid_rule = Rule(
+    id="ABN_NUM_CHR_VALID",
+    category="abnormality",
+    description="Numerical abnormality chromosome must be 1-22, X, or Y",
+    validate=_validate_numerical_chromosome
+)
+
+breakpoint_arm_valid_rule = Rule(
+    id="ABN_BP_ARM_VALID",
+    category="abnormality",
+    description="Breakpoint arm must be 'p' or 'q'",
+    validate=_validate_breakpoint_arm
+)
+
+inversion_two_breakpoints_rule = Rule(
+    id="ABN_INV_TWO_BP",
+    category="abnormality",
+    description="Inversion must have exactly two breakpoints",
+    validate=_validate_inversion_two_breakpoints
+)
+
+translocation_breakpoint_count_rule = Rule(
+    id="ABN_TRANS_BP_COUNT",
+    category="abnormality",
+    description="Translocation breakpoint count must match chromosome count",
+    validate=_validate_translocation_breakpoint_count
+)
+
+# Export all rules
+ALL_ABNORMALITY_RULES = [
+    numerical_chromosome_valid_rule,
+    breakpoint_arm_valid_rule,
+    inversion_two_breakpoints_rule,
+    translocation_breakpoint_count_rule,
+]

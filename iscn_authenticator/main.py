@@ -5,11 +5,13 @@ from iscn_authenticator.models import ValidationResult, KaryotypeAST
 from iscn_authenticator.parser import KaryotypeParser, ParseError
 from iscn_authenticator.engine import RuleEngine
 from iscn_authenticator.rules.chromosome import ALL_CHROMOSOME_RULES
+from iscn_authenticator.rules.abnormality import ALL_ABNORMALITY_RULES
 
 # Initialize parser and engine
 _parser = KaryotypeParser()
 _engine = RuleEngine()
 _engine.add_rules(ALL_CHROMOSOME_RULES)
+_engine.add_abnormality_rules(ALL_ABNORMALITY_RULES)
 
 
 def validate_karyotype(karyotype: str) -> ValidationResult:
