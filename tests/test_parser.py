@@ -552,5 +552,43 @@ class TestParserInsertion(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserAdditionalMaterial(unittest.TestCase):
+    """Tests for additional material (add) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_add_autosome(self):
+        """Test add(7)(p22) - additional material on chr 7."""
+        result = self.parser.parse("46,XX,add(7)(p22)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "add")
+        self.assertEqual(abn.chromosome, "7")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+
+    def test_parse_add_x_chromosome(self):
+        """Test add(X)(q28) - additional material on X."""
+        result = self.parser.parse("46,XX,add(X)(q28)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "add")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_add_with_uncertainty(self):
+        """Test ?add(7)(p22) - uncertain additional material."""
+        result = self.parser.parse("46,XY,?add(7)(p22)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "add")
+        self.assertTrue(abn.uncertain)
+
+    def test_parse_add_with_inheritance(self):
+        """Test add(7)(p22)dn - de novo additional material."""
+        result = self.parser.parse("46,XY,add(7)(p22)dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "add")
+        self.assertEqual(abn.inheritance, "dn")
+
+
 if __name__ == '__main__':
     unittest.main()

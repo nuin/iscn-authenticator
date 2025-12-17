@@ -41,6 +41,8 @@ class KaryotypeParser:
     HSR_LOCATION_PATTERN = re.compile(r'^hsr\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Insertion: ins(5;2)(p14;q21q31) or ins(2)(p13q21q31)
     INSERTION_PATTERN = re.compile(r'^ins\(([^)]+)\)\(([^)]+)\)$')
+    # Additional material of unknown origin: add(7)(p22)
+    ADD_PATTERN = re.compile(r'^add\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -414,6 +416,29 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_add(self, part: str) -> Abnormality:
+        """Parse additional material of unknown origin.
+
+        Format: add(7)(p22) - additional material attached at chr 7 p22
+        """
+        match = self.ADD_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid additional material format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+        breakpoint = self._parse_breakpoint(breakpoint_str)
+
+        return Abnormality(
+            type="add",
+            chromosome=chromosome,
+            breakpoints=[breakpoint],
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -458,6 +483,15 @@ class KaryotypeParser:
             # Try deletion
             if part.startswith('del('):
                 abn = self._parse_deletion(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try additional material
+            if part.startswith('add('):
+                abn = self._parse_add(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part
