@@ -51,6 +51,8 @@ class KaryotypeParser:
     ISODICENTRIC_PATTERN = re.compile(r'^idic\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Fragile site: fra(X)(q27.3)
     FRAGILE_SITE_PATTERN = re.compile(r'^fra\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Robertsonian translocation: rob(13;14)(q10;q10)
+    ROBERTSONIAN_PATTERN = re.compile(r'^rob\(([^)]+)\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -550,6 +552,32 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_robertsonian(self, part: str) -> Abnormality:
+        """Parse a Robertsonian translocation.
+
+        Format: rob(13;14)(q10;q10) - Robertsonian translocation between chr 13 and 14
+        """
+        match = self.ROBERTSONIAN_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid Robertsonian translocation format: '{part}'")
+
+        chromosomes_str = match.group(1)  # e.g., "13;14"
+        breakpoints_str = match.group(2)  # e.g., "q10;q10"
+
+        # Parse breakpoints (semicolon-separated)
+        bp_parts = breakpoints_str.split(';')
+        breakpoints = [self._parse_breakpoint(bp.strip()) for bp in bp_parts]
+
+        return Abnormality(
+            type="rob",
+            chromosome=chromosomes_str,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -684,6 +712,15 @@ class KaryotypeParser:
             # Try isochromosome
             if part.startswith('i('):
                 abn = self._parse_isochromosome(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try Robertsonian translocation (must check before ring since both start with 'r')
+            if part.startswith('rob('):
+                abn = self._parse_robertsonian(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part

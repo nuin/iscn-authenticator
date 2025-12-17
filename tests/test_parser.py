@@ -711,5 +711,35 @@ class TestParserFragileSite(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserRobertsonianTranslocation(unittest.TestCase):
+    """Tests for Robertsonian translocation (rob) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_rob_13_14(self):
+        """Test rob(13;14)(q10;q10) - common Robertsonian translocation."""
+        result = self.parser.parse("45,XX,rob(13;14)(q10;q10)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "rob")
+        self.assertEqual(abn.chromosome, "13;14")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_rob_14_21(self):
+        """Test rob(14;21)(q10;q10) - another common Robertsonian."""
+        result = self.parser.parse("45,XY,rob(14;21)(q10;q10)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "rob")
+        self.assertEqual(abn.chromosome, "14;21")
+
+    def test_parse_rob_with_inheritance(self):
+        """Test rob(13;14)(q10;q10)mat - maternal Robertsonian."""
+        result = self.parser.parse("45,XX,rob(13;14)(q10;q10)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "rob")
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()
