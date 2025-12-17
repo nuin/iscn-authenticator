@@ -24,8 +24,8 @@ def _validate_deletion_content(content: str) -> bool:
     if re.fullmatch(r"[pq]\d+(\.\d+)?", content):
         return True
 
-    # Interstitial deletion: [pq]\d+(\.\d+)?\d+(\.\d+)?
-    if re.fullmatch(r"[pq]\d+(\.\d+)?\d+(\.\d+)?", content):
+    # Interstitial deletion: [pq]\d+(\.\d+)?[pq]\d+(\.\d+)?
+    if re.fullmatch(r"[pq]\d+(\.\d+)?[pq]\d+(\.\d+)?", content):
         return True
     
     return False
