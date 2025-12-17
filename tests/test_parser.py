@@ -680,5 +680,36 @@ class TestParserIsodicentric(unittest.TestCase):
         self.assertEqual(abn.inheritance, "dn")
 
 
+class TestParserFragileSite(unittest.TestCase):
+    """Tests for fragile site (fra) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_fragile_site_x(self):
+        """Test fra(X)(q27.3) - fragile X site."""
+        result = self.parser.parse("46,Y,fra(X)(q27.3)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fra")
+        self.assertEqual(abn.chromosome, "X")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+    def test_parse_fragile_site_autosome(self):
+        """Test fra(16)(p13.11) - autosomal fragile site."""
+        result = self.parser.parse("46,XX,fra(16)(p13.11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fra")
+        self.assertEqual(abn.chromosome, "16")
+
+    def test_parse_fragile_site_with_inheritance(self):
+        """Test fra(X)(q27.3)mat - maternal fragile X."""
+        result = self.parser.parse("46,Y,fra(X)(q27.3)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fra")
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()

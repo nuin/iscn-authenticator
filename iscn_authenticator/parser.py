@@ -49,6 +49,8 @@ class KaryotypeParser:
     DICENTRIC_PATTERN = re.compile(r'^dic\(([^)]+)\)\(([^)]+)\)$')
     # Isodicentric chromosome: idic(Y)(q11)
     ISODICENTRIC_PATTERN = re.compile(r'^idic\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Fragile site: fra(X)(q27.3)
+    FRAGILE_SITE_PATTERN = re.compile(r'^fra\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -525,6 +527,29 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_fragile_site(self, part: str) -> Abnormality:
+        """Parse a fragile site.
+
+        Format: fra(X)(q27.3) - fragile site at Xq27.3
+        """
+        match = self.FRAGILE_SITE_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid fragile site format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+        breakpoint = self._parse_breakpoint(breakpoint_str)
+
+        return Abnormality(
+            type="fra",
+            chromosome=chromosome,
+            breakpoints=[breakpoint],
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -605,6 +630,15 @@ class KaryotypeParser:
             # Try isodicentric (must check before isochromosome since both start with 'i')
             if part.startswith('idic('):
                 abn = self._parse_isodicentric(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try fragile site
+            if part.startswith('fra('):
+                abn = self._parse_fragile_site(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part
