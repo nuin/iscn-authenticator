@@ -18,6 +18,7 @@ class KaryotypeParser:
     NUMERICAL_ABNORMALITY_PATTERN = re.compile(r'^([+-])(\d{1,2}|[XY])$')
     DELETION_PATTERN = re.compile(r'^del\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     DUPLICATION_PATTERN = re.compile(r'^dup\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    INVERSION_PATTERN = re.compile(r'^inv\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     BREAKPOINT_PATTERN = re.compile(r'^([pq])(\d+)(?:\.(\d+))?$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
@@ -159,6 +160,34 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_inversion(self, part: str) -> Abnormality:
+        """Parse an inversion abnormality."""
+        match = self.INVERSION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid inversion format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+
+        # Inversions always have two breakpoints
+        breakpoints = []
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            raise ParseError(f"Inversion requires two breakpoints: '{part}'")
+
+        return Abnormality(
+            type="inv",
+            chromosome=chromosome,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -189,6 +218,11 @@ class KaryotypeParser:
             # Try duplication
             if part.startswith('dup('):
                 abnormalities.append(self._parse_duplication(part))
+                continue
+
+            # Try inversion
+            if part.startswith('inv('):
+                abnormalities.append(self._parse_inversion(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)

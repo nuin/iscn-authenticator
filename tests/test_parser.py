@@ -181,5 +181,34 @@ class TestParserDuplications(unittest.TestCase):
         self.assertEqual(abn.breakpoints[0].arm, "q")
 
 
+class TestParserInversions(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_pericentric_inversion(self):
+        result = self.parser.parse("46,XX,inv(9)(p12q13)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "inv")
+        self.assertEqual(abn.chromosome, "9")
+        self.assertEqual(len(abn.breakpoints), 2)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+
+    def test_parse_paracentric_inversion(self):
+        result = self.parser.parse("46,XY,inv(3)(q21q26)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[0].region, 2)
+        self.assertEqual(abn.breakpoints[0].band, 1)
+        self.assertEqual(abn.breakpoints[1].region, 2)
+        self.assertEqual(abn.breakpoints[1].band, 6)
+
+    def test_parse_inversion_with_subband(self):
+        result = self.parser.parse("46,XY,inv(2)(p11.2q13)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.breakpoints[0].subband, "2")
+
+
 if __name__ == '__main__':
     unittest.main()
