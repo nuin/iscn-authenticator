@@ -315,5 +315,31 @@ class TestParserRingChromosomes(unittest.TestCase):
         self.assertEqual(abn.chromosome, "X")
 
 
+class TestParserMarkerChromosomes(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_marker_single(self):
+        """Test +mar - single marker chromosome."""
+        result = self.parser.parse("47,XX,+mar")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+mar")
+        self.assertEqual(abn.chromosome, "mar")
+
+    def test_parse_marker_multiple(self):
+        """Test +2mar - two marker chromosomes."""
+        result = self.parser.parse("48,XY,+2mar")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+mar")
+        self.assertEqual(abn.copy_count, 2)
+
+    def test_parse_marker_numbered(self):
+        """Test +mar1 - numbered marker."""
+        result = self.parser.parse("47,XX,+mar1")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "+mar")
+        self.assertEqual(abn.chromosome, "mar1")
+
+
 if __name__ == '__main__':
     unittest.main()

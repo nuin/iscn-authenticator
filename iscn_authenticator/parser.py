@@ -27,6 +27,8 @@ class KaryotypeParser:
     # Ring chromosome: r(1) simple or r(1)(p36q42) with breakpoints
     RING_SIMPLE_PATTERN = re.compile(r'^r\((\d{1,2}|[XY])\)$')
     RING_BREAKPOINT_PATTERN = re.compile(r'^r\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Marker chromosome: +mar, +2mar, +mar1
+    MARKER_PATTERN = re.compile(r'^\+(\d*)mar(\d*)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -350,6 +352,24 @@ class KaryotypeParser:
             # Try ring chromosome
             if part.startswith('r('):
                 abnormalities.append(self._parse_ring(part))
+                continue
+
+            # Try marker chromosome (+mar, +2mar, +mar1)
+            mar_match = self.MARKER_PATTERN.match(part)
+            if mar_match:
+                count_prefix = mar_match.group(1)  # e.g., "2" in +2mar
+                marker_suffix = mar_match.group(2)  # e.g., "1" in +mar1
+                copy_count = int(count_prefix) if count_prefix else None
+                chromosome = "mar" + marker_suffix if marker_suffix else "mar"
+                abnormalities.append(Abnormality(
+                    type="+mar",
+                    chromosome=chromosome,
+                    breakpoints=[],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=copy_count,
+                    raw=part
+                ))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)
