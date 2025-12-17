@@ -16,6 +16,8 @@ class KaryotypeParser:
     # Regex patterns
     SEX_CHROMOSOMES_PATTERN = re.compile(r'^[XYU]+$')
     NUMERICAL_ABNORMALITY_PATTERN = re.compile(r'^([+-])(\d{1,2}|[XY])$')
+    DELETION_PATTERN = re.compile(r'^del\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    BREAKPOINT_PATTERN = re.compile(r'^([pq])(\d+)(?:\.(\d+))?$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -72,6 +74,62 @@ class KaryotypeParser:
 
         return sex_str
 
+    def _parse_breakpoint(self, bp_str: str) -> Breakpoint:
+        """Parse a single breakpoint like 'q13' or 'p11.2'."""
+        match = self.BREAKPOINT_PATTERN.match(bp_str)
+        if not match:
+            raise ParseError(f"Invalid breakpoint format: '{bp_str}'")
+
+        arm = match.group(1)
+        region_band = match.group(2)
+        subband = match.group(3)
+
+        # Split region and band (e.g., "13" -> region=1, band=3)
+        if len(region_band) >= 2:
+            region = int(region_band[0])
+            band = int(region_band[1:])
+        else:
+            region = int(region_band)
+            band = 0
+
+        return Breakpoint(
+            arm=arm,
+            region=region,
+            band=band,
+            subband=subband,
+            uncertain=False
+        )
+
+    def _parse_deletion(self, part: str) -> Abnormality:
+        """Parse a deletion abnormality."""
+        match = self.DELETION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid deletion format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+
+        # Parse breakpoints (could be single or double)
+        breakpoints = []
+        # Check for interstitial deletion (two breakpoints like q13q33)
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            # Single breakpoint (terminal deletion)
+            breakpoints.append(self._parse_breakpoint(breakpoint_str))
+
+        return Abnormality(
+            type="del",
+            chromosome=chromosome,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -92,6 +150,11 @@ class KaryotypeParser:
                     copy_count=None,
                     raw=part
                 ))
+                continue
+
+            # Try deletion
+            if part.startswith('del('):
+                abnormalities.append(self._parse_deletion(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)

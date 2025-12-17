@@ -105,5 +105,54 @@ class TestParserNumericalAbnormalities(unittest.TestCase):
         self.assertEqual(result.abnormalities[0].chromosome, "Y")
 
 
+class TestParserDeletions(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_terminal_deletion(self):
+        result = self.parser.parse("46,XX,del(5)(q13)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "del")
+        self.assertEqual(abn.chromosome, "5")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[0].region, 1)
+        self.assertEqual(abn.breakpoints[0].band, 3)
+
+    def test_parse_interstitial_deletion(self):
+        result = self.parser.parse("46,XX,del(5)(q13q33)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "del")
+        self.assertEqual(len(abn.breakpoints), 2)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[1].region, 3)
+        self.assertEqual(abn.breakpoints[1].band, 3)
+
+    def test_parse_deletion_with_subband(self):
+        result = self.parser.parse("46,XY,del(7)(p11.2)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.breakpoints[0].subband, "2")
+        self.assertEqual(abn.breakpoints[0].region, 1)
+        self.assertEqual(abn.breakpoints[0].band, 1)
+
+    def test_parse_deletion_x_chromosome(self):
+        result = self.parser.parse("46,X,del(X)(p22)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.chromosome, "X")
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+        self.assertEqual(abn.breakpoints[0].region, 2)
+        self.assertEqual(abn.breakpoints[0].band, 2)
+
+    def test_parse_deletion_p_arm(self):
+        result = self.parser.parse("46,XY,del(1)(p36)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+        self.assertEqual(abn.breakpoints[0].region, 3)
+        self.assertEqual(abn.breakpoints[0].band, 6)
+
+
 if __name__ == '__main__':
     unittest.main()
