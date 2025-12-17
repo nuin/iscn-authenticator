@@ -45,6 +45,8 @@ class KaryotypeParser:
     ADD_PATTERN = re.compile(r'^add\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Triplication: trp(1)(q21q32)
     TRIPLICATION_PATTERN = re.compile(r'^trp\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Dicentric chromosome: dic(13;14)(q14;q11)
+    DICENTRIC_PATTERN = re.compile(r'^dic\(([^)]+)\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -472,6 +474,32 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_dicentric(self, part: str) -> Abnormality:
+        """Parse a dicentric chromosome abnormality.
+
+        Format: dic(13;14)(q14;q11) - dicentric formed from chr 13 and 14
+        """
+        match = self.DICENTRIC_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid dicentric format: '{part}'")
+
+        chromosomes_str = match.group(1)  # e.g., "13;14"
+        breakpoints_str = match.group(2)  # e.g., "q14;q11"
+
+        # Parse breakpoints (semicolon-separated)
+        bp_parts = breakpoints_str.split(';')
+        breakpoints = [self._parse_breakpoint(bp.strip()) for bp in bp_parts]
+
+        return Abnormality(
+            type="dic",
+            chromosome=chromosomes_str,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -534,6 +562,15 @@ class KaryotypeParser:
             # Try duplication
             if part.startswith('dup('):
                 abn = self._parse_duplication(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try dicentric (must check before derivative since both start with 'd')
+            if part.startswith('dic('):
+                abn = self._parse_dicentric(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part

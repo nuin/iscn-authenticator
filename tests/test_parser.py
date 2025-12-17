@@ -620,5 +620,35 @@ class TestParserTriplication(unittest.TestCase):
         self.assertEqual(abn.inheritance, "mat")
 
 
+class TestParserDicentric(unittest.TestCase):
+    """Tests for dicentric chromosome (dic) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_dicentric_two_chromosomes(self):
+        """Test dic(13;14)(q14;q11) - dicentric from chr 13 and 14."""
+        result = self.parser.parse("45,XX,dic(13;14)(q14;q11)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "dic")
+        self.assertEqual(abn.chromosome, "13;14")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_dicentric_x_chromosome(self):
+        """Test dic(X;Y)(p22;q11) - dicentric involving sex chromosomes."""
+        result = self.parser.parse("45,X,dic(X;Y)(p22;q11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "dic")
+        self.assertEqual(abn.chromosome, "X;Y")
+
+    def test_parse_dicentric_with_inheritance(self):
+        """Test dic(13;14)(q14;q11)mat - maternal dicentric."""
+        result = self.parser.parse("45,XX,dic(13;14)(q14;q11)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "dic")
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()
