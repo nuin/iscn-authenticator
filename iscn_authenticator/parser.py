@@ -17,6 +17,7 @@ class KaryotypeParser:
     SEX_CHROMOSOMES_PATTERN = re.compile(r'^[XYU]+$')
     NUMERICAL_ABNORMALITY_PATTERN = re.compile(r'^([+-])(\d{1,2}|[XY])$')
     DELETION_PATTERN = re.compile(r'^del\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    DUPLICATION_PATTERN = re.compile(r'^dup\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     BREAKPOINT_PATTERN = re.compile(r'^([pq])(\d+)(?:\.(\d+))?$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
@@ -130,6 +131,34 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_duplication(self, part: str) -> Abnormality:
+        """Parse a duplication abnormality."""
+        match = self.DUPLICATION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid duplication format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+
+        # Parse breakpoints (could be single or double)
+        breakpoints = []
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            breakpoints.append(self._parse_breakpoint(breakpoint_str))
+
+        return Abnormality(
+            type="dup",
+            chromosome=chromosome,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -155,6 +184,11 @@ class KaryotypeParser:
             # Try deletion
             if part.startswith('del('):
                 abnormalities.append(self._parse_deletion(part))
+                continue
+
+            # Try duplication
+            if part.startswith('dup('):
+                abnormalities.append(self._parse_duplication(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)

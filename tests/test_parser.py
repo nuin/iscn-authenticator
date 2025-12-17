@@ -154,5 +154,32 @@ class TestParserDeletions(unittest.TestCase):
         self.assertEqual(abn.breakpoints[0].band, 6)
 
 
+class TestParserDuplications(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_duplication(self):
+        result = self.parser.parse("46,XX,dup(1)(p31p22)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "dup")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_tandem_duplication(self):
+        result = self.parser.parse("46,XY,dup(7)(q11.2q22)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[1].arm, "q")
+        self.assertEqual(abn.breakpoints[0].subband, "2")
+
+    def test_parse_single_breakpoint_duplication(self):
+        result = self.parser.parse("46,XX,dup(3)(q21)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "dup")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+
 if __name__ == '__main__':
     unittest.main()
