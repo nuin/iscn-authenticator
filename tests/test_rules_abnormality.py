@@ -208,6 +208,47 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestQuadruplicationBreakpointRule(unittest.TestCase):
+    def test_valid_quadruplication_two_breakpoints_same_arm(self):
+        """Quadruplication with two breakpoints on same arm."""
+        from iscn_authenticator.rules.abnormality import quadruplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 2, None, False)
+        abn = Abnormality("qdp", "1", [bp1, bp2], None, False, None, "qdp(1)(q21q32)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = quadruplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_quadruplication_one_breakpoint(self):
+        """Quadruplication should have two breakpoints."""
+        from iscn_authenticator.rules.abnormality import quadruplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("qdp", "1", [bp1], None, False, None, "qdp(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = quadruplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("two breakpoints", errors[0].lower())
+
+    def test_invalid_quadruplication_different_arms(self):
+        """Quadruplication breakpoints must be on same arm."""
+        from iscn_authenticator.rules.abnormality import quadruplication_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 3, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("qdp", "1", [bp1, bp2], None, False, None, "qdp(1)(p13q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = quadruplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("same arm", errors[0].lower())
+
+    def test_skips_non_quadruplication(self):
+        """Rule only applies to quadruplications."""
+        from iscn_authenticator.rules.abnormality import quadruplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("trp", "1", [bp1, bp2], None, False, None, "trp(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = quadruplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestTriplicationBreakpointRule(unittest.TestCase):
     def test_valid_triplication_two_breakpoints_same_arm(self):
         """Triplication with two breakpoints on same arm."""
