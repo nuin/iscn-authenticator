@@ -197,6 +197,26 @@ def _validate_quadruplication_breakpoints(ast: KaryotypeAST, abnormality: Abnorm
     return []
 
 
+def _validate_dicentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate dicentric chromosome breakpoints.
+
+    Dicentric chromosomes have breakpoint count matching chromosome count.
+    """
+    if abnormality.type != "dic":
+        return []
+
+    # Count chromosomes from the chromosome field (semicolon-separated)
+    chromosomes = abnormality.chromosome.split(";")
+    chr_count = len(chromosomes)
+    bp_count = len(abnormality.breakpoints)
+
+    if chr_count != bp_count:
+        return [
+            f"Dicentric has {chr_count} chromosomes but {bp_count} breakpoints in {abnormality.raw}"
+        ]
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -268,6 +288,13 @@ quadruplication_breakpoint_rule = Rule(
     validate=_validate_quadruplication_breakpoints
 )
 
+dicentric_breakpoint_rule = Rule(
+    id="ABN_DIC_BP",
+    category="abnormality",
+    description="Dicentric breakpoint count must match chromosome count",
+    validate=_validate_dicentric_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -280,4 +307,5 @@ ALL_ABNORMALITY_RULES = [
     isochromosome_breakpoint_rule,
     triplication_breakpoint_rule,
     quadruplication_breakpoint_rule,
+    dicentric_breakpoint_rule,
 ]

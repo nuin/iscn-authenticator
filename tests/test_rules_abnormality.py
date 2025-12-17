@@ -208,6 +208,48 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestDicentricBreakpointRule(unittest.TestCase):
+    def test_valid_dicentric_two_chromosomes_two_breakpoints(self):
+        """Dicentric with two chromosomes and two breakpoints."""
+        from iscn_authenticator.rules.abnormality import dicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = dicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_dicentric_two_chromosomes_one_breakpoint(self):
+        """Dicentric with two chromosomes but one breakpoint."""
+        from iscn_authenticator.rules.abnormality import dicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        abn = Abnormality("dic", "13;14", [bp1], None, False, None, "dic(13;14)(q14)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = dicentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("breakpoints", errors[0].lower())
+
+    def test_invalid_dicentric_two_chromosomes_three_breakpoints(self):
+        """Dicentric with two chromosomes but three breakpoints."""
+        from iscn_authenticator.rules.abnormality import dicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        bp3 = Breakpoint("p", 1, 2, None, False)
+        abn = Abnormality("dic", "13;14", [bp1, bp2, bp3], None, False, None, "dic(13;14)(q14;q11;p12)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = dicentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("breakpoints", errors[0].lower())
+
+    def test_skips_non_dicentric(self):
+        """Rule only applies to dicentric chromosomes."""
+        from iscn_authenticator.rules.abnormality import dicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 3, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = dicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestQuadruplicationBreakpointRule(unittest.TestCase):
     def test_valid_quadruplication_two_breakpoints_same_arm(self):
         """Quadruplication with two breakpoints on same arm."""
