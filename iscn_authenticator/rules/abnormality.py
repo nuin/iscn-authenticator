@@ -86,6 +86,31 @@ def _validate_deletion_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) 
     return []
 
 
+def _validate_duplication_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate duplication breakpoints.
+
+    - Tandem duplication: 1 breakpoint
+    - Interstitial duplication: 2 breakpoints on same arm
+    """
+    if abnormality.type != "dup":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    # Must have 1 or 2 breakpoints
+    if bp_count not in (1, 2):
+        return [f"Duplication requires one or two breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    # If 2 breakpoints, they must be on the same arm
+    if bp_count == 2:
+        arm1 = abnormality.breakpoints[0].arm
+        arm2 = abnormality.breakpoints[1].arm
+        if arm1 != arm2:
+            return [f"Duplication breakpoints must be on same arm, found {arm1} and {arm2} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -122,6 +147,13 @@ deletion_breakpoint_rule = Rule(
     validate=_validate_deletion_breakpoints
 )
 
+duplication_breakpoint_rule = Rule(
+    id="ABN_DUP_BP",
+    category="abnormality",
+    description="Duplication must have 1-2 breakpoints, interstitial requires same arm",
+    validate=_validate_duplication_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -129,4 +161,5 @@ ALL_ABNORMALITY_RULES = [
     inversion_two_breakpoints_rule,
     translocation_breakpoint_count_rule,
     deletion_breakpoint_rule,
+    duplication_breakpoint_rule,
 ]

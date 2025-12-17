@@ -208,5 +208,57 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestDuplicationBreakpointRule(unittest.TestCase):
+    def test_valid_tandem_duplication_one_breakpoint(self):
+        """Tandem duplication has one breakpoint."""
+        from iscn_authenticator.rules.abnormality import duplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1], None, False, None, "dup(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_duplication_two_breakpoints_same_arm(self):
+        """Duplication with two breakpoints on same arm."""
+        from iscn_authenticator.rules.abnormality import duplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1, bp2], None, False, None, "dup(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_duplication_different_arms(self):
+        """Duplication cannot have breakpoints on different arms."""
+        from iscn_authenticator.rules.abnormality import duplication_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 2, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1, bp2], None, False, None, "dup(1)(p12q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("same arm", errors[0].lower())
+
+    def test_invalid_duplication_three_breakpoints(self):
+        """Duplication cannot have three breakpoints."""
+        from iscn_authenticator.rules.abnormality import duplication_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 2, 5, None, False)
+        bp3 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1, bp2, bp3], None, False, None, "dup(1)(q21q25q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one or two breakpoints", errors[0].lower())
+
+    def test_skips_non_duplication(self):
+        """Rule only applies to duplications."""
+        from iscn_authenticator.rules.abnormality import duplication_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 3, None, False)
+        bp2 = Breakpoint("q", 3, 3, None, False)
+        abn = Abnormality("del", "5", [bp1, bp2], None, False, None, "del(5)(q13q33)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 if __name__ == '__main__':
     unittest.main()
