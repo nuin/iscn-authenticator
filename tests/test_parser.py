@@ -341,5 +341,33 @@ class TestParserMarkerChromosomes(unittest.TestCase):
         self.assertEqual(abn.chromosome, "mar1")
 
 
+class TestParserDerivativeChromosomes(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_derivative_translocation(self):
+        """Test der(22)t(9;22)(q34;q11.2) - Philadelphia chromosome."""
+        result = self.parser.parse("46,XX,der(22)t(9;22)(q34;q11.2)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "der")
+        self.assertEqual(abn.chromosome, "22")
+        self.assertIn("t(9;22)", abn.raw)
+
+    def test_parse_derivative_deletion(self):
+        """Test der(1)del(1)(p31) - derivative from deletion."""
+        result = self.parser.parse("46,XY,der(1)del(1)(p31)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "der")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertIn("del(1)", abn.raw)
+
+    def test_parse_derivative_sex_chromosome(self):
+        """Test der(X) - derivative X chromosome."""
+        result = self.parser.parse("46,X,der(X)t(X;8)(p22;q24)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "der")
+        self.assertEqual(abn.chromosome, "X")
+
+
 if __name__ == '__main__':
     unittest.main()

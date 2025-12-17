@@ -29,6 +29,8 @@ class KaryotypeParser:
     RING_BREAKPOINT_PATTERN = re.compile(r'^r\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     # Marker chromosome: +mar, +2mar, +mar1
     MARKER_PATTERN = re.compile(r'^\+(\d*)mar(\d*)$')
+    # Derivative chromosome: der(22)t(9;22)(...) or der(1)del(1)(...)
+    DERIVATIVE_PATTERN = re.compile(r'^der\((\d{1,2}|[XY])\)(.+)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -368,6 +370,22 @@ class KaryotypeParser:
                     inheritance=None,
                     uncertain=False,
                     copy_count=copy_count,
+                    raw=part
+                ))
+                continue
+
+            # Try derivative chromosome (der(22)t(9;22)(...))
+            der_match = self.DERIVATIVE_PATTERN.match(part)
+            if der_match:
+                chromosome = der_match.group(1)
+                # The rearrangement description is captured in raw for now
+                abnormalities.append(Abnormality(
+                    type="der",
+                    chromosome=chromosome,
+                    breakpoints=[],
+                    inheritance=None,
+                    uncertain=False,
+                    copy_count=None,
                     raw=part
                 ))
                 continue
