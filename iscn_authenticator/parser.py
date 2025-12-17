@@ -21,6 +21,9 @@ class KaryotypeParser:
     INVERSION_PATTERN = re.compile(r'^inv\((\d{1,2}|[XY])\)\(([^)]+)\)$')
     TRANSLOCATION_PATTERN = re.compile(r'^t\(([^)]+)\)\(([^)]+)\)$')
     BREAKPOINT_PATTERN = re.compile(r'^([pq])(\d+)(?:\.(\d+))?$')
+    # Isochromosome: i(17q) short form or i(17)(q10) long form
+    ISOCHROMOSOME_SHORT_PATTERN = re.compile(r'^i\((\d{1,2}|[XY])([pq])\)$')
+    ISOCHROMOSOME_LONG_PATTERN = re.compile(r'^i\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -212,6 +215,49 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_isochromosome(self, part: str) -> Abnormality:
+        """Parse an isochromosome abnormality."""
+        # Try short form first: i(17q) or i(Xq)
+        short_match = self.ISOCHROMOSOME_SHORT_PATTERN.match(part)
+        if short_match:
+            chromosome = short_match.group(1)
+            arm = short_match.group(2)
+            # Create a breakpoint with just the arm (region/band at centromere)
+            breakpoint = Breakpoint(
+                arm=arm,
+                region=1,
+                band=0,
+                subband=None,
+                uncertain=False
+            )
+            return Abnormality(
+                type="i",
+                chromosome=chromosome,
+                breakpoints=[breakpoint],
+                inheritance=None,
+                uncertain=False,
+                copy_count=None,
+                raw=part
+            )
+
+        # Try long form: i(17)(q10)
+        long_match = self.ISOCHROMOSOME_LONG_PATTERN.match(part)
+        if long_match:
+            chromosome = long_match.group(1)
+            breakpoint_str = long_match.group(2)
+            breakpoint = self._parse_breakpoint(breakpoint_str)
+            return Abnormality(
+                type="i",
+                chromosome=chromosome,
+                breakpoints=[breakpoint],
+                inheritance=None,
+                uncertain=False,
+                copy_count=None,
+                raw=part
+            )
+
+        raise ParseError(f"Invalid isochromosome format: '{part}'")
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -252,6 +298,11 @@ class KaryotypeParser:
             # Try translocation
             if part.startswith('t('):
                 abnormalities.append(self._parse_translocation(part))
+                continue
+
+            # Try isochromosome
+            if part.startswith('i('):
+                abnormalities.append(self._parse_isochromosome(part))
                 continue
 
             # Unknown abnormality type (will be expanded in later tasks)

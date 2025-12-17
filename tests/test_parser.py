@@ -240,5 +240,46 @@ class TestParserTranslocations(unittest.TestCase):
         self.assertEqual(len(abn.breakpoints), 2)
 
 
+class TestParserIsochromosomes(unittest.TestCase):
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_isochromosome_short_form(self):
+        """Test i(17q) - short form with arm in parentheses."""
+        result = self.parser.parse("46,XX,i(17q)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "i")
+        self.assertEqual(abn.chromosome, "17")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+    def test_parse_isochromosome_long_form(self):
+        """Test i(17)(q10) - long form with breakpoint."""
+        result = self.parser.parse("46,XX,i(17)(q10)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "i")
+        self.assertEqual(abn.chromosome, "17")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+        self.assertEqual(abn.breakpoints[0].region, 1)
+        self.assertEqual(abn.breakpoints[0].band, 0)
+
+    def test_parse_isochromosome_p_arm(self):
+        """Test i(9p) - isochromosome of p arm."""
+        result = self.parser.parse("46,XY,i(9p)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "i")
+        self.assertEqual(abn.chromosome, "9")
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+
+    def test_parse_isochromosome_x_chromosome(self):
+        """Test i(Xq) - isochromosome of X chromosome q arm."""
+        result = self.parser.parse("46,X,i(Xq)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "i")
+        self.assertEqual(abn.chromosome, "X")
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+
 if __name__ == '__main__':
     unittest.main()
