@@ -590,5 +590,35 @@ class TestParserAdditionalMaterial(unittest.TestCase):
         self.assertEqual(abn.inheritance, "dn")
 
 
+class TestParserTriplication(unittest.TestCase):
+    """Tests for triplication (trp) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_triplication(self):
+        """Test trp(1)(q21q32) - triplication of segment."""
+        result = self.parser.parse("46,XX,trp(1)(q21q32)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "trp")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_triplication_x_chromosome(self):
+        """Test trp(X)(q21q28) - triplication on X."""
+        result = self.parser.parse("46,XX,trp(X)(q21q28)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "trp")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_triplication_with_inheritance(self):
+        """Test trp(1)(q21q32)mat - maternal triplication."""
+        result = self.parser.parse("46,XY,trp(1)(q21q32)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "trp")
+        self.assertEqual(abn.inheritance, "mat")
+
+
 if __name__ == '__main__':
     unittest.main()

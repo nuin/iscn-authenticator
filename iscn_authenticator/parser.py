@@ -43,6 +43,8 @@ class KaryotypeParser:
     INSERTION_PATTERN = re.compile(r'^ins\(([^)]+)\)\(([^)]+)\)$')
     # Additional material of unknown origin: add(7)(p22)
     ADD_PATTERN = re.compile(r'^add\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Triplication: trp(1)(q21q32)
+    TRIPLICATION_PATTERN = re.compile(r'^trp\((\d{1,2}|[XY])\)\(([^)]+)\)$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -439,6 +441,37 @@ class KaryotypeParser:
             raw=part
         )
 
+    def _parse_triplication(self, part: str) -> Abnormality:
+        """Parse a triplication abnormality.
+
+        Format: trp(1)(q21q32) - triplication of segment q21 to q32 on chr 1
+        """
+        match = self.TRIPLICATION_PATTERN.match(part)
+        if not match:
+            raise ParseError(f"Invalid triplication format: '{part}'")
+
+        chromosome = match.group(1)
+        breakpoint_str = match.group(2)
+
+        # Parse two breakpoints (segment boundaries)
+        breakpoints = []
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', breakpoint_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            raise ParseError(f"Triplication requires two breakpoints: '{part}'")
+
+        return Abnormality(
+            type="trp",
+            chromosome=chromosome,
+            breakpoints=breakpoints,
+            inheritance=None,
+            uncertain=False,
+            copy_count=None,
+            raw=part
+        )
+
     def _parse_abnormalities(self, parts: list[str]) -> list[Abnormality]:
         """Parse abnormality parts."""
         abnormalities = []
@@ -510,6 +543,15 @@ class KaryotypeParser:
             # Try inversion
             if part.startswith('inv('):
                 abn = self._parse_inversion(part)
+                abn.uncertain = uncertain
+                abn.inheritance = inheritance
+                abn.raw = original_part
+                abnormalities.append(abn)
+                continue
+
+            # Try triplication (must check before translocation since both start with 't')
+            if part.startswith('trp('):
+                abn = self._parse_triplication(part)
                 abn.uncertain = uncertain
                 abn.inheritance = inheritance
                 abn.raw = original_part
