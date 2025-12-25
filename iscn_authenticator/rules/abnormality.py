@@ -254,6 +254,104 @@ def _validate_robertsonian_breakpoints(ast: KaryotypeAST, abnormality: Abnormali
     return []
 
 
+def _validate_add_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate additional material (add) breakpoints.
+
+    Add has exactly 1 breakpoint indicating where the unknown material is attached.
+    """
+    if abnormality.type != "add":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 1:
+        return [f"Add requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_fra_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate fragile site (fra) breakpoints.
+
+    Fragile site has exactly 1 breakpoint indicating the fragile location.
+    """
+    if abnormality.type != "fra":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 1:
+        return [f"Fragile site requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_ins_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate insertion (ins) breakpoints.
+
+    Insertions have 3 breakpoints: 1 for insertion site + 2 for the inserted segment.
+    For insertions within the same chromosome, all 3 breakpoints are listed.
+    For insertions between chromosomes, format is ins(A;B)(pX;pYpZ).
+    """
+    if abnormality.type != "ins":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 3:
+        return [f"Insertion requires three breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_dmin_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate double minutes (dmin) breakpoints.
+
+    Double minutes have no breakpoints - they are extrachromosomal elements.
+    """
+    if abnormality.type != "dmin":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 0:
+        return [f"Double minutes should have no breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_hsr_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate homogeneously staining region (hsr) breakpoints.
+
+    HSR can have 0 breakpoints (simple notation) or 1 breakpoint (with location).
+    """
+    if abnormality.type != "hsr":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count > 1:
+        return [f"HSR should have zero or one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_mar_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate marker chromosome (mar) breakpoints.
+
+    Marker chromosomes have no breakpoints - origin is unknown.
+    """
+    if abnormality.type != "mar":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 0:
+        return [f"Marker chromosome should have no breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -346,6 +444,48 @@ robertsonian_breakpoint_rule = Rule(
     validate=_validate_robertsonian_breakpoints
 )
 
+add_breakpoint_rule = Rule(
+    id="ABN_ADD_BP",
+    category="abnormality",
+    description="Add (additional material) must have exactly 1 breakpoint",
+    validate=_validate_add_breakpoints
+)
+
+fra_breakpoint_rule = Rule(
+    id="ABN_FRA_BP",
+    category="abnormality",
+    description="Fragile site must have exactly 1 breakpoint",
+    validate=_validate_fra_breakpoints
+)
+
+ins_breakpoint_rule = Rule(
+    id="ABN_INS_BP",
+    category="abnormality",
+    description="Insertion must have exactly 3 breakpoints",
+    validate=_validate_ins_breakpoints
+)
+
+dmin_breakpoint_rule = Rule(
+    id="ABN_DMIN_BP",
+    category="abnormality",
+    description="Double minutes must have no breakpoints",
+    validate=_validate_dmin_breakpoints
+)
+
+hsr_breakpoint_rule = Rule(
+    id="ABN_HSR_BP",
+    category="abnormality",
+    description="HSR must have 0 or 1 breakpoint",
+    validate=_validate_hsr_breakpoints
+)
+
+mar_breakpoint_rule = Rule(
+    id="ABN_MAR_BP",
+    category="abnormality",
+    description="Marker chromosome must have no breakpoints",
+    validate=_validate_mar_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -361,4 +501,10 @@ ALL_ABNORMALITY_RULES = [
     dicentric_breakpoint_rule,
     isodicentric_breakpoint_rule,
     robertsonian_breakpoint_rule,
+    add_breakpoint_rule,
+    fra_breakpoint_rule,
+    ins_breakpoint_rule,
+    dmin_breakpoint_rule,
+    hsr_breakpoint_rule,
+    mar_breakpoint_rule,
 ]

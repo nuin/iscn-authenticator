@@ -208,6 +208,44 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestAddBreakpointRule(unittest.TestCase):
+    def test_valid_add_one_breakpoint(self):
+        """Add with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import add_breakpoint_rule
+        bp1 = Breakpoint("p", 2, 2, None, False)
+        abn = Abnormality("add", "7", [bp1], None, False, None, "add(7)(p22)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = add_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_add_no_breakpoint(self):
+        """Add must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import add_breakpoint_rule
+        abn = Abnormality("add", "7", [], None, False, None, "add(7)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = add_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_invalid_add_two_breakpoints(self):
+        """Add cannot have two breakpoints."""
+        from iscn_authenticator.rules.abnormality import add_breakpoint_rule
+        bp1 = Breakpoint("p", 2, 2, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("add", "7", [bp1, bp2], None, False, None, "add(7)(p22q11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = add_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_add(self):
+        """Rule only applies to add."""
+        from iscn_authenticator.rules.abnormality import add_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("del", "5", [bp1], None, False, None, "del(5)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = add_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 class TestRobertsonianBreakpointRule(unittest.TestCase):
     def test_valid_robertsonian_two_chromosomes_two_breakpoints(self):
         """Robertsonian with two chromosomes and two breakpoints."""
@@ -572,6 +610,158 @@ class TestDuplicationBreakpointRule(unittest.TestCase):
         abn = Abnormality("del", "5", [bp1, bp2], None, False, None, "del(5)(q13q33)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = duplication_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestFraBreakpointRule(unittest.TestCase):
+    def test_valid_fra_one_breakpoint(self):
+        """Fragile site with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import fra_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 7, 3, False)
+        abn = Abnormality("fra", "X", [bp1], None, False, None, "fra(X)(q27.3)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = fra_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_fra_no_breakpoint(self):
+        """Fragile site must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import fra_breakpoint_rule
+        abn = Abnormality("fra", "X", [], None, False, None, "fra(X)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = fra_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_fra(self):
+        """Rule only applies to fragile sites."""
+        from iscn_authenticator.rules.abnormality import fra_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("del", "5", [bp1], None, False, None, "del(5)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = fra_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestInsBreakpointRule(unittest.TestCase):
+    def test_valid_ins_three_breakpoints(self):
+        """Insertion with three breakpoints."""
+        from iscn_authenticator.rules.abnormality import ins_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 4, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        bp3 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("ins", "5;2", [bp1, bp2, bp3], None, False, None, "ins(5;2)(p14;q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ins_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_ins_two_breakpoints(self):
+        """Insertion must have three breakpoints."""
+        from iscn_authenticator.rules.abnormality import ins_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 4, None, False)
+        bp2 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("ins", "5;2", [bp1, bp2], None, False, None, "ins(5;2)(p14;q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ins_breakpoint_rule.validate(ast, abn)
+        self.assertIn("three breakpoints", errors[0].lower())
+
+    def test_skips_non_ins(self):
+        """Rule only applies to insertions."""
+        from iscn_authenticator.rules.abnormality import ins_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("dup", "1", [bp1, bp2], None, False, None, "dup(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = ins_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestDminBreakpointRule(unittest.TestCase):
+    def test_valid_dmin_no_breakpoints(self):
+        """Double minutes with no breakpoints."""
+        from iscn_authenticator.rules.abnormality import dmin_breakpoint_rule
+        abn = Abnormality("dmin", "", [], None, False, None, "dmin")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = dmin_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_dmin_with_breakpoint(self):
+        """Double minutes should have no breakpoints."""
+        from iscn_authenticator.rules.abnormality import dmin_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("dmin", "", [bp1], None, False, None, "dmin(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = dmin_breakpoint_rule.validate(ast, abn)
+        self.assertIn("no breakpoints", errors[0].lower())
+
+    def test_skips_non_dmin(self):
+        """Rule only applies to double minutes."""
+        from iscn_authenticator.rules.abnormality import dmin_breakpoint_rule
+        abn = Abnormality("hsr", "", [], None, False, None, "hsr")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = dmin_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestHsrBreakpointRule(unittest.TestCase):
+    def test_valid_hsr_no_breakpoints(self):
+        """HSR with no breakpoints."""
+        from iscn_authenticator.rules.abnormality import hsr_breakpoint_rule
+        abn = Abnormality("hsr", "", [], None, False, None, "hsr")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = hsr_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_hsr_one_breakpoint(self):
+        """HSR with one breakpoint (location specified)."""
+        from iscn_authenticator.rules.abnormality import hsr_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("hsr", "1", [bp1], None, False, None, "hsr(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = hsr_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_hsr_two_breakpoints(self):
+        """HSR should have at most one breakpoint."""
+        from iscn_authenticator.rules.abnormality import hsr_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("hsr", "1", [bp1, bp2], None, False, None, "hsr(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = hsr_breakpoint_rule.validate(ast, abn)
+        self.assertIn("zero or one breakpoint", errors[0].lower())
+
+    def test_skips_non_hsr(self):
+        """Rule only applies to HSR."""
+        from iscn_authenticator.rules.abnormality import hsr_breakpoint_rule
+        abn = Abnormality("dmin", "", [], None, False, None, "dmin")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = hsr_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestMarBreakpointRule(unittest.TestCase):
+    def test_valid_mar_no_breakpoints(self):
+        """Marker chromosome with no breakpoints."""
+        from iscn_authenticator.rules.abnormality import mar_breakpoint_rule
+        abn = Abnormality("mar", "", [], None, False, None, "+mar")
+        ast = KaryotypeAST(47, "XX", [abn], None, None)
+        errors = mar_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_mar_with_breakpoint(self):
+        """Marker chromosome should have no breakpoints."""
+        from iscn_authenticator.rules.abnormality import mar_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("mar", "", [bp1], None, False, None, "+mar(q21)")
+        ast = KaryotypeAST(47, "XX", [abn], None, None)
+        errors = mar_breakpoint_rule.validate(ast, abn)
+        self.assertIn("no breakpoints", errors[0].lower())
+
+    def test_skips_non_mar(self):
+        """Rule only applies to marker chromosomes."""
+        from iscn_authenticator.rules.abnormality import mar_breakpoint_rule
+        abn = Abnormality("dmin", "", [], None, False, None, "dmin")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = mar_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
 
 
