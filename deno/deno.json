@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "cli": "deno run --allow-run --allow-read --allow-env cli.ts",
+    "cli": "deno run --allow-run --allow-read --allow-net --allow-env cli.ts",
     "serve": "deno run --allow-run --allow-read --allow-net --allow-env server.ts",
     "dev": "deno run --watch --allow-run --allow-read --allow-net --allow-env server.ts",
     "check": "deno check cli.ts server.ts lib/validator.ts lib/types.ts",
