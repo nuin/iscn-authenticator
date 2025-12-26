@@ -28,7 +28,10 @@ function getApiUrl(config?: string): string | undefined {
 function shouldUseNative(config?: boolean): boolean {
   if (config !== undefined) return config;
   const envNative = Deno.env.get("ISCN_USE_NATIVE");
-  return envNative === "true" || envNative === "1";
+  if (envNative === "true" || envNative === "1") return true;
+  // Auto-detect Deno Deploy
+  if (Deno.env.get("DENO_DEPLOYMENT_ID")) return true;
+  return false;
 }
 
 /** Validate via HTTP API */
