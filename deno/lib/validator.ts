@@ -1,15 +1,18 @@
 /**
  * Karyotype validation module.
- * Supports two modes:
- * - HTTP API: Set ISCN_API_URL environment variable
- * - Subprocess: Calls Python validator directly (default for local dev)
+ * Supports three modes (in order of preference):
+ * 1. HTTP API: Set ISCN_API_URL environment variable
+ * 2. Native TypeScript: Set ISCN_USE_NATIVE=true (default for Deno Deploy)
+ * 3. Subprocess: Calls Python validator directly (default for local dev)
  */
 
 import type { ValidationResult } from "./types.ts";
+import { validateKaryotypeNative } from "./validate.ts";
 
 /** Configuration for the validator */
 interface ValidatorConfig {
   apiUrl?: string;
+  useNative?: boolean;
   pythonCmd?: string;
   timeout?: number;
   scriptPath?: string;
@@ -19,6 +22,13 @@ interface ValidatorConfig {
 function getApiUrl(config?: string): string | undefined {
   if (config) return config;
   return Deno.env.get("ISCN_API_URL");
+}
+
+/** Check if native mode should be used */
+function shouldUseNative(config?: boolean): boolean {
+  if (config !== undefined) return config;
+  const envNative = Deno.env.get("ISCN_USE_NATIVE");
+  return envNative === "true" || envNative === "1";
 }
 
 /** Validate via HTTP API */
@@ -171,7 +181,10 @@ async function validateViaSubprocess(
 /**
  * Validate a karyotype string.
  *
- * Uses HTTP API if ISCN_API_URL is set, otherwise uses Python subprocess.
+ * Mode selection (in order):
+ * 1. HTTP API if ISCN_API_URL is set
+ * 2. Native TypeScript if ISCN_USE_NATIVE=true
+ * 3. Python subprocess (default for local dev)
  *
  * @param karyotype - The karyotype string to validate (e.g., "46,XX")
  * @param config - Optional configuration
@@ -182,12 +195,19 @@ export async function validateKaryotype(
   config: ValidatorConfig = {}
 ): Promise<ValidationResult> {
   const { timeout = 10000 } = config;
-  const apiUrl = getApiUrl(config.apiUrl);
 
+  // Check for API mode first
+  const apiUrl = getApiUrl(config.apiUrl);
   if (apiUrl) {
     return validateViaApi(karyotype, apiUrl, timeout);
   }
 
+  // Check for native TypeScript mode
+  if (shouldUseNative(config.useNative)) {
+    return validateKaryotypeNative(karyotype);
+  }
+
+  // Fall back to Python subprocess
   return validateViaSubprocess(karyotype, config);
 }
 
