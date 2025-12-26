@@ -765,5 +765,230 @@ class TestMarBreakpointRule(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestPseudicentricBreakpointRule(unittest.TestCase):
+    def test_valid_pseudodicentric_two_chromosomes(self):
+        """Pseudodicentric with two chromosomes and two breakpoints."""
+        from iscn_authenticator.rules.abnormality import pseudodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("psu dic", "13;14", [bp1, bp2], None, False, None, "psu dic(13;14)(q14;q11)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_pseudodicentric_mismatched(self):
+        """Pseudodicentric with chromosome/breakpoint mismatch."""
+        from iscn_authenticator.rules.abnormality import pseudodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        abn = Abnormality("psu dic", "13;14", [bp1], None, False, None, "psu dic(13;14)(q14)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("2 chromosomes but 1 breakpoints", errors[0])
+
+    def test_skips_non_pseudodicentric(self):
+        """Rule only applies to pseudodicentric."""
+        from iscn_authenticator.rules.abnormality import pseudodicentric_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestAcentricBreakpointRule(unittest.TestCase):
+    def test_valid_acentric_one_breakpoint(self):
+        """Acentric with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import acentric_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 5, None, False)
+        abn = Abnormality("ace", "5", [bp1], None, False, None, "ace(5)(p15)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = acentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_acentric_two_breakpoints(self):
+        """Acentric with two breakpoints."""
+        from iscn_authenticator.rules.abnormality import acentric_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("ace", "1", [bp1, bp2], None, False, None, "ace(1)(q21q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = acentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_acentric_no_breakpoints(self):
+        """Acentric must have at least one breakpoint."""
+        from iscn_authenticator.rules.abnormality import acentric_breakpoint_rule
+        abn = Abnormality("ace", "1", [], None, False, None, "ace(1)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = acentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("1-2 breakpoints", errors[0])
+
+    def test_invalid_acentric_three_breakpoints(self):
+        """Acentric must have at most two breakpoints."""
+        from iscn_authenticator.rules.abnormality import acentric_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 2, 5, None, False)
+        bp3 = Breakpoint("q", 3, 1, None, False)
+        abn = Abnormality("ace", "1", [bp1, bp2, bp3], None, False, None, "ace(1)(q21q25q31)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = acentric_breakpoint_rule.validate(ast, abn)
+        self.assertIn("1-2 breakpoints", errors[0])
+
+    def test_skips_non_acentric(self):
+        """Rule only applies to acentric fragments."""
+        from iscn_authenticator.rules.abnormality import acentric_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("del", "1", [bp1], None, False, None, "del(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = acentric_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestTelomericAssociationBreakpointRule(unittest.TestCase):
+    def test_valid_tas_two_chromosomes(self):
+        """Telomeric association with two chromosomes and two breakpoints."""
+        from iscn_authenticator.rules.abnormality import telomeric_association_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        bp2 = Breakpoint("p", 1, 1, None, False)
+        abn = Abnormality("tas", "13;14", [bp1, bp2], None, False, None, "tas(13;14)(p11;p11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = telomeric_association_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_valid_tas_three_chromosomes(self):
+        """Telomeric association with three chromosomes and three breakpoints."""
+        from iscn_authenticator.rules.abnormality import telomeric_association_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        bp2 = Breakpoint("p", 1, 1, None, False)
+        bp3 = Breakpoint("p", 1, 1, None, False)
+        abn = Abnormality("tas", "13;14;15", [bp1, bp2, bp3], None, False, None, "tas(13;14;15)(p11;p11;p11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = telomeric_association_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_tas_mismatched(self):
+        """Telomeric association with chromosome/breakpoint mismatch."""
+        from iscn_authenticator.rules.abnormality import telomeric_association_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 1, None, False)
+        abn = Abnormality("tas", "13;14", [bp1], None, False, None, "tas(13;14)(p11)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = telomeric_association_breakpoint_rule.validate(ast, abn)
+        self.assertIn("2 chromosomes but 1 breakpoints", errors[0])
+
+    def test_skips_non_tas(self):
+        """Rule only applies to telomeric associations."""
+        from iscn_authenticator.rules.abnormality import telomeric_association_breakpoint_rule
+        bp1 = Breakpoint("q", 1, 4, None, False)
+        bp2 = Breakpoint("q", 1, 1, None, False)
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
+        ast = KaryotypeAST(45, "XX", [abn], None, None)
+        errors = telomeric_association_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestFissionBreakpointRule(unittest.TestCase):
+    def test_valid_fission_one_breakpoint(self):
+        """Fission with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import fission_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 0, None, False)
+        abn = Abnormality("fis", "1", [bp1], None, False, None, "fis(1)(p10)")
+        ast = KaryotypeAST(47, "XX", [abn], None, None)
+        errors = fission_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_fission_no_breakpoint(self):
+        """Fission must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import fission_breakpoint_rule
+        abn = Abnormality("fis", "1", [], None, False, None, "fis(1)")
+        ast = KaryotypeAST(47, "XX", [abn], None, None)
+        errors = fission_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_invalid_fission_two_breakpoints(self):
+        """Fission should have only one breakpoint."""
+        from iscn_authenticator.rules.abnormality import fission_breakpoint_rule
+        bp1 = Breakpoint("p", 1, 0, None, False)
+        bp2 = Breakpoint("q", 1, 0, None, False)
+        abn = Abnormality("fis", "1", [bp1, bp2], None, False, None, "fis(1)(p10q10)")
+        ast = KaryotypeAST(47, "XX", [abn], None, None)
+        errors = fission_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_fission(self):
+        """Rule only applies to fissions."""
+        from iscn_authenticator.rules.abnormality import fission_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("del", "1", [bp1], None, False, None, "del(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = fission_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestNeocentromereBreakpointRule(unittest.TestCase):
+    def test_valid_neocentromere_one_breakpoint(self):
+        """Neocentromere with one breakpoint."""
+        from iscn_authenticator.rules.abnormality import neocentromere_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("neo", "1", [bp1], None, False, None, "neo(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = neocentromere_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_neocentromere_no_breakpoint(self):
+        """Neocentromere must have a breakpoint."""
+        from iscn_authenticator.rules.abnormality import neocentromere_breakpoint_rule
+        abn = Abnormality("neo", "1", [], None, False, None, "neo(1)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = neocentromere_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_invalid_neocentromere_two_breakpoints(self):
+        """Neocentromere should have only one breakpoint."""
+        from iscn_authenticator.rules.abnormality import neocentromere_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        bp2 = Breakpoint("q", 2, 4, None, False)
+        abn = Abnormality("neo", "1", [bp1, bp2], None, False, None, "neo(1)(q21q24)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = neocentromere_breakpoint_rule.validate(ast, abn)
+        self.assertIn("one breakpoint", errors[0].lower())
+
+    def test_skips_non_neocentromere(self):
+        """Rule only applies to neocentromeres."""
+        from iscn_authenticator.rules.abnormality import neocentromere_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("del", "1", [bp1], None, False, None, "del(1)(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = neocentromere_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
+class TestIncompleteBreakpointRule(unittest.TestCase):
+    def test_valid_incomplete_no_breakpoints(self):
+        """Incomplete marker with no breakpoints."""
+        from iscn_authenticator.rules.abnormality import incomplete_breakpoint_rule
+        abn = Abnormality("inc", "", [], None, False, None, "inc")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = incomplete_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+    def test_invalid_incomplete_with_breakpoint(self):
+        """Incomplete marker should have no breakpoints."""
+        from iscn_authenticator.rules.abnormality import incomplete_breakpoint_rule
+        bp1 = Breakpoint("q", 2, 1, None, False)
+        abn = Abnormality("inc", "", [bp1], None, False, None, "inc(q21)")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = incomplete_breakpoint_rule.validate(ast, abn)
+        self.assertIn("no breakpoints", errors[0].lower())
+
+    def test_skips_non_incomplete(self):
+        """Rule only applies to incomplete markers."""
+        from iscn_authenticator.rules.abnormality import incomplete_breakpoint_rule
+        abn = Abnormality("dmin", "", [], None, False, None, "dmin")
+        ast = KaryotypeAST(46, "XX", [abn], None, None)
+        errors = incomplete_breakpoint_rule.validate(ast, abn)
+        self.assertEqual(errors, [])
+
+
 if __name__ == '__main__':
     unittest.main()

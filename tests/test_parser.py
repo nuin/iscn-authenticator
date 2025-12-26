@@ -771,5 +771,209 @@ class TestParserQuadruplication(unittest.TestCase):
         self.assertEqual(abn.inheritance, "dn")
 
 
+class TestParserPseudodicentric(unittest.TestCase):
+    """Tests for pseudodicentric chromosome (psu dic) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_pseudodicentric_two_chromosomes(self):
+        """Test psu dic(13;14)(q14;q11) - pseudodicentric from chr 13 and 14."""
+        result = self.parser.parse("45,XX,psu dic(13;14)(q14;q11)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "psu dic")
+        self.assertEqual(abn.chromosome, "13;14")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_pseudodicentric_no_space(self):
+        """Test psudic(13;14)(q14;q11) - pseudodicentric without space."""
+        result = self.parser.parse("45,XX,psu dic(13;14)(q14;q11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "psu dic")
+        self.assertEqual(abn.chromosome, "13;14")
+
+    def test_parse_pseudodicentric_with_inheritance(self):
+        """Test psu dic(13;14)(q14;q11)mat - maternal pseudodicentric."""
+        result = self.parser.parse("45,XX,psu dic(13;14)(q14;q11)mat")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "psu dic")
+        self.assertEqual(abn.inheritance, "mat")
+
+
+class TestParserAcentricFragment(unittest.TestCase):
+    """Tests for acentric fragment (ace) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_acentric_fragment(self):
+        """Test ace(1)(q21q31) - acentric fragment from chr 1."""
+        result = self.parser.parse("46,XX,ace(1)(q21q31)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ace")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_acentric_single_breakpoint(self):
+        """Test ace(5)(p15) - acentric with single breakpoint."""
+        result = self.parser.parse("46,XY,ace(5)(p15)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ace")
+        self.assertEqual(abn.chromosome, "5")
+        self.assertEqual(len(abn.breakpoints), 1)
+
+    def test_parse_acentric_x_chromosome(self):
+        """Test ace(X)(q21q28) - acentric X chromosome fragment."""
+        result = self.parser.parse("46,XX,ace(X)(q21q28)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ace")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_acentric_with_uncertainty(self):
+        """Test ?ace(1)(q21q31) - uncertain acentric."""
+        result = self.parser.parse("46,XX,?ace(1)(q21q31)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "ace")
+        self.assertTrue(abn.uncertain)
+
+
+class TestParserTelomericAssociation(unittest.TestCase):
+    """Tests for telomeric association (tas) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_telomeric_association(self):
+        """Test tas(13;14)(p11;p11) - telomeric association."""
+        result = self.parser.parse("46,XX,tas(13;14)(p11;p11)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "tas")
+        self.assertEqual(abn.chromosome, "13;14")
+        self.assertEqual(len(abn.breakpoints), 2)
+
+    def test_parse_telomeric_association_three_chromosomes(self):
+        """Test tas(13;14;15)(p11;p11;p11) - three-way telomeric association."""
+        result = self.parser.parse("46,XY,tas(13;14;15)(p11;p11;p11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "tas")
+        self.assertEqual(abn.chromosome, "13;14;15")
+        self.assertEqual(len(abn.breakpoints), 3)
+
+    def test_parse_telomeric_association_with_inheritance(self):
+        """Test tas(13;14)(p11;p11)dn - de novo telomeric association."""
+        result = self.parser.parse("46,XX,tas(13;14)(p11;p11)dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "tas")
+        self.assertEqual(abn.inheritance, "dn")
+
+
+class TestParserFission(unittest.TestCase):
+    """Tests for fission (fis) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_fission_p_arm(self):
+        """Test fis(1)(p10) - fission at p arm centromere."""
+        result = self.parser.parse("47,XX,fis(1)(p10)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fis")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "p")
+
+    def test_parse_fission_q_arm(self):
+        """Test fis(1)(q10) - fission at q arm centromere."""
+        result = self.parser.parse("47,XY,fis(1)(q10)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fis")
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+    def test_parse_fission_x_chromosome(self):
+        """Test fis(X)(q10) - fission of X chromosome."""
+        result = self.parser.parse("47,XX,fis(X)(q10)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fis")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_fission_with_inheritance(self):
+        """Test fis(1)(p10)dn - de novo fission."""
+        result = self.parser.parse("47,XX,fis(1)(p10)dn")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "fis")
+        self.assertEqual(abn.inheritance, "dn")
+
+
+class TestParserNeocentromere(unittest.TestCase):
+    """Tests for neocentromere (neo) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_neocentromere(self):
+        """Test neo(1)(q21) - neocentromere at chr 1 q21."""
+        result = self.parser.parse("46,XX,neo(1)(q21)")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "neo")
+        self.assertEqual(abn.chromosome, "1")
+        self.assertEqual(len(abn.breakpoints), 1)
+        self.assertEqual(abn.breakpoints[0].arm, "q")
+
+    def test_parse_neocentromere_x_chromosome(self):
+        """Test neo(X)(p11) - neocentromere on X chromosome."""
+        result = self.parser.parse("46,XX,neo(X)(p11)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "neo")
+        self.assertEqual(abn.chromosome, "X")
+
+    def test_parse_neocentromere_with_subband(self):
+        """Test neo(15)(q24.2) - neocentromere with subband."""
+        result = self.parser.parse("46,XY,neo(15)(q24.2)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "neo")
+        self.assertEqual(abn.breakpoints[0].subband, "2")
+
+    def test_parse_neocentromere_with_uncertainty(self):
+        """Test ?neo(1)(q21) - uncertain neocentromere."""
+        result = self.parser.parse("46,XX,?neo(1)(q21)")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "neo")
+        self.assertTrue(abn.uncertain)
+
+
+class TestParserIncomplete(unittest.TestCase):
+    """Tests for incomplete karyotype (inc) parsing."""
+
+    def setUp(self):
+        self.parser = KaryotypeParser()
+
+    def test_parse_incomplete_simple(self):
+        """Test 46,XX,inc - simple incomplete karyotype."""
+        result = self.parser.parse("46,XX,inc")
+        self.assertEqual(len(result.abnormalities), 1)
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "inc")
+        self.assertEqual(abn.chromosome, "")
+        self.assertEqual(len(abn.breakpoints), 0)
+
+    def test_parse_incomplete_with_other_abnormality(self):
+        """Test 47,XX,+21,inc - incomplete with other abnormality."""
+        result = self.parser.parse("47,XX,+21,inc")
+        self.assertEqual(len(result.abnormalities), 2)
+        inc_abn = [a for a in result.abnormalities if a.type == "inc"][0]
+        self.assertEqual(inc_abn.type, "inc")
+
+    def test_parse_incomplete_male(self):
+        """Test 46,XY,inc - incomplete male karyotype."""
+        result = self.parser.parse("46,XY,inc")
+        abn = result.abnormalities[0]
+        self.assertEqual(abn.type, "inc")
+
+
 if __name__ == '__main__':
     unittest.main()

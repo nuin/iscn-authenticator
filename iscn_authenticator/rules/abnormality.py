@@ -352,6 +352,110 @@ def _validate_mar_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> li
     return []
 
 
+def _validate_pseudodicentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate pseudodicentric (psu dic) breakpoints.
+
+    Pseudodicentric chromosomes have breakpoint count matching chromosome count.
+    """
+    if abnormality.type != "psu dic":
+        return []
+
+    # Count chromosomes from the chromosome field (semicolon-separated)
+    chromosomes = abnormality.chromosome.split(";")
+    chr_count = len(chromosomes)
+    bp_count = len(abnormality.breakpoints)
+
+    if chr_count != bp_count:
+        return [
+            f"Pseudodicentric has {chr_count} chromosomes but {bp_count} breakpoints in {abnormality.raw}"
+        ]
+    return []
+
+
+def _validate_acentric_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate acentric fragment (ace) breakpoints.
+
+    Acentric fragments have 1-2 breakpoints defining the fragment.
+    """
+    if abnormality.type != "ace":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count not in (1, 2):
+        return [f"Acentric fragment requires 1-2 breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_telomeric_association_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate telomeric association (tas) breakpoints.
+
+    Telomeric associations have breakpoint count matching chromosome count.
+    """
+    if abnormality.type != "tas":
+        return []
+
+    # Count chromosomes from the chromosome field (semicolon-separated)
+    chromosomes = abnormality.chromosome.split(";")
+    chr_count = len(chromosomes)
+    bp_count = len(abnormality.breakpoints)
+
+    if chr_count != bp_count:
+        return [
+            f"Telomeric association has {chr_count} chromosomes but {bp_count} breakpoints in {abnormality.raw}"
+        ]
+    return []
+
+
+def _validate_fission_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate fission (fis) breakpoints.
+
+    Fission has exactly 1 breakpoint at the centromere.
+    """
+    if abnormality.type != "fis":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 1:
+        return [f"Fission requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_neocentromere_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate neocentromere (neo) breakpoints.
+
+    Neocentromere has exactly 1 breakpoint indicating the new centromere location.
+    """
+    if abnormality.type != "neo":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 1:
+        return [f"Neocentromere requires one breakpoint, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
+def _validate_incomplete_breakpoints(ast: KaryotypeAST, abnormality: Abnormality) -> list[str]:
+    """Validate incomplete karyotype (inc) breakpoints.
+
+    Incomplete marker has no breakpoints - it's just a notation marker.
+    """
+    if abnormality.type != "inc":
+        return []
+
+    bp_count = len(abnormality.breakpoints)
+
+    if bp_count != 0:
+        return [f"Incomplete karyotype marker should have no breakpoints, found {bp_count} in {abnormality.raw}"]
+
+    return []
+
+
 # Rule instances
 numerical_chromosome_valid_rule = Rule(
     id="ABN_NUM_CHR_VALID",
@@ -486,6 +590,48 @@ mar_breakpoint_rule = Rule(
     validate=_validate_mar_breakpoints
 )
 
+pseudodicentric_breakpoint_rule = Rule(
+    id="ABN_PSU_DIC_BP",
+    category="abnormality",
+    description="Pseudodicentric breakpoint count must match chromosome count",
+    validate=_validate_pseudodicentric_breakpoints
+)
+
+acentric_breakpoint_rule = Rule(
+    id="ABN_ACE_BP",
+    category="abnormality",
+    description="Acentric fragment must have 1-2 breakpoints",
+    validate=_validate_acentric_breakpoints
+)
+
+telomeric_association_breakpoint_rule = Rule(
+    id="ABN_TAS_BP",
+    category="abnormality",
+    description="Telomeric association breakpoint count must match chromosome count",
+    validate=_validate_telomeric_association_breakpoints
+)
+
+fission_breakpoint_rule = Rule(
+    id="ABN_FIS_BP",
+    category="abnormality",
+    description="Fission must have exactly 1 breakpoint",
+    validate=_validate_fission_breakpoints
+)
+
+neocentromere_breakpoint_rule = Rule(
+    id="ABN_NEO_BP",
+    category="abnormality",
+    description="Neocentromere must have exactly 1 breakpoint",
+    validate=_validate_neocentromere_breakpoints
+)
+
+incomplete_breakpoint_rule = Rule(
+    id="ABN_INC_BP",
+    category="abnormality",
+    description="Incomplete karyotype marker must have no breakpoints",
+    validate=_validate_incomplete_breakpoints
+)
+
 # Export all rules
 ALL_ABNORMALITY_RULES = [
     numerical_chromosome_valid_rule,
@@ -507,4 +653,10 @@ ALL_ABNORMALITY_RULES = [
     dmin_breakpoint_rule,
     hsr_breakpoint_rule,
     mar_breakpoint_rule,
+    pseudodicentric_breakpoint_rule,
+    acentric_breakpoint_rule,
+    telomeric_association_breakpoint_rule,
+    fission_breakpoint_rule,
+    neocentromere_breakpoint_rule,
+    incomplete_breakpoint_rule,
 ]

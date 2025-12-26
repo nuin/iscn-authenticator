@@ -55,6 +55,18 @@ class KaryotypeParser:
     ROBERTSONIAN_PATTERN = re.compile(r'^rob\(([^)]+)\)\(([^)]+)\)$')
     # Quadruplication: qdp(1)(q21q32)
     QUADRUPLICATION_PATTERN = re.compile(r'^qdp\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Pseudodicentric: psu dic(13;14)(q14;q11)
+    PSEUDODICENTRIC_PATTERN = re.compile(r'^psu\s*dic\(([^)]+)\)\(([^)]+)\)$')
+    # Acentric fragment: ace(1)(q21q31)
+    ACENTRIC_PATTERN = re.compile(r'^ace\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Telomeric association: tas(13;14)(p11;p11)
+    TELOMERIC_ASSOC_PATTERN = re.compile(r'^tas\(([^)]+)\)\(([^)]+)\)$')
+    # Fission: fis(1)(p10) or fis(1)(q10)
+    FISSION_PATTERN = re.compile(r'^fis\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Neocentromere: neo(1)(q21)
+    NEOCENTROMERE_PATTERN = re.compile(r'^neo\((\d{1,2}|[XY])\)\(([^)]+)\)$')
+    # Incomplete karyotype: inc
+    INCOMPLETE_PATTERN = re.compile(r'^inc$')
 
     def parse(self, karyotype: str) -> KaryotypeAST:
         """Parse a karyotype string into an AST."""
@@ -855,6 +867,104 @@ class KaryotypeParser:
                 ))
                 continue
 
+            # Try pseudodicentric (psu dic(...))
+            psu_match = self.PSEUDODICENTRIC_PATTERN.match(part)
+            if psu_match:
+                chromosomes = psu_match.group(1)
+                breakpoint_str = psu_match.group(2)
+                breakpoints = self._parse_multiple_breakpoints(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="psu dic",
+                    chromosome=chromosomes,
+                    breakpoints=breakpoints,
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
+            # Try acentric fragment
+            ace_match = self.ACENTRIC_PATTERN.match(part)
+            if ace_match:
+                chromosome = ace_match.group(1)
+                breakpoint_str = ace_match.group(2)
+                breakpoints = self._parse_breakpoints(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="ace",
+                    chromosome=chromosome,
+                    breakpoints=breakpoints,
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
+            # Try telomeric association
+            tas_match = self.TELOMERIC_ASSOC_PATTERN.match(part)
+            if tas_match:
+                chromosomes = tas_match.group(1)
+                breakpoint_str = tas_match.group(2)
+                breakpoints = self._parse_multiple_breakpoints(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="tas",
+                    chromosome=chromosomes,
+                    breakpoints=breakpoints,
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
+            # Try fission
+            fis_match = self.FISSION_PATTERN.match(part)
+            if fis_match:
+                chromosome = fis_match.group(1)
+                breakpoint_str = fis_match.group(2)
+                breakpoint = self._parse_breakpoint(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="fis",
+                    chromosome=chromosome,
+                    breakpoints=[breakpoint],
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
+            # Try neocentromere
+            neo_match = self.NEOCENTROMERE_PATTERN.match(part)
+            if neo_match:
+                chromosome = neo_match.group(1)
+                breakpoint_str = neo_match.group(2)
+                breakpoint = self._parse_breakpoint(breakpoint_str)
+                abnormalities.append(Abnormality(
+                    type="neo",
+                    chromosome=chromosome,
+                    breakpoints=[breakpoint],
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
+            # Try incomplete karyotype
+            if self.INCOMPLETE_PATTERN.match(part):
+                abnormalities.append(Abnormality(
+                    type="inc",
+                    chromosome="",
+                    breakpoints=[],
+                    inheritance=inheritance,
+                    uncertain=uncertain,
+                    copy_count=None,
+                    raw=original_part
+                ))
+                continue
+
             # Unknown abnormality type (will be expanded in later tasks)
             abnormalities.append(Abnormality(
                 type="unknown",
@@ -866,3 +976,21 @@ class KaryotypeParser:
                 raw=original_part
             ))
         return abnormalities
+
+    def _parse_breakpoints(self, bp_str: str) -> list[Breakpoint]:
+        """Parse one or two concatenated breakpoints like 'q21' or 'q21q31'."""
+        breakpoints = []
+        # Try to match two breakpoints
+        double_bp = re.match(r'^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$', bp_str)
+        if double_bp:
+            breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
+            breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
+        else:
+            # Single breakpoint
+            breakpoints.append(self._parse_breakpoint(bp_str))
+        return breakpoints
+
+    def _parse_multiple_breakpoints(self, bp_str: str) -> list[Breakpoint]:
+        """Parse semicolon-separated breakpoints like 'p11;p11'."""
+        bp_parts = bp_str.split(';')
+        return [self._parse_breakpoint(bp.strip()) for bp in bp_parts]
