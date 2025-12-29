@@ -12,11 +12,21 @@
   },
   "lint": {
     "rules": {
-      "tags": ["recommended"]
+      "tags": [
+        "recommended"
+      ]
     }
   },
   "fmt": {
     "indentWidth": 2,
     "lineWidth": 100
+  },
+  "deploy": {
+    "project": "6d40b489-2a38-40d2-99b7-0766ff860607",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "main.ts"
   }
 }

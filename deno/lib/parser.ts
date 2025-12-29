@@ -23,7 +23,7 @@ export class KaryotypeParser {
   private readonly DUPLICATION_PATTERN = /^dup\((\d{1,2}|[XY])\)\(([^)]+)\)$/;
   private readonly INVERSION_PATTERN = /^inv\((\d{1,2}|[XY])\)\(([^)]+)\)$/;
   private readonly TRANSLOCATION_PATTERN = /^t\(([^)]+)\)\(([^)]+)\)$/;
-  private readonly BREAKPOINT_PATTERN = /^([pq])(\d+)(?:\.(\d+))?$/;
+  private readonly BREAKPOINT_PATTERN = /^([pq])(\d+)(?:\.(\d+))?(\?)?$/;
   private readonly ISOCHROMOSOME_SHORT_PATTERN = /^i\((\d{1,2}|[XY])([pq])\)$/;
   private readonly ISOCHROMOSOME_LONG_PATTERN = /^i\((\d{1,2}|[XY])\)\(([^)]+)\)$/;
   private readonly RING_SIMPLE_PATTERN = /^r\((\d{1,2}|[XY])\)$/;
@@ -47,6 +47,10 @@ export class KaryotypeParser {
   private readonly FISSION_PATTERN = /^fis\((\d{1,2}|[XY])\)\(([^)]+)\)$/;
   private readonly NEOCENTROMERE_PATTERN = /^neo\((\d{1,2}|[XY])\)\(([^)]+)\)$/;
   private readonly INCOMPLETE_PATTERN = /^inc$/;
+  // New patterns for rec, upd, constitutional
+  private readonly RECOMBINANT_PATTERN = /^rec\((\d{1,2}|[XY])\)(.+)$/;
+  private readonly UPD_PATTERN = /^upd\((\d{1,2}|[XY])\)(mat|pat)?$/;
+  private readonly NUMERICAL_CONSTITUTIONAL_PATTERN = /^([+-])(\d{1,2}|[XY])(c)?$/;
 
   parse(karyotype: string): KaryotypeAST {
     if (!karyotype || !karyotype.trim()) {
@@ -55,12 +59,39 @@ export class KaryotypeParser {
 
     karyotype = karyotype.trim();
 
-    // Check for mosaicism (cell lines separated by /)
-    if (karyotype.includes("/")) {
-      return this.parseMosaic(karyotype);
+    // Check for FISH notation (.ish) or array (.arr)
+    let fishData: string | null = null;
+    let arrData: string | null = null;
+    if (karyotype.includes(".ish ")) {
+      const ishIndex = karyotype.indexOf(".ish ");
+      fishData = karyotype.slice(ishIndex + 5);
+      karyotype = karyotype.slice(0, ishIndex);
+    } else if (karyotype.includes(".arr")) {
+      const arrIndex = karyotype.indexOf(".arr");
+      arrData = karyotype.slice(arrIndex + 4);
+      karyotype = karyotype.slice(0, arrIndex);
     }
 
-    return this.parseSingleKaryotype(karyotype, false) as KaryotypeAST;
+    // Check for mosaicism (cell lines separated by /)
+    let ast: KaryotypeAST;
+    if (karyotype.includes("/")) {
+      ast = this.parseMosaic(karyotype);
+    } else {
+      ast = this.parseSingleKaryotype(karyotype, false) as KaryotypeAST;
+    }
+
+    // Add FISH/array data to modifiers if present
+    if (fishData || arrData) {
+      ast.modifiers = ast.modifiers || {};
+      if (fishData) {
+        ast.modifiers.ish = fishData;
+      }
+      if (arrData) {
+        ast.modifiers.arr = arrData;
+      }
+    }
+
+    return ast;
   }
 
   private parseSingleKaryotype(
@@ -173,6 +204,7 @@ export class KaryotypeParser {
     const arm = match[1];
     const regionBand = match[2];
     const subband = match[3] || null;
+    const uncertain = match[4] === "?";
 
     // Split region and band (e.g., "13" -> region=1, band=3)
     let region: number;
@@ -190,14 +222,14 @@ export class KaryotypeParser {
       region,
       band,
       subband,
-      uncertain: false,
+      uncertain,
     };
   }
 
   private parseBreakpoints(bpStr: string): Breakpoint[] {
     const breakpoints: Breakpoint[] = [];
-    // Try to match two breakpoints
-    const doubleBp = bpStr.match(/^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$/);
+    // Try to match two breakpoints (with optional ? for uncertain)
+    const doubleBp = bpStr.match(/^([pq]\d+(?:\.\d+)?\??)([pq]\d+(?:\.\d+)?\??)$/);
     if (doubleBp) {
       breakpoints.push(this.parseBreakpoint(doubleBp[1]));
       breakpoints.push(this.parseBreakpoint(doubleBp[2]));
@@ -633,11 +665,12 @@ export class KaryotypeParser {
         part = part.slice(0, -2);
       }
 
-      // Try numerical abnormality (+21, -7, +X, -Y)
-      const numMatch = part.match(this.NUMERICAL_ABNORMALITY_PATTERN);
+      // Try numerical abnormality (+21, -7, +X, -Y, +21c for constitutional)
+      const numMatch = part.match(this.NUMERICAL_CONSTITUTIONAL_PATTERN);
       if (numMatch) {
+        const isConstitutional = numMatch[3] === "c";
         abnormalities.push({
-          type: numMatch[1],
+          type: numMatch[1] + (isConstitutional ? "c" : ""),
           chromosome: numMatch[2],
           breakpoints: [],
           inheritance,
@@ -966,6 +999,36 @@ export class KaryotypeParser {
           chromosome: "",
           breakpoints: [],
           inheritance,
+          uncertain,
+          copy_count: null,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try recombinant chromosome
+      const recMatch = part.match(this.RECOMBINANT_PATTERN);
+      if (recMatch) {
+        abnormalities.push({
+          type: "rec",
+          chromosome: recMatch[1],
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: null,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try uniparental disomy
+      const updMatch = part.match(this.UPD_PATTERN);
+      if (updMatch) {
+        abnormalities.push({
+          type: "upd",
+          chromosome: updMatch[1],
+          breakpoints: [],
+          inheritance: updMatch[2] || inheritance,
           uncertain,
           copy_count: null,
           raw: originalPart,

@@ -25,10 +25,12 @@ export interface Abnormality {
 
 /** Karyotype-level modifiers. */
 export interface Modifiers {
-  mosaic: boolean;
-  chimera: boolean;
-  constitutional: boolean;
-  incomplete: boolean;
+  mosaic?: boolean;
+  chimera?: boolean;
+  constitutional?: boolean;
+  incomplete?: boolean;
+  ish?: string; // FISH notation data
+  arr?: string; // Microarray notation data
 }
 
 /** Represents a cell line in mosaic/chimera notation. */
