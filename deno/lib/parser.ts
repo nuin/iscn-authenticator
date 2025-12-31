@@ -51,6 +51,10 @@ export class KaryotypeParser {
   private readonly RECOMBINANT_PATTERN = /^rec\((\d{1,2}|[XY])\)(.+)$/;
   private readonly UPD_PATTERN = /^upd\((\d{1,2}|[XY])\)(mat|pat)?$/;
   private readonly NUMERICAL_CONSTITUTIONAL_PATTERN = /^([+-])(\d{1,2}|[XY])(c)?$/;
+  // ISCN 2024 new patterns
+  private readonly COMPLEX_PATTERN = /^cpx\(([^)]+)\)$/;
+  private readonly CHROMOTHRIPSIS_PATTERN = /^cth\(([^)]+)\)$/;
+  private readonly CHROMOPLEXY_PATTERN = /^cpy\(([^)]+)\)$/;
 
   parse(karyotype: string): KaryotypeAST {
     if (!karyotype || !karyotype.trim()) {
@@ -59,9 +63,10 @@ export class KaryotypeParser {
 
     karyotype = karyotype.trim();
 
-    // Check for FISH notation (.ish) or array (.arr)
+    // Check for FISH notation (.ish), array (.arr), or optical genome mapping (.ogm)
     let fishData: string | null = null;
     let arrData: string | null = null;
+    let ogmData: string | null = null;
     if (karyotype.includes(".ish ")) {
       const ishIndex = karyotype.indexOf(".ish ");
       fishData = karyotype.slice(ishIndex + 5);
@@ -70,9 +75,28 @@ export class KaryotypeParser {
       const arrIndex = karyotype.indexOf(".arr");
       arrData = karyotype.slice(arrIndex + 4);
       karyotype = karyotype.slice(0, arrIndex);
+    } else if (karyotype.includes(".ogm")) {
+      const ogmIndex = karyotype.indexOf(".ogm");
+      ogmData = karyotype.slice(ogmIndex + 4);
+      karyotype = karyotype.slice(0, ogmIndex);
     }
 
-    // Check for mosaicism (cell lines separated by /)
+    // Check for composite karyotype notation (cp[n] at end)
+    let compositeCount: number | null = null;
+    const cpMatch = karyotype.match(/\.cp\[(\d+)\]$/);
+    if (cpMatch) {
+      compositeCount = parseInt(cpMatch[1], 10);
+      karyotype = karyotype.slice(0, -cpMatch[0].length);
+    }
+
+    // Check for chimera notation (chi prefix)
+    let isChimera = false;
+    if (karyotype.startsWith("chi ")) {
+      isChimera = true;
+      karyotype = karyotype.slice(4);
+    }
+
+    // Check for mosaicism (cell lines separated by /) or chimera
     let ast: KaryotypeAST;
     if (karyotype.includes("/")) {
       ast = this.parseMosaic(karyotype);
@@ -80,14 +104,23 @@ export class KaryotypeParser {
       ast = this.parseSingleKaryotype(karyotype, false) as KaryotypeAST;
     }
 
-    // Add FISH/array data to modifiers if present
-    if (fishData || arrData) {
+    // Add modifiers
+    if (fishData || arrData || ogmData || compositeCount !== null || isChimera) {
       ast.modifiers = ast.modifiers || {};
       if (fishData) {
         ast.modifiers.ish = fishData;
       }
       if (arrData) {
         ast.modifiers.arr = arrData;
+      }
+      if (ogmData) {
+        ast.modifiers.ogm = ogmData;
+      }
+      if (compositeCount !== null) {
+        ast.modifiers.composite = compositeCount;
+      }
+      if (isChimera) {
+        ast.modifiers.chimera = true;
       }
     }
 
@@ -652,9 +685,23 @@ export class KaryotypeParser {
         part = part.slice(1);
       }
 
-      // Check for inheritance notation (mat, pat, dn) at end
+      // Check for copy number multiplier (x2, x3, etc.) at end
+      let copyCount: number | null = null;
+      const copyMatch = part.match(/x(\d+)$/);
+      if (copyMatch) {
+        copyCount = parseInt(copyMatch[1], 10);
+        part = part.slice(0, -copyMatch[0].length);
+      }
+
+      // Check for inheritance notation (mat, pat, dn, umat, upat) at end
       let inheritance: string | null = null;
-      if (part.endsWith("mat")) {
+      if (part.endsWith("umat")) {
+        inheritance = "umat";
+        part = part.slice(0, -4);
+      } else if (part.endsWith("upat")) {
+        inheritance = "upat";
+        part = part.slice(0, -4);
+      } else if (part.endsWith("mat")) {
         inheritance = "mat";
         part = part.slice(0, -3);
       } else if (part.endsWith("pat")) {
@@ -675,7 +722,35 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try idem (same as stemline)
+      if (part === "idem") {
+        abnormalities.push({
+          type: "idem",
+          chromosome: "",
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: copyCount,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try stemline/sideline markers
+      if (part === "sl" || part === "sdl") {
+        abnormalities.push({
+          type: part,
+          chromosome: "",
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -686,6 +761,7 @@ export class KaryotypeParser {
         const abn = this.parseDeletion(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -696,6 +772,7 @@ export class KaryotypeParser {
         const abn = this.parseAdd(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -706,6 +783,7 @@ export class KaryotypeParser {
         const abn = this.parseDuplication(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -716,6 +794,7 @@ export class KaryotypeParser {
         const abn = this.parseDicentric(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -726,6 +805,7 @@ export class KaryotypeParser {
         const abn = this.parseIsodicentric(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -736,6 +816,7 @@ export class KaryotypeParser {
         const abn = this.parseFragileSite(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -746,6 +827,7 @@ export class KaryotypeParser {
         const abn = this.parseInversion(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -756,6 +838,7 @@ export class KaryotypeParser {
         const abn = this.parseTriplication(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -766,6 +849,7 @@ export class KaryotypeParser {
         const abn = this.parseQuadruplication(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -776,6 +860,7 @@ export class KaryotypeParser {
         const abn = this.parseTranslocation(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -786,6 +871,7 @@ export class KaryotypeParser {
         const abn = this.parseInsertion(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -796,6 +882,7 @@ export class KaryotypeParser {
         const abn = this.parseIsochromosome(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -806,6 +893,7 @@ export class KaryotypeParser {
         const abn = this.parseRobertsonian(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -816,6 +904,7 @@ export class KaryotypeParser {
         const abn = this.parseRing(part);
         abn.uncertain = uncertain;
         abn.inheritance = inheritance;
+        abn.copy_count = copyCount;
         abn.raw = originalPart;
         abnormalities.push(abn);
         continue;
@@ -850,7 +939,7 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -864,7 +953,7 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -882,7 +971,7 @@ export class KaryotypeParser {
           breakpoints: [breakpoint],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -896,7 +985,7 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -914,7 +1003,7 @@ export class KaryotypeParser {
           breakpoints,
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -932,7 +1021,7 @@ export class KaryotypeParser {
           breakpoints,
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -950,7 +1039,7 @@ export class KaryotypeParser {
           breakpoints,
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -968,7 +1057,7 @@ export class KaryotypeParser {
           breakpoints: [breakpoint],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -986,7 +1075,7 @@ export class KaryotypeParser {
           breakpoints: [breakpoint],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -1000,7 +1089,7 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -1015,7 +1104,7 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -1030,7 +1119,52 @@ export class KaryotypeParser {
           breakpoints: [],
           inheritance: updMatch[2] || inheritance,
           uncertain,
-          copy_count: null,
+          copy_count: copyCount,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try complex rearrangement (ISCN 2024)
+      const cpxMatch = part.match(this.COMPLEX_PATTERN);
+      if (cpxMatch) {
+        abnormalities.push({
+          type: "cpx",
+          chromosome: cpxMatch[1],
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: copyCount,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try chromothripsis (ISCN 2024)
+      const cthMatch = part.match(this.CHROMOTHRIPSIS_PATTERN);
+      if (cthMatch) {
+        abnormalities.push({
+          type: "cth",
+          chromosome: cthMatch[1],
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: copyCount,
+          raw: originalPart,
+        });
+        continue;
+      }
+
+      // Try chromoplexy (ISCN 2024)
+      const cpyMatch = part.match(this.CHROMOPLEXY_PATTERN);
+      if (cpyMatch) {
+        abnormalities.push({
+          type: "cpy",
+          chromosome: cpyMatch[1],
+          breakpoints: [],
+          inheritance,
+          uncertain,
+          copy_count: copyCount,
           raw: originalPart,
         });
         continue;
@@ -1043,7 +1177,7 @@ export class KaryotypeParser {
         breakpoints: [],
         inheritance,
         uncertain,
-        copy_count: null,
+        copy_count: copyCount,
         raw: originalPart,
       });
     }

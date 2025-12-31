@@ -31,6 +31,10 @@ export interface Modifiers {
   incomplete?: boolean;
   ish?: string; // FISH notation data
   arr?: string; // Microarray notation data
+  ogm?: string; // Optical genome mapping data (ISCN 2024)
+  composite?: number; // Composite karyotype cell count
+  stemline?: boolean; // Stemline marker (sl)
+  sideline?: boolean; // Sideline marker (sdl)
 }
 
 /** Represents a cell line in mosaic/chimera notation. */
