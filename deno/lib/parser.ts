@@ -63,6 +63,21 @@ export class KaryotypeParser {
 
     karyotype = karyotype.trim();
 
+    // Check for standalone interphase FISH notation (nuc ish)
+    if (karyotype.startsWith("nuc ish ")) {
+      const fishData = karyotype.slice(8); // Remove "nuc ish " prefix
+      return {
+        chromosome_count: null,
+        sex_chromosomes: "",
+        abnormalities: [],
+        cell_lines: null,
+        modifiers: {
+          ish: fishData,
+          interphase: true,
+        },
+      };
+    }
+
     // Check for FISH notation (.ish), array (.arr), or optical genome mapping (.ogm)
     let fishData: string | null = null;
     let arrData: string | null = null;

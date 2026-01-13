@@ -6,6 +6,10 @@
 import type { KaryotypeAST, Rule } from "../types.ts";
 
 function validateChromosomeCountNumeric(ast: KaryotypeAST): string[] {
+  // Skip validation for FISH-only results (nuc ish)
+  if (ast.chromosome_count === null) {
+    return [];
+  }
   if (typeof ast.chromosome_count === "string") {
     // Range notation like "45~48" is valid
     if (ast.chromosome_count.includes("~")) {
@@ -18,6 +22,10 @@ function validateChromosomeCountNumeric(ast: KaryotypeAST): string[] {
 
 function validateChromosomeCountRange(ast: KaryotypeAST): string[] {
   const count = ast.chromosome_count;
+  // Skip validation for FISH-only results (nuc ish)
+  if (count === null) {
+    return [];
+  }
   if (typeof count === "string") {
     // Skip range validation for range notation
     return [];
@@ -30,6 +38,10 @@ function validateChromosomeCountRange(ast: KaryotypeAST): string[] {
 
 function validateSexChromosomesValid(ast: KaryotypeAST): string[] {
   const sex = ast.sex_chromosomes;
+  // Skip validation for FISH-only results (nuc ish)
+  if (ast.chromosome_count === null || sex === "") {
+    return [];
+  }
   if (sex === "U") {
     // Undisclosed
     return [];
@@ -43,6 +55,11 @@ function validateSexChromosomesValid(ast: KaryotypeAST): string[] {
 function validateSexChromosomesCoherence(ast: KaryotypeAST): string[] {
   const count = ast.chromosome_count;
   const sex = ast.sex_chromosomes;
+
+  // Skip validation for FISH-only results (nuc ish)
+  if (count === null || sex === "") {
+    return [];
+  }
 
   if (typeof count === "string" || sex === "U") {
     // Skip coherence check for ranges or undisclosed

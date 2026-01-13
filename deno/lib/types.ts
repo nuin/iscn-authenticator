@@ -35,6 +35,7 @@ export interface Modifiers {
   composite?: number; // Composite karyotype cell count
   stemline?: boolean; // Stemline marker (sl)
   sideline?: boolean; // Sideline marker (sdl)
+  interphase?: boolean; // Interphase/nuclear FISH (nuc ish)
 }
 
 /** Represents a cell line in mosaic/chimera notation. */
@@ -48,7 +49,7 @@ export interface CellLine {
 
 /** Abstract syntax tree for a parsed karyotype. */
 export interface KaryotypeAST {
-  chromosome_count: number | string; // int or range "45~48"
+  chromosome_count: number | string | null; // int, range "45~48", or null for FISH-only
   sex_chromosomes: string;
   abnormalities: Abnormality[];
   cell_lines: CellLine[] | null;
