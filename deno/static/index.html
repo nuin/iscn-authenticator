@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISCN Karyotype Validator</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ISCN Karyotype Validator</h1>
+      <p class="subtitle">Validate International System for Human Cytogenomic Nomenclature strings</p>
+    </header>
+
+    <main>
+      <form id="validate-form" onsubmit="validate(event)">
+        <div class="input-group">
+          <label for="karyotype">Karyotype String</label>
+          <input
+            type="text"
+            id="karyotype"
+            name="karyotype"
+            placeholder="e.g., 46,XX or 47,XY,+21"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          >
+          <button type="submit" id="submit-btn">Validate</button>
+        </div>
+      </form>
+
+      <div class="examples">
+        <span class="examples-label">Examples:</span>
+        <button type="button" onclick="setExample('46,XX')">Normal female</button>
+        <button type="button" onclick="setExample('46,XY')">Normal male</button>
+        <button type="button" onclick="setExample('47,XY,+21')">Trisomy 21</button>
+        <button type="button" onclick="setExample('45,X')">Turner</button>
+        <button type="button" onclick="setExample('46,XX,del(5)(q13q33)')">Deletion</button>
+        <button type="button" onclick="setExample('46,XX,t(9;22)(q34;q11.2)')">Translocation</button>
+      </div>
+
+      <div id="result" class="result hidden">
+        <div id="result-badge" class="badge"></div>
+        <div id="errors" class="errors hidden"></div>
+        <details id="parsed-details" class="parsed-details">
+          <summary>Parsed Details</summary>
+          <div id="parsed-content"></div>
+        </details>
+      </div>
+    </main>
+
+    <footer>
+      <p>
+        Based on <a href="https://www.karger.com/Book/Home/282576" target="_blank">ISCN 2024</a>
+        - International System for Human Cytogenomic Nomenclature
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('validate-form');
+    const input = document.getElementById('karyotype');
+    const submitBtn = document.getElementById('submit-btn');
+    const resultDiv = document.getElementById('result');
+    const badgeDiv = document.getElementById('result-badge');
+    const errorsDiv = document.getElementById('errors');
+    const parsedDetails = document.getElementById('parsed-details');
+    const parsedContent = document.getElementById('parsed-content');
+
+    function setExample(karyotype) {
+      input.value = karyotype;
+      input.focus();
+    }
+
+    async function validate(event) {
+      event.preventDefault();
+
+      const karyotype = input.value.trim();
+      if (!karyotype) return;
+
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Validating...';
+      resultDiv.classList.add('hidden');
+
+      try {
+        const response = await fetch('/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ karyotype })
+        });
+
+        const result = await response.json();
+        displayResult(result);
+      } catch (error) {
+        displayResult({
+          valid: false,
+          errors: ['Failed to connect to validation server'],
+          parsed: null
+        });
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Validate';
+      }
+    }
+
+    function displayResult(result) {
+      resultDiv.classList.remove('hidden');
+
+      // Badge
+      if (result.valid) {
+        badgeDiv.textContent = 'VALID';
+        badgeDiv.className = 'badge valid';
+      } else {
+        badgeDiv.textContent = 'INVALID';
+        badgeDiv.className = 'badge invalid';
+      }
+
+      // Errors
+      if (result.errors && result.errors.length > 0) {
+        errorsDiv.classList.remove('hidden');
+        errorsDiv.innerHTML = '<h3>Errors</h3><ul>' +
+          result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('') +
+          '</ul>';
+      } else {
+        errorsDiv.classList.add('hidden');
+      }
+
+      // Parsed details
+      if (result.parsed) {
+        parsedDetails.classList.remove('hidden');
+        parsedContent.innerHTML = formatParsed(result.parsed);
+        if (result.valid) {
+          parsedDetails.open = true;
+        }
+      } else {
+        parsedDetails.classList.add('hidden');
+      }
+    }
+
+    function formatParsed(parsed) {
+      let html = '<dl>';
+      html += `<dt>Chromosome Count</dt><dd>${parsed.chromosome_count}</dd>`;
+      html += `<dt>Sex Chromosomes</dt><dd>${parsed.sex_chromosomes}</dd>`;
+
+      if (parsed.abnormalities && parsed.abnormalities.length > 0) {
+        html += '<dt>Abnormalities</dt><dd><ul>';
+        for (const abn of parsed.abnormalities) {
+          html += `<li><code>${escapeHtml(abn.raw)}</code> - ${formatAbnormality(abn)}</li>`;
+        }
+        html += '</ul></dd>';
+      } else {
+        html += '<dt>Abnormalities</dt><dd>None</dd>';
+      }
+
+      if (parsed.cell_lines && parsed.cell_lines.length > 0) {
+        html += `<dt>Cell Lines (Mosaic)</dt><dd>${parsed.cell_lines.length} cell lines</dd>`;
+      }
+
+      html += '</dl>';
+      return html;
+    }
+
+    function formatAbnormality(abn) {
+      const typeNames = {
+        '+': 'Gain',
+        '-': 'Loss',
+        'del': 'Deletion',
+        'dup': 'Duplication',
+        'inv': 'Inversion',
+        't': 'Translocation',
+        'i': 'Isochromosome',
+        'r': 'Ring',
+        'ins': 'Insertion',
+        'add': 'Additional material',
+        'trp': 'Triplication',
+        'dic': 'Dicentric',
+        'idic': 'Isodicentric',
+        'fra': 'Fragile site',
+        'rob': 'Robertsonian translocation'
+      };
+
+      const typeName = typeNames[abn.type] || abn.type;
+      let desc = `${typeName} on chromosome ${abn.chromosome}`;
+
+      if (abn.breakpoints && abn.breakpoints.length > 0) {
+        const bps = abn.breakpoints.map(bp => {
+          let s = bp.arm + (bp.region || '') + (bp.band || '');
+          if (bp.subband) s += '.' + bp.subband;
+          return s;
+        }).join(', ');
+        desc += ` at ${bps}`;
+      }
+
+      if (abn.inheritance) {
+        const inhMap = { mat: 'maternal', pat: 'paternal', dn: 'de novo' };
+        desc += ` (${inhMap[abn.inheritance] || abn.inheritance})`;
+      }
+
+      return desc;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Focus input on load
+    input.focus();
+  </script>
+</body>
+</html>
