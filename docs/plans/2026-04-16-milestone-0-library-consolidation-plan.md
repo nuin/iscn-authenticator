@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript (tsc for build), Deno (test runner for TS, existing tooling), Python unittest, GitHub Actions, npm, PyPI.
 
+> **Local environment note:** On the development machine used for this plan, the system Python binary is `python3` (not `python`). When running the shell commands below locally, substitute `python3` for `python`. The GitHub Actions workflow (Task 12) exposes `python` correctly in CI and does not need this substitution.
+
 ---
 
 ## Spec Reference
