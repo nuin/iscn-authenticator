@@ -27,3 +27,12 @@ Keep entries short; they run in CI on every PR.
 - Parse AST structure comparisons (future fixture file if needed)
 - Error message text comparisons (error messages are implementation-specific)
 - Performance benchmarks
+
+## Known divergences (post-M0)
+
+The following cases were initially proposed for the `invalid` corpus but removed because the current Python library classifies them as valid under intentional or pre-existing behavior. They are tracked here as follow-ups to be revisited after the M0 consolidation milestone:
+
+- `"47,XX"` — The Python library permits counts 47+ with two sex chromosomes to accommodate unstated aneuploidy (e.g., `47,XX,+21`). Strict ISCN interpretation would require three sex chromosomes when the count is 47 without further abnormalities. Decide whether to harden validation post-M0.
+- `"46,XX,XY"` — The parser currently treats the trailing `XY` as an unknown abnormality rather than as extra sex-chromosome notation, so coherence-on-sex-chromosomes is not enforced. Decide whether to tighten the parser post-M0.
+
+These cases will be re-added to `fixtures/validity.json` once the corresponding behavior is decided and (if needed) implemented.

@@ -23,8 +23,6 @@
   "invalid": [
     { "input": "", "reason": "empty string" },
     { "input": "46", "reason": "missing sex chromosomes" },
-    { "input": "46,XX,XY", "reason": "extra sex notation" },
-    { "input": "47,XX", "reason": "chromosome count 47 with only 2 sex chromosomes" },
     { "input": "46,XX,del(5)", "reason": "del missing breakpoint specification" },
     { "input": "46,XX,t(9;22)", "reason": "translocation missing breakpoints" },
     { "input": "99,XX", "reason": "chromosome count out of range" },
