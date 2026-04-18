@@ -4,11 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ISCN Authenticator validates ISCN (International System for Human Cytogenomic Nomenclature, 2024) karyotype strings. It exists in three parallel forms that must be kept in sync:
+ISCN Authenticator validates ISCN (International System for Human Cytogenomic Nomenclature, 2024) karyotype strings. It is a monorepo with parallel implementations that must be kept in sync, verified by a shared fixture corpus.
 
-1. **Python library** (`iscn_authenticator/`) — reference implementation, no runtime dependencies
-2. **FastAPI server** (`api/`) — wraps the Python library as an HTTP API
-3. **Deno/TypeScript port** (`deno/`) — native TS reimplementation for Deno Deploy (no Python on the edge)
+## Monorepo Layout
+
+| Path | What | Published as |
+|---|---|---|
+| `iscn_authenticator/` | Python reference library, zero runtime deps | `iscn-authenticator` on PyPI |
+| `packages/core/` | TypeScript port (`@iscn/core`), Deno + Node dual-runtime | `@iscn/core` on npm |
+| `api/` | FastAPI HTTP wrapper around the Python library | (not published) |
+| `deno/` | Deno Deploy web app; imports core from `packages/core/src/` | (deployed, not published) |
+| `fixtures/validity.json` | Shared valid/invalid karyotype corpus driving parity tests | — |
+| `tests/test_fixtures.py` | Python fixture-driven parity test | — |
+| `packages/core/tests/fixtures.test.ts` | TypeScript fixture-driven parity test | — |
+| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node build smoke + Python build smoke | — |
+
+**Dual-runtime TypeScript:** `packages/core/src/` uses `.js` import specifiers so `tsc` (Node build) emits matching filenames in `dist/`. Deno resolves `.js` specifiers back to the `.ts` source via `"unstable": ["sloppy-imports"]`, which is enabled in:
+- the root `deno.json` (Deno Deploy reads this file)
+- `deno/deno.json` (local Deno tasks for the web app)
+- `packages/core/deno.json` (core test task)
+
+When adding a new file to `packages/core/src/`, write its intra-package imports with `.js` extensions — never `.ts`.
 
 ## Commands
 
@@ -17,6 +33,18 @@ ISCN Authenticator validates ISCN (International System for Human Cytogenomic No
 python -m unittest discover tests                              # run all tests
 python -m unittest tests.test_parser                           # one test file
 python -m unittest tests.test_main.TestIsValidKaryotype.test_valid_karyotypes  # one test
+python -m unittest tests.test_fixtures                         # cross-impl fixture parity
+```
+
+**TypeScript tests** (from `packages/core/`):
+```bash
+deno test --allow-read --unstable-sloppy-imports tests/        # fixture parity + unit tests
+npm install && npm run build                                   # Node build (emits dist/)
+```
+
+**Python packaging smoke** (from project root, optional):
+```bash
+pip install hatchling && python -m hatchling build             # builds wheel + sdist into dist/
 ```
 
 **FastAPI server:**
@@ -64,7 +92,11 @@ Adding a new abnormality type: add a regex constant + `_parse_X` method in `Kary
 
 ### TypeScript port
 
-`deno/lib/` mirrors the Python structure: `parser.ts`, `engine.ts`, `validator.ts`, `types.ts`, `rules/chromosome.ts`, `rules/abnormality.ts`. `validate.ts` exposes `validateKaryotypeNative` used by the Deploy entrypoint. When changing validation semantics, update both `iscn_authenticator/` and `deno/lib/` — the test suites are independent and drift is easy.
+`packages/core/src/` mirrors the Python structure: `parser.ts`, `engine.ts`, `validate.ts`, `types.ts`, `rules/chromosome.ts`, `rules/abnormality.ts`. `validate.ts` exposes `validateKaryotypeNative`, re-exported from the package entry `packages/core/src/index.ts` (the public API surface of `@iscn/core`).
+
+`deno/lib/validator.ts` is the **Deno-app-specific** multi-mode orchestrator (HTTP API / native TS / Python subprocess) — it imports from `../../packages/core/src/`. It is not part of the published `@iscn/core` package.
+
+When changing validation semantics, update **both** `iscn_authenticator/` and `packages/core/src/` — `fixtures/validity.json` and the two `test_fixtures` suites will catch parity drift in CI.
 
 ## ISCN Reference
 
