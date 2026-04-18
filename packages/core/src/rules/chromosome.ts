@@ -3,7 +3,7 @@
  * Port of iscn_authenticator/rules/chromosome.py to TypeScript.
  */
 
-import type { KaryotypeAST, Rule } from "../types.ts";
+import type { KaryotypeAST, Rule } from "../types.js";
 
 function validateChromosomeCountNumeric(ast: KaryotypeAST): string[] {
   // Skip validation for FISH-only results (nuc ish)

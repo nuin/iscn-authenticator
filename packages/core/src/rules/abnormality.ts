@@ -3,7 +3,7 @@
  * Port of iscn_authenticator/rules/abnormality.py to TypeScript.
  */
 
-import type { KaryotypeAST, Abnormality, Rule } from "../types.ts";
+import type { KaryotypeAST, Abnormality, Rule } from "../types.js";
 
 // Valid autosome numbers (1-22) and sex chromosomes (X, Y)
 const VALID_CHROMOSOMES = new Set([

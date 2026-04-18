@@ -3,7 +3,7 @@
  * Port of iscn_authenticator/parser.py to TypeScript.
  */
 
-import type { KaryotypeAST, Abnormality, Breakpoint, CellLine } from "./types.ts";
+import type { KaryotypeAST, Abnormality, Breakpoint, CellLine } from "./types.js";
 
 /** Pattern for cell line count: [10], [20], etc. */
 const CELL_LINE_COUNT_PATTERN = /^(.+?)\[(\d+)\]$/;

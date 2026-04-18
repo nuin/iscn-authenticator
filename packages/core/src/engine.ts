@@ -3,7 +3,7 @@
  * Port of iscn_authenticator/engine.py to TypeScript.
  */
 
-import type { KaryotypeAST, ValidationResult, Rule } from "./types.ts";
+import type { KaryotypeAST, ValidationResult, Rule } from "./types.js";
 
 export class RuleEngine {
   private rules: Rule[] = [];

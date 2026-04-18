@@ -5,11 +5,11 @@
  * Use this for Deno Deploy or when you don't have Python available.
  */
 
-import type { ValidationResult } from "./types.ts";
-import { KaryotypeParser, ParseError } from "./parser.ts";
-import { RuleEngine } from "./engine.ts";
-import { ALL_CHROMOSOME_RULES } from "./rules/chromosome.ts";
-import { ALL_ABNORMALITY_RULES } from "./rules/abnormality.ts";
+import type { ValidationResult } from "./types.js";
+import { KaryotypeParser, ParseError } from "./parser.js";
+import { RuleEngine } from "./engine.js";
+import { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
+import { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
 
 // Initialize parser and engine
 const parser = new KaryotypeParser();
@@ -54,8 +54,8 @@ export function isValidKaryotypeNative(karyotype: string): boolean {
 }
 
 // Re-export for convenience
-export { ParseError } from "./parser.ts";
-export { KaryotypeParser } from "./parser.ts";
-export { RuleEngine } from "./engine.ts";
-export { ALL_CHROMOSOME_RULES } from "./rules/chromosome.ts";
-export { ALL_ABNORMALITY_RULES } from "./rules/abnormality.ts";
+export { ParseError } from "./parser.js";
+export { KaryotypeParser } from "./parser.js";
+export { RuleEngine } from "./engine.js";
+export { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
+export { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";

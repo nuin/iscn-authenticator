@@ -1,0 +1,37 @@
+{
+  "name": "@iscn/core",
+  "version": "0.1.0",
+  "description": "ISCN 2024 karyotype validation — parser, rule engine, and types. Pure TypeScript, zero runtime dependencies.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "deno test --allow-read tests/fixtures.test.ts",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuin/iscn-authenticator.git",
+    "directory": "packages/core"
+  },
+  "keywords": ["iscn", "karyotype", "cytogenetics", "bioinformatics", "validation"],
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
