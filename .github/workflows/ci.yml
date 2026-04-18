@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [master, milestone-0-library-consolidation]
+  pull_request:
+    branches: [master]
+
+jobs:
+  python-tests:
+    name: Python tests (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run unittest suite
+        run: python -m unittest discover tests/ -v
+      - name: Run fixture-driven tests
+        run: python -m unittest tests.test_fixtures -v
+
+  typescript-tests:
+    name: TypeScript tests (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Type-check @iscn/core
+        working-directory: packages/core
+        run: deno check --unstable-sloppy-imports src/index.ts
+      - name: Type-check Deno app
+        working-directory: deno
+        run: deno check main.ts server.ts cli.ts lib/validator.ts
+      - name: Run fixture-driven tests
+        working-directory: packages/core
+        run: deno test --allow-read --unstable-sloppy-imports tests/
+
+  node-build-smoke:
+    name: Node build smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: packages/core
+        run: npm install
+      - name: Build @iscn/core
+        working-directory: packages/core
+        run: npm run build
+      - name: Smoke test built package
+        working-directory: packages/core
+        run: |
+          node --input-type=module -e "
+          import { isValidKaryotypeNative } from './dist/index.js';
+          const ok = isValidKaryotypeNative('46,XX');
+          if (ok !== true) {
+            console.error('Expected true, got', ok);
+            process.exit(1);
+          }
+          console.log('Smoke test passed: isValidKaryotypeNative(\"46,XX\") === true');
+          "
+
+  python-build-smoke:
+    name: Python build smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install hatchling
+        run: pip install hatchling
+      - name: Build wheel and sdist
+        run: python -m hatchling build
+      - name: Install wheel in fresh venv and smoke test
+        run: |
+          python -m venv /tmp/smoke-venv
+          /tmp/smoke-venv/bin/pip install dist/*.whl
+          /tmp/smoke-venv/bin/python -c "
+          from iscn_authenticator import is_valid_karyotype
+          assert is_valid_karyotype('46,XX') is True, 'Expected True'
+          print('Smoke test passed: is_valid_karyotype(\"46,XX\") is True')
+          "
