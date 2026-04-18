@@ -6,8 +6,8 @@
  * 3. Subprocess: Calls Python validator directly (default for local dev)
  */
 
-import type { ValidationResult } from "./types.ts";
-import { validateKaryotypeNative } from "./validate.ts";
+import type { ValidationResult } from "../../packages/core/src/types.ts";
+import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
 
 /** Configuration for the validator */
 interface ValidatorConfig {

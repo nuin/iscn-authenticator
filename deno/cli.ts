@@ -10,7 +10,7 @@
  */
 
 import { validateKaryotype } from "./lib/validator.ts";
-import type { ValidationResult, Abnormality } from "./lib/types.ts";
+import type { ValidationResult, Abnormality } from "../packages/core/src/types.ts";
 
 // ANSI color codes
 const colors = {

@@ -5,7 +5,7 @@
  * Automatically uses native TypeScript validation (no Python required).
  */
 
-import { validateKaryotypeNative } from "./lib/validate.ts";
+import { validateKaryotypeNative } from "../packages/core/src/validate.ts";
 
 // Embedded static files for Deno Deploy
 const INDEX_HTML = `<!DOCTYPE html>
