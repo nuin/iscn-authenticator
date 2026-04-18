@@ -8,16 +8,18 @@ ISCN Authenticator validates ISCN (International System for Human Cytogenomic No
 
 ## Monorepo Layout
 
-| Path | What | Published as |
-|---|---|---|
-| `iscn_authenticator/` | Python reference library, zero runtime deps | `iscn-authenticator` on PyPI |
-| `packages/core/` | TypeScript port (`@iscn/core`), Deno + Node dual-runtime | `@iscn/core` on npm |
-| `api/` | FastAPI HTTP wrapper around the Python library | (not published) |
-| `deno/` | Deno Deploy web app; imports core from `packages/core/src/` | (deployed, not published) |
-| `fixtures/validity.json` | Shared valid/invalid karyotype corpus driving parity tests | — |
-| `tests/test_fixtures.py` | Python fixture-driven parity test | — |
-| `packages/core/tests/fixtures.test.ts` | TypeScript fixture-driven parity test | — |
-| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node build smoke + Python build smoke | — |
+Nothing is published. All components are consumed from source.
+
+| Path | What |
+|---|---|
+| `iscn_authenticator/` | Python reference library, zero runtime deps. Installable locally via `pip install .`. |
+| `packages/core/` | TypeScript port (`@iscn/core`), Deno + Node dual-runtime. Build with `npm run build` for Node; import `.ts` directly from Deno. |
+| `api/` | FastAPI HTTP wrapper around the Python library. |
+| `deno/` | Deno Deploy web app; imports core from `packages/core/src/`. |
+| `fixtures/validity.json` | Shared valid/invalid karyotype corpus driving parity tests. |
+| `tests/test_fixtures.py` | Python fixture-driven parity test. |
+| `packages/core/tests/fixtures.test.ts` | TypeScript fixture-driven parity test. |
+| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node build smoke. |
 
 **Dual-runtime TypeScript:** `packages/core/src/` uses `.js` import specifiers so `tsc` (Node build) emits matching filenames in `dist/`. Deno resolves `.js` specifiers back to the `.ts` source via `"unstable": ["sloppy-imports"]`, which is enabled in:
 - the root `deno.json` (Deno Deploy reads this file)

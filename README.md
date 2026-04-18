@@ -4,20 +4,22 @@ Validates ISCN 2024 (International System for Human Cytogenomic Nomenclature) ka
 
 ## Packages
 
-This repository is a monorepo containing parallel implementations of the same validation logic, driven by a [shared fixture corpus](fixtures/validity.json) to guarantee behavioural parity.
+This repository is a monorepo containing parallel implementations of the same validation logic, driven by a [shared fixture corpus](fixtures/validity.json) to guarantee behavioural parity. Nothing here is published — consume from source.
 
-| Package | Location | Runtime | Purpose |
+| Component | Location | Runtime | Purpose |
 |---|---|---|---|
-| `iscn-authenticator` | [`iscn_authenticator/`](iscn_authenticator/) | Python ≥3.10 | Reference implementation. Published to PyPI. |
-| `@iscn/core` | [`packages/core/`](packages/core/) | Node ≥18 / Deno | TypeScript port. Published to npm. |
+| `iscn_authenticator` | [`iscn_authenticator/`](iscn_authenticator/) | Python ≥3.10 | Reference implementation, zero runtime deps. |
+| `@iscn/core` | [`packages/core/`](packages/core/) | Node ≥18 / Deno | TypeScript port, zero runtime deps. |
 | ISCN API | [`api/`](api/) | Python (FastAPI) | HTTP wrapper around the Python library. |
-| Deno app | [`deno/`](deno/) | Deno Deploy | Web UI + HTTP API; imports `@iscn/core` directly. |
+| Deno app | [`deno/`](deno/) | Deno Deploy | Web UI + HTTP API; imports core from `packages/core/src/`. |
 
-## Install
+## Use
 
-**Python:**
+**Python (from source):**
 ```bash
-pip install iscn-authenticator
+git clone https://github.com/nuin/iscn-authenticator
+cd iscn-authenticator
+pip install .                     # or: pip install -e .
 ```
 ```python
 from iscn_authenticator import is_valid_karyotype, validate_karyotype
@@ -26,21 +28,23 @@ is_valid_karyotype("46,XX")              # True
 validate_karyotype("47,XY,+21").errors   # []
 ```
 
-**JavaScript / TypeScript (Node):**
+**TypeScript (Node, from source):**
 ```bash
-npm install @iscn/core
+cd packages/core
+npm install
+npm run build                     # emits dist/
 ```
 ```typescript
-import { isValidKaryotypeNative, validateKaryotypeNative } from "@iscn/core";
+import { isValidKaryotypeNative, validateKaryotypeNative } from "./packages/core/dist/index.js";
 
 isValidKaryotypeNative("46,XX");              // true
 validateKaryotypeNative("47,XY,+21").errors;  // []
 ```
 
-**Deno:**
+**Deno (from source):**
 ```typescript
-import { isValidKaryotypeNative } from "jsr:@iscn/core";
-// or import directly from packages/core/src/index.ts inside this repo
+import { isValidKaryotypeNative } from "./packages/core/src/index.ts";
+// Requires "unstable": ["sloppy-imports"] in deno.json (already configured at repo root).
 ```
 
 ## Development

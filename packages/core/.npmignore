@@ -1,5 +1,0 @@
-src/
-tests/
-tsconfig.json
-.gitkeep
-*.test.ts

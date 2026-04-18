@@ -72,8 +72,8 @@ jobs:
           console.log('Smoke test passed: isValidKaryotypeNative(\"46,XX\") === true');
           "
 
-  python-build-smoke:
-    name: Python build smoke test
+  python-install-smoke:
+    name: Python pip install smoke test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,14 +81,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install hatchling
-        run: pip install hatchling
-      - name: Build wheel and sdist
-        run: python -m hatchling build
-      - name: Install wheel in fresh venv and smoke test
+      - name: pip install . in fresh venv and smoke test
         run: |
           python -m venv /tmp/smoke-venv
-          /tmp/smoke-venv/bin/pip install dist/*.whl
+          /tmp/smoke-venv/bin/pip install .
           /tmp/smoke-venv/bin/python -c "
           from iscn_authenticator import is_valid_karyotype
           assert is_valid_karyotype('46,XX') is True, 'Expected True'

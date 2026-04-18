@@ -19,8 +19,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "deno test --allow-read tests/fixtures.test.ts",
-    "prepublishOnly": "npm run build && npm test"
+    "test": "deno test --allow-read tests/fixtures.test.ts"
   },
   "repository": {
     "type": "git",
