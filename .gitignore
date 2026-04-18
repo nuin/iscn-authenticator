@@ -149,3 +149,15 @@ cython_debug/
 
 # Large reference files
 *.pdf
+
+# Deno lock files (regenerated per run)
+deno.lock
+
+# Node
+node_modules/
+packages/*/node_modules/
+packages/*/dist/
+packages/*/*.tsbuildinfo
+
+# Claude Code / Superpowers plugin cache
+.superpowers/
