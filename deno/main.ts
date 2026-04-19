@@ -144,6 +144,20 @@ const INDEX_HTML = `<!DOCTYPE html>
     #parsed-content code { background: var(--color-surface); padding: 0.125rem 0.375rem; border-radius: 4px; }
     footer { text-align: center; padding: 2rem 0 1rem; font-size: 0.875rem; color: var(--color-text-muted); }
     footer a { color: var(--color-primary); text-decoration: none; }
+    .api-key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .api-key-row label { font-weight: 500; font-size: 0.875rem; flex: 0 0 auto; }
+    .api-key-row input { flex: 1 1 240px; font-family: var(--font-mono); font-size: 0.875rem; padding: 0.5rem 0.75rem; border: 2px solid var(--color-border); border-radius: var(--radius); outline: none; transition: border-color 0.2s; }
+    .api-key-row input:focus { border-color: var(--color-primary); }
+    .api-key-row button { font-size: 0.75rem; padding: 0.4rem 0.75rem; background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
+    .api-key-row button:hover { background: var(--color-surface); border-color: var(--color-primary); }
+    .api-key-hint { font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: 1.25rem; }
+    .api-key-hint code { font-family: var(--font-mono); font-size: 0.8125rem; background: var(--color-bg); padding: 0.05rem 0.3rem; border-radius: 3px; }
+    .api-docs { margin-top: 1.5rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); }
+    .api-docs summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 500; }
+    .api-docs-body { padding: 0 1rem 1rem; font-size: 0.875rem; }
+    .api-docs-body p { color: var(--color-text-muted); margin-bottom: 0.75rem; }
+    .api-docs-body pre { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 0.75rem 1rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.5; }
+    .api-docs-body code { font-family: var(--font-mono); }
     @media (min-width: 640px) {
       .input-group { flex-direction: row; align-items: flex-end; }
       .input-group label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
@@ -158,6 +172,13 @@ const INDEX_HTML = `<!DOCTYPE html>
       <p class="subtitle">Validate International System for Human Cytogenomic Nomenclature strings</p>
     </header>
     <main>
+      <div class="api-key-row">
+        <label for="api-key">API Key</label>
+        <input type="password" id="api-key" placeholder="iscn_live_... (stored locally in your browser)" autocomplete="off" spellcheck="false">
+        <button type="button" id="toggle-key-btn" onclick="toggleKeyVisibility()" aria-label="Show/hide API key">Show</button>
+        <button type="button" onclick="clearKey()" aria-label="Clear stored API key">Clear</button>
+      </div>
+      <p class="api-key-hint">Required. Contact an administrator to obtain a key. The key is saved in your browser's localStorage and never transmitted except as a Bearer token to <code>/validate</code>.</p>
       <form id="validate-form" onsubmit="validate(event)">
         <div class="input-group">
           <label for="karyotype">Karyotype String</label>
@@ -182,6 +203,25 @@ const INDEX_HTML = `<!DOCTYPE html>
           <div id="parsed-content"></div>
         </details>
       </div>
+      <details class="api-docs">
+        <summary>API usage (curl)</summary>
+        <div class="api-docs-body">
+          <p>All <code>/validate</code> calls require a Bearer token or <code>X-API-Key</code> header. Rate-limit headers are returned on every authenticated response.</p>
+          <pre><code># POST (JSON body)
+curl -X POST https://your-host/validate \\
+  -H "Authorization: Bearer iscn_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"karyotype": "46,XX"}'
+
+# GET (query parameter)
+curl -H "Authorization: Bearer iscn_live_..." \\
+  'https://your-host/validate?karyotype=46,XX'
+
+# Error responses:
+# 401 unauthenticated  429 rate_limited (+ Retry-After)
+# 413 body_too_large   400 invalid_request</code></pre>
+        </div>
+      </details>
     </main>
     <footer>
       <p>Based on <a href="https://www.karger.com/Book/Home/282576" target="_blank">ISCN 2024</a> - International System for Human Cytogenomic Nomenclature</p>
@@ -195,6 +235,26 @@ const INDEX_HTML = `<!DOCTYPE html>
     const errorsDiv = document.getElementById('errors');
     const parsedDetails = document.getElementById('parsed-details');
     const parsedContent = document.getElementById('parsed-content');
+    const apiKeyInput = document.getElementById('api-key');
+    const toggleKeyBtn = document.getElementById('toggle-key-btn');
+    const API_KEY_STORAGE = 'iscn.api_key';
+
+    try { const s = localStorage.getItem(API_KEY_STORAGE); if (s) apiKeyInput.value = s; } catch {}
+    apiKeyInput.addEventListener('change', () => {
+      try {
+        if (apiKeyInput.value) localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
+        else localStorage.removeItem(API_KEY_STORAGE);
+      } catch {}
+    });
+    function toggleKeyVisibility() {
+      if (apiKeyInput.type === 'password') { apiKeyInput.type = 'text'; toggleKeyBtn.textContent = 'Hide'; }
+      else { apiKeyInput.type = 'password'; toggleKeyBtn.textContent = 'Show'; }
+    }
+    function clearKey() {
+      apiKeyInput.value = '';
+      try { localStorage.removeItem(API_KEY_STORAGE); } catch {}
+      apiKeyInput.focus();
+    }
 
     function setExample(k) { input.value = k; input.focus(); }
 
@@ -202,16 +262,32 @@ const INDEX_HTML = `<!DOCTYPE html>
       e.preventDefault();
       const karyotype = input.value.trim();
       if (!karyotype) return;
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        displayResult({ valid: false, errors: ['API key required. Paste a key in the API Key field above.'], parsed: null });
+        apiKeyInput.focus();
+        return;
+      }
       submitBtn.disabled = true;
       submitBtn.textContent = 'Validating...';
       resultDiv.classList.add('hidden');
       try {
         const res = await fetch('/validate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
           body: JSON.stringify({ karyotype })
         });
-        displayResult(await res.json());
+        const body = await res.json();
+        if (res.status === 401) {
+          displayResult({ valid: false, errors: ['Authentication failed: ' + (body.message || 'invalid or revoked key')], parsed: null });
+          return;
+        }
+        if (res.status === 429) {
+          const ra = res.headers.get('Retry-After') || '?';
+          displayResult({ valid: false, errors: ['Rate limit exceeded. Retry after ' + ra + 's.'], parsed: null });
+          return;
+        }
+        displayResult(body);
       } catch {
         displayResult({ valid: false, errors: ['Failed to connect'], parsed: null });
       } finally {
@@ -253,7 +329,7 @@ const INDEX_HTML = `<!DOCTYPE html>
     }
 
     function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-    input.focus();
+    if (apiKeyInput.value) input.focus(); else apiKeyInput.focus();
   </script>
 </body>
 </html>`;

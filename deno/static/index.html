@@ -14,6 +14,22 @@
     </header>
 
     <main>
+      <div class="api-key-row">
+        <label for="api-key">API Key</label>
+        <input
+          type="password"
+          id="api-key"
+          placeholder="iscn_live_... (stored locally in your browser)"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button type="button" id="toggle-key-btn" onclick="toggleKeyVisibility()" aria-label="Show/hide API key">Show</button>
+        <button type="button" id="clear-key-btn" onclick="clearKey()" aria-label="Clear stored API key">Clear</button>
+      </div>
+      <p class="api-key-hint">
+        Required. Contact an administrator to obtain a key. The key is saved in your browser's localStorage and never transmitted except as a Bearer token to <code>/validate</code>.
+      </p>
+
       <form id="validate-form" onsubmit="validate(event)">
         <div class="input-group">
           <label for="karyotype">Karyotype String</label>
@@ -48,6 +64,31 @@
           <div id="parsed-content"></div>
         </details>
       </div>
+
+      <details class="api-docs">
+        <summary>API usage (curl)</summary>
+        <div class="api-docs-body">
+          <p>All <code>/validate</code> calls require a Bearer token or <code>X-API-Key</code> header. Rate limit headers are returned on every authenticated response.</p>
+          <pre><code># POST (JSON body)
+curl -X POST https://your-host/validate \
+  -H "Authorization: Bearer iscn_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"karyotype": "46,XX"}'
+
+# GET (query parameter)
+curl -H "Authorization: Bearer iscn_live_..." \
+  'https://your-host/validate?karyotype=46,XX'
+
+# Response on success (200):
+# { "valid": true, "errors": [], "parsed": {...} }
+#
+# Response on failure:
+# 401 { "error": "unauthenticated", ... }
+# 429 { "error": "rate_limited", ... }  + Retry-After, X-RateLimit-*
+# 413 { "error": "body_too_large", ... }
+# 400 { "error": "invalid_request", ... }</code></pre>
+        </div>
+      </details>
     </main>
 
     <footer>
@@ -67,6 +108,43 @@
     const errorsDiv = document.getElementById('errors');
     const parsedDetails = document.getElementById('parsed-details');
     const parsedContent = document.getElementById('parsed-content');
+    const apiKeyInput = document.getElementById('api-key');
+    const toggleKeyBtn = document.getElementById('toggle-key-btn');
+
+    const API_KEY_STORAGE = 'iscn.api_key';
+
+    // Restore key from localStorage on load
+    try {
+      const saved = localStorage.getItem(API_KEY_STORAGE);
+      if (saved) apiKeyInput.value = saved;
+    } catch (_) { /* ignore storage errors */ }
+
+    // Persist on change
+    apiKeyInput.addEventListener('change', () => {
+      try {
+        if (apiKeyInput.value) {
+          localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
+        } else {
+          localStorage.removeItem(API_KEY_STORAGE);
+        }
+      } catch (_) { /* ignore */ }
+    });
+
+    function toggleKeyVisibility() {
+      if (apiKeyInput.type === 'password') {
+        apiKeyInput.type = 'text';
+        toggleKeyBtn.textContent = 'Hide';
+      } else {
+        apiKeyInput.type = 'password';
+        toggleKeyBtn.textContent = 'Show';
+      }
+    }
+
+    function clearKey() {
+      apiKeyInput.value = '';
+      try { localStorage.removeItem(API_KEY_STORAGE); } catch (_) {}
+      apiKeyInput.focus();
+    }
 
     function setExample(karyotype) {
       input.value = karyotype;
@@ -79,6 +157,17 @@
       const karyotype = input.value.trim();
       if (!karyotype) return;
 
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        displayResult({
+          valid: false,
+          errors: ['API key required. Paste a key in the API Key field above.'],
+          parsed: null
+        });
+        apiKeyInput.focus();
+        return;
+      }
+
       // Show loading state
       submitBtn.disabled = true;
       submitBtn.textContent = 'Validating...';
@@ -87,11 +176,31 @@
       try {
         const response = await fetch('/validate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey
+          },
           body: JSON.stringify({ karyotype })
         });
 
         const result = await response.json();
+        if (response.status === 401) {
+          displayResult({
+            valid: false,
+            errors: ['Authentication failed: ' + (result.message || 'invalid or revoked key')],
+            parsed: null
+          });
+          return;
+        }
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After') || '?';
+          displayResult({
+            valid: false,
+            errors: ['Rate limit exceeded. Retry after ' + retryAfter + 's.'],
+            parsed: null
+          });
+          return;
+        }
         displayResult(result);
       } catch (error) {
         displayResult({
@@ -207,8 +316,12 @@
       return div.innerHTML;
     }
 
-    // Focus input on load
-    input.focus();
+    // Focus the karyotype field if the key is already set, otherwise focus key field
+    if (apiKeyInput.value) {
+      input.focus();
+    } else {
+      apiKeyInput.focus();
+    }
   </script>
 </body>
 </html>

@@ -64,6 +64,104 @@ main {
   box-shadow: var(--shadow);
 }
 
+.api-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.api-key-row label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  flex: 0 0 auto;
+}
+
+.api-key-row input {
+  flex: 1 1 240px;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.api-key-row input:focus {
+  border-color: var(--color-primary);
+}
+
+.api-key-row button {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.api-key-row button:hover {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.api-key-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.api-key-hint code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  background: var(--color-bg);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+
+.api-docs {
+  margin-top: 1.5rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.api-docs summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+}
+
+.api-docs-body {
+  padding: 0 1rem 1rem;
+  font-size: 0.875rem;
+}
+
+.api-docs-body p {
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.api-docs-body pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.api-docs-body code {
+  font-family: var(--font-mono);
+}
+
 .input-group {
   display: flex;
   flex-direction: column;
