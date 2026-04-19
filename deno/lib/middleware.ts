@@ -29,13 +29,14 @@ import {
   BodyTooLargeError,
   MethodNotAllowedError,
   NotFoundError,
+  UnauthenticatedError,
   errorToResponse,
 } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
 import { authenticate } from "./auth.ts";
 import { RateLimitError } from "./errors.ts";
 import { checkAndConsume, tokenBucketHeaders } from "./token_bucket.ts";
-import { lookupCustomerForKey, touchKey } from "./keys.ts";
+import { lookupCustomerForKey, rotateKey, touchKey } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
 import {
   incrementUsage,
@@ -111,6 +112,9 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       } else if (path === "/validate") {
         response = await handleValidate({ req, kv, config, rid, now });
         // Pull key_id out of response for logging (see handleValidate).
+        keyId = (response as ResponseWithMeta)._keyId;
+      } else if (path === "/keys/rotate") {
+        response = await handleKeysRotate({ req, kv });
         keyId = (response as ResponseWithMeta)._keyId;
       } else if (path === "/" || path === "/index.html") {
         response = await handleStaticIndex({ staticHtml, staticDir });
@@ -288,6 +292,49 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
       },
     },
   ) as ResponseWithMeta;
+  response._keyId = identity.key_id;
+  return response;
+}
+
+/**
+ * POST /keys/rotate — authenticated with the OLD key. Issues a sibling key
+ * with the same label/env/customer, revokes the presenting key, and returns
+ * the new plaintext. No grace window: the authenticating key will be
+ * rejected from the next request onward.
+ *
+ * Response:
+ *   { old_key_id, new_key, new_key_id }
+ */
+interface HandleKeysRotateArgs {
+  req: Request;
+  kv: Deno.Kv;
+}
+
+async function handleKeysRotate(args: HandleKeysRotateArgs): Promise<Response> {
+  const { req, kv } = args;
+
+  if (req.method !== "POST") {
+    throw new MethodNotAllowedError(["POST"]);
+  }
+
+  const identity = await authenticate(req, kv);
+  const rotated = await rotateKey(kv, identity.key_id);
+  if (rotated === null) {
+    // Should not happen — authenticate() succeeded, so the key exists and
+    // was not revoked. Treat as a transient race and surface 401 so the
+    // caller reconsults its credentials.
+    throw new UnauthenticatedError();
+  }
+
+  const body = {
+    old_key_id: rotated.old.id,
+    new_key: rotated.new.plaintext,
+    new_key_id: rotated.new.record.id,
+  };
+  const response: ResponseWithMeta = new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": CONTENT_TYPE_JSON },
+  }) as ResponseWithMeta;
   response._keyId = identity.key_id;
   return response;
 }

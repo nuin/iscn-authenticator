@@ -217,6 +217,65 @@ export async function lookupKeyByPlaintext(
 }
 
 /**
+ * Atomically rotate a key: create a sibling (same label/env/customer)
+ * then revoke the old record in a single commit. The old key is rejected
+ * from the very next request — there is no overlap window, so callers
+ * must swap their stored credential before making their next call.
+ *
+ * Returns `null` if `oldKeyId` does not exist or is already revoked.
+ * Retries a small number of times on CAS contention (concurrent rotations
+ * or a race against `touchKey`/`revokeKey`).
+ */
+export async function rotateKey(
+  kv: Deno.Kv,
+  oldKeyId: string,
+): Promise<{ old: ApiKeyRecord; new: CreatedKey } | null> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const indexEntry = await kv.get<string>(["keys_index", oldKeyId]);
+    if (indexEntry.value === null) return null;
+    const oldHash = indexEntry.value;
+
+    const oldEntry = await kv.get<ApiKeyRecord>(["keys", oldHash]);
+    if (oldEntry.value === null) return null;
+    if (oldEntry.value.revoked_at !== null) return null;
+
+    const oldRecord = normaliseRecord(oldEntry.value);
+    const now = new Date().toISOString();
+
+    const newPlain = newPlaintext(oldRecord.env);
+    const newHash = await sha256Hex(newPlain);
+    const newRecord: ApiKeyRecord = {
+      id: newKeyId(),
+      label: oldRecord.label,
+      env: oldRecord.env,
+      created_at: now,
+      last_used_at: null,
+      revoked_at: null,
+      customer_id: oldRecord.customer_id,
+    };
+    const revokedOld: ApiKeyRecord = { ...oldRecord, revoked_at: now };
+
+    let tx = kv.atomic()
+      .check(oldEntry)
+      .check({ key: ["keys", newHash], versionstamp: null })
+      .check({ key: ["keys_index", newRecord.id], versionstamp: null })
+      .set(["keys", oldHash], revokedOld)
+      .set(["keys", newHash], newRecord)
+      .set(["keys_index", newRecord.id], newHash);
+    if (newRecord.customer_id !== null) {
+      tx = tx.set(["key_customer", newRecord.id], newRecord.customer_id);
+    }
+    const result = await tx.commit();
+    if (result.ok) {
+      return { old: revokedOld, new: { record: newRecord, plaintext: newPlain } };
+    }
+    // CAS miss — retry the whole read+hash+commit with fresh versionstamps.
+  }
+  throw new Error(`rotateKey: CAS contention exceeded ${MAX_ATTEMPTS} attempts for ${oldKeyId}`);
+}
+
+/**
  * Fire-and-forget update of `last_used_at`. Never throws — a failed touch
  * must not block the validated request.
  *

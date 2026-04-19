@@ -637,6 +637,81 @@ Deno.test("uncaught error → 500 'internal' + generic message + errorSink calle
   assert(captured[0].err);
 });
 
+Deno.test("POST /keys/rotate without auth → 401 unauthenticated", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv });
+    const res = await handler(
+      new Request("http://x/keys/rotate", { method: "POST" }),
+    );
+    assertEquals(res.status, 401);
+    const body = await res.json();
+    assertEquals(body.error, "unauthenticated");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("GET /keys/rotate → 405 method_not_allowed", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({ kv });
+    const res = await handler(
+      new Request("http://x/keys/rotate", {
+        headers: { authorization: `Bearer ${plaintext}` },
+      }),
+    );
+    assertEquals(res.status, 405);
+    assert(res.headers.get("allow")?.includes("POST"));
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /keys/rotate: valid key rotates; old rejected, new accepted", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { record: oldRecord, plaintext: oldPlain } = await createKey(
+      kv,
+      "rotate-integration",
+    );
+    const handler = testHandler({ kv });
+
+    const rotateRes = await handler(
+      new Request("http://x/keys/rotate", {
+        method: "POST",
+        headers: { authorization: `Bearer ${oldPlain}` },
+      }),
+    );
+    assertEquals(rotateRes.status, 200);
+    const body = await rotateRes.json();
+    assertEquals(body.old_key_id, oldRecord.id);
+    assert(typeof body.new_key === "string");
+    assert(body.new_key.startsWith("iscn_live_"));
+    assert(typeof body.new_key_id === "string");
+    assert(body.new_key_id !== oldRecord.id);
+
+    // Old key is now rejected.
+    const oldRes = await handler(
+      new Request("http://x/validate?karyotype=46,XX", {
+        headers: { authorization: `Bearer ${oldPlain}` },
+      }),
+    );
+    assertEquals(oldRes.status, 401);
+
+    // New key works.
+    const newRes = await handler(
+      new Request("http://x/validate?karyotype=46,XX", {
+        headers: { authorization: `Bearer ${body.new_key}` },
+      }),
+    );
+    assertEquals(newRes.status, 200);
+  } finally {
+    kv.close();
+  }
+});
+
 Deno.test("debugErrors=true exposes error message in 500 body (dev only)", async () => {
   const kv = await openMemoryKv();
   const { plaintext } = await createKey(kv, "test");
