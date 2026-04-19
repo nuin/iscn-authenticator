@@ -28,7 +28,7 @@ export interface TokenBucketState {
 }
 
 export interface TokenBucketOptions {
-  /** Refill rate in tokens per minute. Must be >= 1. */
+  /** Refill rate in tokens per minute. Must be > 0 (fractional allowed). */
   ratePerMin: number;
   /** Maximum tokens the bucket can hold. Must be >= 1. */
   burst: number;
@@ -78,8 +78,8 @@ export async function checkAndConsume(
   keyId: string,
   opts: TokenBucketOptions,
 ): Promise<TokenBucketResult> {
-  if (opts.ratePerMin < 1) {
-    throw new Error(`ratePerMin must be >= 1 (got ${opts.ratePerMin})`);
+  if (opts.ratePerMin <= 0) {
+    throw new Error(`ratePerMin must be > 0 (got ${opts.ratePerMin})`);
   }
   if (opts.burst < 1) {
     throw new Error(`burst must be >= 1 (got ${opts.burst})`);
@@ -118,14 +118,10 @@ export async function checkAndConsume(
     if (!commit.ok) continue;
 
     const nowSec = Math.floor(nowMs / 1000);
-    const secondsToFull = ratePerSec > 0
-      ? Math.ceil((opts.burst - tokensAfter) / ratePerSec)
-      : 0;
+    const secondsToFull = ratePerSec > 0 ? Math.ceil((opts.burst - tokensAfter) / ratePerSec) : 0;
     const resetAt = nowSec + Math.max(0, secondsToFull);
 
-    const retryAfterRaw = allowed
-      ? 0
-      : (cost - tokensAfter) / ratePerSec;
+    const retryAfterRaw = allowed ? 0 : (cost - tokensAfter) / ratePerSec;
     const retryAfter = Math.max(0, retryAfterRaw);
 
     return {

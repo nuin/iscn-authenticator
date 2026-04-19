@@ -179,7 +179,7 @@ const INDEX_HTML = `<!DOCTYPE html>
         <button type="button" id="toggle-key-btn" onclick="toggleKeyVisibility()" aria-label="Show/hide API key">Show</button>
         <button type="button" onclick="clearKey()" aria-label="Clear stored API key">Clear</button>
       </div>
-      <p class="api-key-hint">Required. Contact an administrator to obtain a key. The key is saved in your browser's localStorage and never transmitted except as a Bearer token to <code>/validate</code>.</p>
+      <p class="api-key-hint">Required. <a href="/signup">Sign up</a> for a free key, or contact an administrator. The key is saved in your browser's localStorage and never transmitted except as a Bearer token to <code>/validate</code>.</p>
       <form id="validate-form" onsubmit="validate(event)">
         <div class="input-group">
           <label for="karyotype">Karyotype String</label>

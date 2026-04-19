@@ -13,6 +13,7 @@ export type ErrorCode =
   | "quota_exceeded"
   | "body_too_large"
   | "invalid_request"
+  | "invalid_signup"
   | "not_found"
   | "method_not_allowed"
   | "internal";
@@ -91,6 +92,17 @@ export class BadRequestError extends AppError {
   }
 }
 
+/**
+ * Signup-specific 400: duplicate email, malformed email, or missing field.
+ * Kept distinct from `invalid_request` so the UI can surface a targeted
+ * message ("email already in use") without scraping the generic code.
+ */
+export class InvalidSignupError extends AppError {
+  constructor(message = "Invalid signup") {
+    super("invalid_signup", 400, message);
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = "Not found") {
     super("not_found", 404, message);
@@ -125,9 +137,7 @@ export function errorToResponse(
     }, err.headers);
   }
 
-  const message = opts.debug && err instanceof Error
-    ? err.message
-    : "Internal server error";
+  const message = opts.debug && err instanceof Error ? err.message : "Internal server error";
 
   return jsonError(500, {
     error: "internal",

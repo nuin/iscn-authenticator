@@ -48,6 +48,7 @@ import {
 import { clientIp, logRequest, requestId } from "./logging.ts";
 import type { RequestLog } from "./logging.ts";
 import { handleDashboardRoute, isDashboardPath } from "./dashboard.ts";
+import { handleSignupRoute, isSignupPath } from "./signup.ts";
 import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
 
 export interface BuildHandlerOptions {
@@ -115,6 +116,8 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
         keyId = (response as ResponseWithMeta)._keyId;
       } else if (isDashboardPath(path)) {
         response = await handleDashboardRoute(req, { kv, config });
+      } else if (isSignupPath(path)) {
+        response = await handleSignupRoute(req, { kv, config, ip, now });
       } else if (path === "/" || path === "/index.html") {
         response = await handleStaticIndex({ staticHtml, staticDir });
       } else if (staticDir && isStaticRequest(path)) {

@@ -1,75 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ISCN Karyotype Validator</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>ISCN Karyotype Validator</h1>
-      <p class="subtitle">Validate International System for Human Cytogenomic Nomenclature strings</p>
-    </header>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISCN Karyotype Validator</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>ISCN Karyotype Validator</h1>
+        <p class="subtitle">
+          Validate International System for Human Cytogenomic Nomenclature strings
+        </p>
+      </header>
 
-    <main>
-      <div class="api-key-row">
-        <label for="api-key">API Key</label>
-        <input
-          type="password"
-          id="api-key"
-          placeholder="iscn_live_... (stored locally in your browser)"
-          autocomplete="off"
-          spellcheck="false"
-        >
-        <button type="button" id="toggle-key-btn" onclick="toggleKeyVisibility()" aria-label="Show/hide API key">Show</button>
-        <button type="button" id="clear-key-btn" onclick="clearKey()" aria-label="Clear stored API key">Clear</button>
-      </div>
-      <p class="api-key-hint">
-        Required. Contact an administrator to obtain a key. The key is saved in your browser's localStorage and never transmitted except as a Bearer token to <code>/validate</code>.
-      </p>
-
-      <form id="validate-form" onsubmit="validate(event)">
-        <div class="input-group">
-          <label for="karyotype">Karyotype String</label>
+      <main>
+        <div class="api-key-row">
+          <label for="api-key">API Key</label>
           <input
-            type="text"
-            id="karyotype"
-            name="karyotype"
-            placeholder="e.g., 46,XX or 47,XY,+21"
+            type="password"
+            id="api-key"
+            placeholder="iscn_live_... (stored locally in your browser)"
             autocomplete="off"
             spellcheck="false"
-            required
           >
-          <button type="submit" id="submit-btn">Validate</button>
+          <button
+            type="button"
+            id="toggle-key-btn"
+            onclick="toggleKeyVisibility()"
+            aria-label="Show/hide API key"
+          >
+            Show
+          </button>
+          <button
+            type="button"
+            id="clear-key-btn"
+            onclick="clearKey()"
+            aria-label="Clear stored API key"
+          >
+            Clear
+          </button>
         </div>
-      </form>
+        <p class="api-key-hint">
+          Required. <a href="/signup">Sign up</a> for a free key, or contact an administrator. The
+          key is saved in your browser's localStorage and never transmitted except as a Bearer token
+          to <code>/validate</code>.
+        </p>
 
-      <div class="examples">
-        <span class="examples-label">Examples:</span>
-        <button type="button" onclick="setExample('46,XX')">Normal female</button>
-        <button type="button" onclick="setExample('46,XY')">Normal male</button>
-        <button type="button" onclick="setExample('47,XY,+21')">Trisomy 21</button>
-        <button type="button" onclick="setExample('45,X')">Turner</button>
-        <button type="button" onclick="setExample('46,XX,del(5)(q13q33)')">Deletion</button>
-        <button type="button" onclick="setExample('46,XX,t(9;22)(q34;q11.2)')">Translocation</button>
-      </div>
+        <form id="validate-form" onsubmit="validate(event)">
+          <div class="input-group">
+            <label for="karyotype">Karyotype String</label>
+            <input
+              type="text"
+              id="karyotype"
+              name="karyotype"
+              placeholder="e.g., 46,XX or 47,XY,+21"
+              autocomplete="off"
+              spellcheck="false"
+              required
+            >
+            <button type="submit" id="submit-btn">Validate</button>
+          </div>
+        </form>
 
-      <div id="result" class="result hidden">
-        <div id="result-badge" class="badge"></div>
-        <div id="errors" class="errors hidden"></div>
-        <details id="parsed-details" class="parsed-details">
-          <summary>Parsed Details</summary>
-          <div id="parsed-content"></div>
-        </details>
-      </div>
+        <div class="examples">
+          <span class="examples-label">Examples:</span>
+          <button type="button" onclick='setExample("46,XX")'>Normal female</button>
+          <button type="button" onclick='setExample("46,XY")'>Normal male</button>
+          <button type="button" onclick='setExample("47,XY,+21")'>Trisomy 21</button>
+          <button type="button" onclick='setExample("45,X")'>Turner</button>
+          <button type="button" onclick='setExample("46,XX,del(5)(q13q33)")'>Deletion</button>
+          <button type="button" onclick='setExample("46,XX,t(9;22)(q34;q11.2)")'>
+            Translocation
+          </button>
+        </div>
 
-      <details class="api-docs">
-        <summary>API usage (curl)</summary>
-        <div class="api-docs-body">
-          <p>All <code>/validate</code> calls require a Bearer token or <code>X-API-Key</code> header. Rate limit headers are returned on every authenticated response.</p>
-          <pre><code># POST (JSON body)
+        <div id="result" class="result hidden">
+          <div id="result-badge" class="badge"></div>
+          <div id="errors" class="errors hidden"></div>
+          <details id="parsed-details" class="parsed-details">
+            <summary>Parsed Details</summary>
+            <div id="parsed-content"></div>
+          </details>
+        </div>
+
+        <details class="api-docs">
+          <summary>API usage (curl)</summary>
+          <div class="api-docs-body">
+            <p>
+              All <code>/validate</code> calls require a Bearer token or <code>X-API-Key</code>
+              header. Rate limit headers are returned on every authenticated response.
+            </p>
+            <pre><code># POST (JSON body)
 curl -X POST https://your-host/validate \
   -H "Authorization: Bearer iscn_live_..." \
   -H "Content-Type: application/json" \
@@ -87,241 +110,243 @@ curl -H "Authorization: Bearer iscn_live_..." \
 # 429 { "error": "rate_limited", ... }  + Retry-After, X-RateLimit-*
 # 413 { "error": "body_too_large", ... }
 # 400 { "error": "invalid_request", ... }</code></pre>
-        </div>
-      </details>
-    </main>
+          </div>
+        </details>
+      </main>
 
-    <footer>
-      <p>
-        Based on <a href="https://www.karger.com/Book/Home/282576" target="_blank">ISCN 2024</a>
-        - International System for Human Cytogenomic Nomenclature
-      </p>
-    </footer>
-  </div>
+      <footer>
+        <p>
+          Based on <a href="https://www.karger.com/Book/Home/282576" target="_blank">ISCN 2024</a>
+          - International System for Human Cytogenomic Nomenclature
+        </p>
+      </footer>
+    </div>
 
-  <script>
-    const form = document.getElementById('validate-form');
-    const input = document.getElementById('karyotype');
-    const submitBtn = document.getElementById('submit-btn');
-    const resultDiv = document.getElementById('result');
-    const badgeDiv = document.getElementById('result-badge');
-    const errorsDiv = document.getElementById('errors');
-    const parsedDetails = document.getElementById('parsed-details');
-    const parsedContent = document.getElementById('parsed-content');
-    const apiKeyInput = document.getElementById('api-key');
-    const toggleKeyBtn = document.getElementById('toggle-key-btn');
+    <script>
+      const form = document.getElementById("validate-form");
+      const input = document.getElementById("karyotype");
+      const submitBtn = document.getElementById("submit-btn");
+      const resultDiv = document.getElementById("result");
+      const badgeDiv = document.getElementById("result-badge");
+      const errorsDiv = document.getElementById("errors");
+      const parsedDetails = document.getElementById("parsed-details");
+      const parsedContent = document.getElementById("parsed-content");
+      const apiKeyInput = document.getElementById("api-key");
+      const toggleKeyBtn = document.getElementById("toggle-key-btn");
 
-    const API_KEY_STORAGE = 'iscn.api_key';
+      const API_KEY_STORAGE = "iscn.api_key";
 
-    // Restore key from localStorage on load
-    try {
-      const saved = localStorage.getItem(API_KEY_STORAGE);
-      if (saved) apiKeyInput.value = saved;
-    } catch (_) { /* ignore storage errors */ }
-
-    // Persist on change
-    apiKeyInput.addEventListener('change', () => {
+      // Restore key from localStorage on load
       try {
-        if (apiKeyInput.value) {
-          localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
+        const saved = localStorage.getItem(API_KEY_STORAGE);
+        if (saved) apiKeyInput.value = saved;
+      } catch (_) { /* ignore storage errors */ }
+
+      // Persist on change
+      apiKeyInput.addEventListener("change", () => {
+        try {
+          if (apiKeyInput.value) {
+            localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
+          } else {
+            localStorage.removeItem(API_KEY_STORAGE);
+          }
+        } catch (_) { /* ignore */ }
+      });
+
+      function toggleKeyVisibility() {
+        if (apiKeyInput.type === "password") {
+          apiKeyInput.type = "text";
+          toggleKeyBtn.textContent = "Hide";
         } else {
+          apiKeyInput.type = "password";
+          toggleKeyBtn.textContent = "Show";
+        }
+      }
+
+      function clearKey() {
+        apiKeyInput.value = "";
+        try {
           localStorage.removeItem(API_KEY_STORAGE);
-        }
-      } catch (_) { /* ignore */ }
-    });
-
-    function toggleKeyVisibility() {
-      if (apiKeyInput.type === 'password') {
-        apiKeyInput.type = 'text';
-        toggleKeyBtn.textContent = 'Hide';
-      } else {
-        apiKeyInput.type = 'password';
-        toggleKeyBtn.textContent = 'Show';
-      }
-    }
-
-    function clearKey() {
-      apiKeyInput.value = '';
-      try { localStorage.removeItem(API_KEY_STORAGE); } catch (_) {}
-      apiKeyInput.focus();
-    }
-
-    function setExample(karyotype) {
-      input.value = karyotype;
-      input.focus();
-    }
-
-    async function validate(event) {
-      event.preventDefault();
-
-      const karyotype = input.value.trim();
-      if (!karyotype) return;
-
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
-        displayResult({
-          valid: false,
-          errors: ['API key required. Paste a key in the API Key field above.'],
-          parsed: null
-        });
+        } catch (_) {}
         apiKeyInput.focus();
-        return;
       }
 
-      // Show loading state
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Validating...';
-      resultDiv.classList.add('hidden');
+      function setExample(karyotype) {
+        input.value = karyotype;
+        input.focus();
+      }
 
-      try {
-        const response = await fetch('/validate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + apiKey
-          },
-          body: JSON.stringify({ karyotype })
-        });
+      async function validate(event) {
+        event.preventDefault();
 
-        const result = await response.json();
-        if (response.status === 401) {
+        const karyotype = input.value.trim();
+        if (!karyotype) return;
+
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
           displayResult({
             valid: false,
-            errors: ['Authentication failed: ' + (result.message || 'invalid or revoked key')],
-            parsed: null
+            errors: ["API key required. Paste a key in the API Key field above."],
+            parsed: null,
           });
+          apiKeyInput.focus();
           return;
         }
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After') || '?';
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Validating...";
+        resultDiv.classList.add("hidden");
+
+        try {
+          const response = await fetch("/validate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + apiKey,
+            },
+            body: JSON.stringify({ karyotype }),
+          });
+
+          const result = await response.json();
+          if (response.status === 401) {
+            displayResult({
+              valid: false,
+              errors: ["Authentication failed: " + (result.message || "invalid or revoked key")],
+              parsed: null,
+            });
+            return;
+          }
+          if (response.status === 429) {
+            const retryAfter = response.headers.get("Retry-After") || "?";
+            displayResult({
+              valid: false,
+              errors: ["Rate limit exceeded. Retry after " + retryAfter + "s."],
+              parsed: null,
+            });
+            return;
+          }
+          displayResult(result);
+        } catch (error) {
           displayResult({
             valid: false,
-            errors: ['Rate limit exceeded. Retry after ' + retryAfter + 's.'],
-            parsed: null
+            errors: ["Failed to connect to validation server"],
+            parsed: null,
           });
-          return;
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Validate";
         }
-        displayResult(result);
-      } catch (error) {
-        displayResult({
-          valid: false,
-          errors: ['Failed to connect to validation server'],
-          parsed: null
-        });
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Validate';
-      }
-    }
-
-    function displayResult(result) {
-      resultDiv.classList.remove('hidden');
-
-      // Badge
-      if (result.valid) {
-        badgeDiv.textContent = 'VALID';
-        badgeDiv.className = 'badge valid';
-      } else {
-        badgeDiv.textContent = 'INVALID';
-        badgeDiv.className = 'badge invalid';
       }
 
-      // Errors
-      if (result.errors && result.errors.length > 0) {
-        errorsDiv.classList.remove('hidden');
-        errorsDiv.innerHTML = '<h3>Errors</h3><ul>' +
-          result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('') +
-          '</ul>';
-      } else {
-        errorsDiv.classList.add('hidden');
-      }
+      function displayResult(result) {
+        resultDiv.classList.remove("hidden");
 
-      // Parsed details
-      if (result.parsed) {
-        parsedDetails.classList.remove('hidden');
-        parsedContent.innerHTML = formatParsed(result.parsed);
+        // Badge
         if (result.valid) {
-          parsedDetails.open = true;
+          badgeDiv.textContent = "VALID";
+          badgeDiv.className = "badge valid";
+        } else {
+          badgeDiv.textContent = "INVALID";
+          badgeDiv.className = "badge invalid";
         }
-      } else {
-        parsedDetails.classList.add('hidden');
-      }
-    }
 
-    function formatParsed(parsed) {
-      let html = '<dl>';
-      html += `<dt>Chromosome Count</dt><dd>${parsed.chromosome_count}</dd>`;
-      html += `<dt>Sex Chromosomes</dt><dd>${parsed.sex_chromosomes}</dd>`;
-
-      if (parsed.abnormalities && parsed.abnormalities.length > 0) {
-        html += '<dt>Abnormalities</dt><dd><ul>';
-        for (const abn of parsed.abnormalities) {
-          html += `<li><code>${escapeHtml(abn.raw)}</code> - ${formatAbnormality(abn)}</li>`;
+        // Errors
+        if (result.errors && result.errors.length > 0) {
+          errorsDiv.classList.remove("hidden");
+          errorsDiv.innerHTML = "<h3>Errors</h3><ul>" +
+            result.errors.map((e) => `<li>${escapeHtml(e)}</li>`).join("") +
+            "</ul>";
+        } else {
+          errorsDiv.classList.add("hidden");
         }
-        html += '</ul></dd>';
+
+        // Parsed details
+        if (result.parsed) {
+          parsedDetails.classList.remove("hidden");
+          parsedContent.innerHTML = formatParsed(result.parsed);
+          if (result.valid) {
+            parsedDetails.open = true;
+          }
+        } else {
+          parsedDetails.classList.add("hidden");
+        }
+      }
+
+      function formatParsed(parsed) {
+        let html = "<dl>";
+        html += `<dt>Chromosome Count</dt><dd>${parsed.chromosome_count}</dd>`;
+        html += `<dt>Sex Chromosomes</dt><dd>${parsed.sex_chromosomes}</dd>`;
+
+        if (parsed.abnormalities && parsed.abnormalities.length > 0) {
+          html += "<dt>Abnormalities</dt><dd><ul>";
+          for (const abn of parsed.abnormalities) {
+            html += `<li><code>${escapeHtml(abn.raw)}</code> - ${formatAbnormality(abn)}</li>`;
+          }
+          html += "</ul></dd>";
+        } else {
+          html += "<dt>Abnormalities</dt><dd>None</dd>";
+        }
+
+        if (parsed.cell_lines && parsed.cell_lines.length > 0) {
+          html += `<dt>Cell Lines (Mosaic)</dt><dd>${parsed.cell_lines.length} cell lines</dd>`;
+        }
+
+        html += "</dl>";
+        return html;
+      }
+
+      function formatAbnormality(abn) {
+        const typeNames = {
+          "+": "Gain",
+          "-": "Loss",
+          "del": "Deletion",
+          "dup": "Duplication",
+          "inv": "Inversion",
+          "t": "Translocation",
+          "i": "Isochromosome",
+          "r": "Ring",
+          "ins": "Insertion",
+          "add": "Additional material",
+          "trp": "Triplication",
+          "dic": "Dicentric",
+          "idic": "Isodicentric",
+          "fra": "Fragile site",
+          "rob": "Robertsonian translocation",
+        };
+
+        const typeName = typeNames[abn.type] || abn.type;
+        let desc = `${typeName} on chromosome ${abn.chromosome}`;
+
+        if (abn.breakpoints && abn.breakpoints.length > 0) {
+          const bps = abn.breakpoints.map((bp) => {
+            let s = bp.arm + (bp.region || "") + (bp.band || "");
+            if (bp.subband) s += "." + bp.subband;
+            return s;
+          }).join(", ");
+          desc += ` at ${bps}`;
+        }
+
+        if (abn.inheritance) {
+          const inhMap = { mat: "maternal", pat: "paternal", dn: "de novo" };
+          desc += ` (${inhMap[abn.inheritance] || abn.inheritance})`;
+        }
+
+        return desc;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Focus the karyotype field if the key is already set, otherwise focus key field
+      if (apiKeyInput.value) {
+        input.focus();
       } else {
-        html += '<dt>Abnormalities</dt><dd>None</dd>';
+        apiKeyInput.focus();
       }
-
-      if (parsed.cell_lines && parsed.cell_lines.length > 0) {
-        html += `<dt>Cell Lines (Mosaic)</dt><dd>${parsed.cell_lines.length} cell lines</dd>`;
-      }
-
-      html += '</dl>';
-      return html;
-    }
-
-    function formatAbnormality(abn) {
-      const typeNames = {
-        '+': 'Gain',
-        '-': 'Loss',
-        'del': 'Deletion',
-        'dup': 'Duplication',
-        'inv': 'Inversion',
-        't': 'Translocation',
-        'i': 'Isochromosome',
-        'r': 'Ring',
-        'ins': 'Insertion',
-        'add': 'Additional material',
-        'trp': 'Triplication',
-        'dic': 'Dicentric',
-        'idic': 'Isodicentric',
-        'fra': 'Fragile site',
-        'rob': 'Robertsonian translocation'
-      };
-
-      const typeName = typeNames[abn.type] || abn.type;
-      let desc = `${typeName} on chromosome ${abn.chromosome}`;
-
-      if (abn.breakpoints && abn.breakpoints.length > 0) {
-        const bps = abn.breakpoints.map(bp => {
-          let s = bp.arm + (bp.region || '') + (bp.band || '');
-          if (bp.subband) s += '.' + bp.subband;
-          return s;
-        }).join(', ');
-        desc += ` at ${bps}`;
-      }
-
-      if (abn.inheritance) {
-        const inhMap = { mat: 'maternal', pat: 'paternal', dn: 'de novo' };
-        desc += ` (${inhMap[abn.inheritance] || abn.inheritance})`;
-      }
-
-      return desc;
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Focus the karyotype field if the key is already set, otherwise focus key field
-    if (apiKeyInput.value) {
-      input.focus();
-    } else {
-      apiKeyInput.focus();
-    }
-  </script>
-</body>
+    </script>
+  </body>
 </html>
