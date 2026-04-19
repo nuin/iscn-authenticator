@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, milestone-0-library-consolidation]
+    branches: [master, milestone-0-library-consolidation, milestone-1-security-hardening]
   pull_request:
     branches: [master]
 
@@ -39,10 +39,13 @@ jobs:
         run: deno check --unstable-sloppy-imports src/index.ts
       - name: Type-check Deno app
         working-directory: deno
-        run: deno check main.ts server.ts cli.ts lib/validator.ts
+        run: deno task check
       - name: Run fixture-driven tests
         working-directory: packages/core
         run: deno test --allow-read --unstable-sloppy-imports tests/
+      - name: Run Deno app tests (auth, ratelimit, keys, integration)
+        working-directory: deno
+        run: deno task test
 
   node-build-smoke:
     name: Node build smoke test

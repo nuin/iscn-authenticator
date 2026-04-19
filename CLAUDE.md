@@ -68,6 +68,42 @@ deno task lint
 
 Note: `deno/main.ts` is the **Deno Deploy** entrypoint — it embeds the HTML inline and uses `validateKaryotypeNative` (no subprocess), while `deno/server.ts` is for local dev and serves files from `deno/static/`. The top-level `deno.json` points Deploy to `deno/main.ts`; the inner `deno/deno.json` defines tasks.
 
+Both entry points are thin wrappers around `buildHandler()` from `deno/lib/middleware.ts`. Only the static-HTML source differs — the auth / rate-limit / security-headers / logging surface is shared, so local dev and prod cannot drift.
+
+### Deno middleware pipeline (M1)
+
+Inside `buildHandler`:
+
+1. Assign `request_id` (uuid v4)
+2. CORS preflight short-circuit (`OPTIONS` → 204)
+3. Route dispatch
+   - `GET /` → static HTML (`staticHtml` string or `staticDir` from disk)
+   - `GET /health` → 200 liveness probe (no auth)
+   - `GET|POST /validate` → **auth → rate-limit → body/input validation → validator**
+   - Anything else → 404
+4. `AppError` catch → typed error response via `errorToResponse()` (stack never exposed)
+5. Non-`AppError` catch → 500 `internal`; full error sent to `errorSink` (default `console.error`), keyed to `request_id`
+6. Merge security headers (HSTS, nosniff, frame-deny, referrer-policy; CSP only on HTML)
+7. Emit structured-JSON request log to `logSink` (default stdout); karyotype payload is never logged
+
+### Deno KV schema
+
+- `keys:<sha256(plaintext)>` → `{ id, label, created_at, last_used_at, revoked_at }`
+- `keys_index:<id>` → `<sha256(plaintext)>` (reverse lookup by id)
+- `rl:<key_id>:<minute_bucket>` → counter, TTL ≈ 120s (two windows so we can still read the previous one)
+
+Atomic increment via `kv.atomic().sum(...)`. Fixed-window limiter (60 req/min default); clients can burst to 2× the limit at window boundaries — acceptable for M1, swap to token-bucket post-M1 if abuse observed.
+
+### Admin CLI (deno/admin.ts)
+
+Key management is CLI-only; no self-serve UI in M1. Wrapped as `deno task keys:create <label>` / `keys:list` / `keys:revoke <id>`. Plaintext is shown once at create and stored only as SHA-256 hash. Revocation sets `revoked_at` — subsequent auth lookups reject.
+
+### Deno app tests
+
+- Unit tests per module: `deno/tests/auth_test.ts`, `ratelimit_test.ts`, `keys_test.ts`, `config_test.ts`, `errors_test.ts`, `logging_test.ts`
+- Full-pipeline integration tests: `deno/tests/integration_test.ts` (27 cases — happy paths, auth failure modes, rate-limit headers, CORS, body/input validation, security-header presence, error-body sanitization, uncaught-error masking via closed-KV trick)
+- Run the whole app suite with `deno task test` from `deno/`.
+
 ## Architecture
 
 ### Validation pipeline (Python)
