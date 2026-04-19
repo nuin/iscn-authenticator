@@ -1,12 +1,16 @@
 {
-  "unstable": ["sloppy-imports"],
+  "unstable": ["sloppy-imports", "kv"],
   "tasks": {
     "cli": "deno run --allow-run --allow-read --allow-net --allow-env cli.ts",
-    "serve": "deno run --allow-run --allow-read --allow-net --allow-env server.ts",
-    "dev": "deno run --watch --allow-run --allow-read --allow-net --allow-env server.ts",
-    "check": "deno check main.ts cli.ts server.ts lib/validator.ts",
+    "serve": "deno run --allow-run --allow-read --allow-write --allow-net --allow-env server.ts",
+    "dev": "deno run --watch --allow-run --allow-read --allow-write --allow-net --allow-env server.ts",
+    "check": "deno check main.ts cli.ts server.ts admin.ts lib/validator.ts lib/config.ts lib/errors.ts lib/logging.ts lib/keys.ts",
+    "test": "deno test --allow-env --allow-read --allow-write tests/",
     "fmt": "deno fmt",
-    "lint": "deno lint"
+    "lint": "deno lint",
+    "keys:create": "deno run --allow-read --allow-write --allow-env admin.ts keys:create",
+    "keys:list": "deno run --allow-read --allow-write --allow-env admin.ts keys:list",
+    "keys:revoke": "deno run --allow-read --allow-write --allow-env admin.ts keys:revoke"
   },
   "compilerOptions": {
     "strict": true
