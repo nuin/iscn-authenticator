@@ -2,6 +2,12 @@
 
 Validates ISCN 2024 (International System for Human Cytogenomic Nomenclature) karyotype strings.
 
+## Documentation
+
+- **[Quickstart](docs/quickstart.md)** — validate your first karyotype in under a minute
+- **[API Reference](docs/api.md)** — endpoints, auth, rate limits, error codes
+- **[Operator Guide](docs/admin.md)** — running the service, managing keys, incident playbook
+
 ## Packages
 
 This repository is a monorepo containing parallel implementations of the same validation logic, driven by a [shared fixture corpus](fixtures/validity.json) to guarantee behavioural parity. Nothing here is published — consume from source.
