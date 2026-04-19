@@ -4,7 +4,7 @@
     "cli": "deno run --allow-run --allow-read --allow-net --allow-env cli.ts",
     "serve": "deno run --allow-run --allow-read --allow-write --allow-net --allow-env server.ts",
     "dev": "deno run --watch --allow-run --allow-read --allow-write --allow-net --allow-env server.ts",
-    "check": "deno check main.ts cli.ts server.ts admin.ts lib/validator.ts lib/config.ts lib/errors.ts lib/logging.ts lib/keys.ts lib/customers.ts lib/auth.ts lib/token_bucket.ts lib/quota.ts lib/axiom.ts lib/sessions.ts lib/middleware.ts lib/security_headers.ts",
+    "check": "deno check main.ts cli.ts server.ts admin.ts lib/validator.ts lib/config.ts lib/errors.ts lib/logging.ts lib/keys.ts lib/customers.ts lib/auth.ts lib/token_bucket.ts lib/quota.ts lib/axiom.ts lib/sessions.ts lib/dashboard.ts lib/middleware.ts lib/security_headers.ts",
     "test": "deno test --allow-env --allow-read --allow-write tests/",
     "fmt": "deno fmt",
     "lint": "deno lint",

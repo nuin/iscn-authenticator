@@ -46,6 +46,27 @@ export function htmlCspHeader(): string {
   ].join("; ");
 }
 
+/**
+ * Content-Security-Policy for the customer dashboard.
+ *
+ * Same baseline as the landing page, plus a pinned HTMX script allowance
+ * (`https://unpkg.com`). We intentionally do NOT widen `connect-src` —
+ * HTMX issues its requests to the same origin, so keeping that narrow
+ * preserves the SOP boundary around the session cookie.
+ */
+export function dashboardCspHeader(): string {
+  return [
+    "default-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com",
+    "connect-src 'self'",
+    "img-src 'self' data:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
 /** Merge the given headers over a base set without clobbering existing values. */
 export function mergeHeaders(
   base: HeadersInit | undefined,

@@ -165,6 +165,25 @@ export async function listKeys(kv: Deno.Kv): Promise<ApiKeyRecord[]> {
 }
 
 /**
+ * Return all keys owned by a specific customer, sorted newest-first.
+ *
+ * Used by the dashboard's Keys tab to render only the caller's own keys.
+ * Grandfathered keys (customer_id null) are excluded by definition.
+ */
+export async function listKeysByCustomer(
+  kv: Deno.Kv,
+  customerId: string,
+): Promise<ApiKeyRecord[]> {
+  const out: ApiKeyRecord[] = [];
+  for await (const entry of kv.list<ApiKeyRecord>({ prefix: ["keys"] })) {
+    const rec = normaliseRecord(entry.value);
+    if (rec.customer_id === customerId) out.push(rec);
+  }
+  out.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return out;
+}
+
+/**
  * Mark a key as revoked. Idempotent: calling on an already-revoked key
  * returns the existing record unchanged.
  *

@@ -27,10 +27,10 @@ import {
   AppError,
   BadRequestError,
   BodyTooLargeError,
+  errorToResponse,
   MethodNotAllowedError,
   NotFoundError,
   UnauthenticatedError,
-  errorToResponse,
 } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
 import { authenticate } from "./auth.ts";
@@ -38,19 +38,16 @@ import { RateLimitError } from "./errors.ts";
 import { checkAndConsume, tokenBucketHeaders } from "./token_bucket.ts";
 import { lookupCustomerForKey, rotateKey, touchKey } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
-import {
-  incrementUsage,
-  monthlyQuotaHeaders,
-  type QuotaSnapshot,
-  quotaFor,
-} from "./quota.ts";
+import { incrementUsage, monthlyQuotaHeaders, quotaFor, type QuotaSnapshot } from "./quota.ts";
 import {
   baseSecurityHeaders,
+  dashboardCspHeader,
   htmlCspHeader,
   mergeHeaders,
 } from "./security_headers.ts";
 import { clientIp, logRequest, requestId } from "./logging.ts";
 import type { RequestLog } from "./logging.ts";
+import { handleDashboardRoute, isDashboardPath } from "./dashboard.ts";
 import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
 
 export interface BuildHandlerOptions {
@@ -116,6 +113,8 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       } else if (path === "/keys/rotate") {
         response = await handleKeysRotate({ req, kv });
         keyId = (response as ResponseWithMeta)._keyId;
+      } else if (isDashboardPath(path)) {
+        response = await handleDashboardRoute(req, { kv, config });
       } else if (path === "/" || path === "/index.html") {
         response = await handleStaticIndex({ staticHtml, staticDir });
       } else if (staticDir && isStaticRequest(path)) {
@@ -141,6 +140,7 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       config,
       rid,
       isHtml: isHtmlResponse(response),
+      isDashboard: isDashboardPath(path),
     });
     status = response.status;
 
@@ -457,6 +457,7 @@ interface ApplyHeadersArgs {
   config: Config;
   rid: string;
   isHtml: boolean;
+  isDashboard: boolean;
 }
 
 function applyResponseHeaders(
@@ -477,7 +478,9 @@ function applyResponseHeaders(
   }
 
   if (args.isHtml) {
-    extras["Content-Security-Policy"] = htmlCspHeader();
+    // Dashboard needs the widened script-src for HTMX CDN; landing page
+    // keeps the tighter policy.
+    extras["Content-Security-Policy"] = args.isDashboard ? dashboardCspHeader() : htmlCspHeader();
   }
 
   const merged = mergeHeaders(res.headers, extras);
