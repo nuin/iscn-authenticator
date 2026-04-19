@@ -491,3 +491,110 @@ Deno.test("DELETE /validate → 405 method_not_allowed", async () => {
     kv.close();
   }
 });
+
+Deno.test("security headers: HSTS + nosniff + frame-deny + referrer-policy on 4xx", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv });
+    // 401 response
+    const res = await handler(new Request("http://x/validate?karyotype=46,XX"));
+    assertEquals(res.status, 401);
+    assertEquals(
+      res.headers.get("strict-transport-security"),
+      "max-age=31536000; includeSubDomains",
+    );
+    assertEquals(res.headers.get("x-content-type-options"), "nosniff");
+    assertEquals(res.headers.get("x-frame-options"), "DENY");
+    assertEquals(res.headers.get("referrer-policy"), "no-referrer");
+    assert(res.headers.get("x-request-id"));
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("CSP: only applied to HTML responses, not JSON", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv });
+    const htmlRes = await handler(new Request("http://x/"));
+    assert(htmlRes.headers.get("content-security-policy"));
+    const jsonRes = await handler(new Request("http://x/health"));
+    assertEquals(jsonRes.headers.get("content-security-policy"), null);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("error body never leaks stack trace (401/404/413)", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv });
+    const paths = [
+      new Request("http://x/validate?karyotype=46,XX"), // 401
+      new Request("http://x/no-such-route"), // 404
+    ];
+    for (const req of paths) {
+      const res = await handler(req);
+      const body = await res.text();
+      assert(!body.toLowerCase().includes("at "), `stack frame found in ${body}`);
+      assert(!body.toLowerCase().includes("stack"), `"stack" found in ${body}`);
+      assert(!body.includes("middleware.ts"), `module path leaked: ${body}`);
+    }
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("uncaught error → 500 'internal' + generic message + errorSink called", async () => {
+  // Close the KV before running the handler to force KV operations to throw.
+  const kv = await openMemoryKv();
+  const { plaintext } = await createKey(kv, "test");
+  kv.close(); // Intentionally close -- subsequent kv.get will throw.
+
+  const captured: Array<{ rid: string; err: unknown }> = [];
+  const config = defaultConfig();
+  const handler = buildHandler({
+    kv,
+    config,
+    staticHtml: "<html></html>",
+    logSink: () => {},
+    errorSink: (rid, err) => captured.push({ rid, err }),
+  });
+  const req = new Request("http://x/validate?karyotype=46,XX", {
+    headers: { authorization: `Bearer ${plaintext}` },
+  });
+  const res = await handler(req);
+  assertEquals(res.status, 500);
+  const body = await res.json();
+  assertEquals(body.error, "internal");
+  assertEquals(body.message, "Internal server error");
+  assert(body.request_id);
+  // Server-side: errorSink fired with the same request_id.
+  assertEquals(captured.length, 1);
+  assertEquals(captured[0].rid, body.request_id);
+  assert(captured[0].err);
+});
+
+Deno.test("debugErrors=true exposes error message in 500 body (dev only)", async () => {
+  const kv = await openMemoryKv();
+  const { plaintext } = await createKey(kv, "test");
+  kv.close();
+
+  const config = { ...defaultConfig(), debugErrors: true };
+  const handler = buildHandler({
+    kv,
+    config,
+    staticHtml: "<html></html>",
+    logSink: () => {},
+    errorSink: () => {},
+  });
+  const req = new Request("http://x/validate?karyotype=46,XX", {
+    headers: { authorization: `Bearer ${plaintext}` },
+  });
+  const res = await handler(req);
+  assertEquals(res.status, 500);
+  const body = await res.json();
+  // Debug mode exposes the raw message but NEVER a stack field.
+  assert(body.message !== "Internal server error");
+  assertEquals(body.stack, undefined);
+});

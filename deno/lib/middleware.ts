@@ -56,6 +56,12 @@ export interface BuildHandlerOptions {
   now?: () => number;
   /** Test hook: override the log sink (defaults to stdout). */
   logSink?: (line: string) => void;
+  /**
+   * Test hook: override where uncaught errors are reported (defaults to
+   * `console.error`). Production does not set this; tests use it both to
+   * silence noise and to assert that stack traces land server-side.
+   */
+  errorSink?: (requestId: string, err: unknown) => void;
 }
 
 export type AppHandler = (
@@ -71,6 +77,8 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
   const { kv, config, staticHtml, staticDir } = opts;
   const now = opts.now ?? (() => Date.now());
   const logSink = opts.logSink;
+  const errorSink = opts.errorSink ??
+    ((rid: string, err: unknown) => console.error(`[${rid}] uncaught error:`, err));
 
   return async function handler(req, info) {
     const rid = requestId();
@@ -111,7 +119,7 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       } else {
         errorCode = "internal";
         // Full error stays server-side; client gets generic message tied to rid.
-        console.error(`[${rid}] uncaught error:`, err);
+        errorSink(rid, err);
         response = errorToResponse(err, rid, { debug: config.debugErrors });
       }
     }
