@@ -34,7 +34,7 @@ import {
 import type { ErrorCode } from "./errors.ts";
 import { authenticate } from "./auth.ts";
 import { RateLimitError } from "./errors.ts";
-import { checkRateLimit, rateLimitHeaders } from "./ratelimit.ts";
+import { checkAndConsume, tokenBucketHeaders } from "./token_bucket.ts";
 import { lookupCustomerForKey, touchKey } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
 import {
@@ -234,13 +234,13 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
   // Fire-and-forget last_used_at update.
   touchKey(kv, identity.key_id).catch(() => {});
 
-  // 2. Rate limit (counter bumps BEFORE we do any work).
-  const rl = await checkRateLimit(kv, identity.key_id, {
-    limit: config.rateLimitPerMin,
-    windowSeconds: 60,
+  // 2. Rate limit via token bucket (state bump happens BEFORE we do work).
+  const rl = await checkAndConsume(kv, identity.key_id, {
+    ratePerMin: config.rateLimitPerMin,
+    burst: config.rateLimitBurst,
     now,
   });
-  const rlHeaders = rateLimitHeaders(rl);
+  const rlHeaders = tokenBucketHeaders(rl);
   if (!rl.allowed) {
     const err = new RateLimitError(rl.retry_after);
     // Surface X-RateLimit-* headers even on 429.

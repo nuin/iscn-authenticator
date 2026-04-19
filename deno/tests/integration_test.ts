@@ -208,7 +208,7 @@ Deno.test("rate limit: over quota → 429 with Retry-After + X-RateLimit-*", asy
     const { plaintext } = await createKey(kv, "test");
     const handler = testHandler({
       kv,
-      configOverrides: { rateLimitPerMin: 2 },
+      configOverrides: { rateLimitPerMin: 2, rateLimitBurst: 2 },
       now: () => 1_700_000_000_000,
     });
     const mk = () =>

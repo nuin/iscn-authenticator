@@ -9,8 +9,10 @@
 export interface Config {
   /** Comma-separated origins allowed for CORS. Use `"*"` for any. */
   allowedOrigins: string[];
-  /** Per-key requests allowed per minute (fixed window). */
+  /** Per-key refill rate for the token bucket, in requests per minute. */
   rateLimitPerMin: number;
+  /** Per-key token-bucket capacity (peak burst). Defaults to `2 * rateLimitPerMin`. */
+  rateLimitBurst: number;
   /** Max request body size in bytes (POST /validate). */
   maxBodyBytes: number;
   /** Max karyotype string length in characters. */
@@ -28,6 +30,7 @@ export interface Config {
 const DEFAULTS: Config = {
   allowedOrigins: ["*"],
   rateLimitPerMin: 60,
+  rateLimitBurst: 120, // 2x refill — absorbs polite retry-with-jitter
   maxBodyBytes: 16 * 1024, // 16 KB — plenty for a karyotype payload
   maxKaryotypeLength: 2048, // 2 KB of text
   kvPath: null,
@@ -60,9 +63,13 @@ function parseBoolEnv(name: string, fallback: boolean): boolean {
 
 /** Load config from environment variables, falling back to sensible defaults. */
 export function loadConfig(): Config {
+  const rateLimitPerMin = parseIntEnv("RATE_LIMIT_PER_MIN", DEFAULTS.rateLimitPerMin);
+  // Burst defaults to 2 × refill when RATE_LIMIT_BURST is not set explicitly.
+  const rateLimitBurst = parseIntEnv("RATE_LIMIT_BURST", rateLimitPerMin * 2);
   return {
     allowedOrigins: parseOriginsEnv("ALLOWED_ORIGINS", DEFAULTS.allowedOrigins),
-    rateLimitPerMin: parseIntEnv("RATE_LIMIT_PER_MIN", DEFAULTS.rateLimitPerMin),
+    rateLimitPerMin,
+    rateLimitBurst,
     maxBodyBytes: parseIntEnv("MAX_BODY_BYTES", DEFAULTS.maxBodyBytes),
     maxKaryotypeLength: parseIntEnv("MAX_KARYOTYPE_LENGTH", DEFAULTS.maxKaryotypeLength),
     kvPath: Deno.env.get("KV_PATH") ?? DEFAULTS.kvPath,
