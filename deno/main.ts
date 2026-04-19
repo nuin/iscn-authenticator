@@ -1,11 +1,14 @@
 /**
  * ISCN Karyotype Validator - Deno Deploy Entry Point
  *
- * This is the main entry point for Deno Deploy.
- * Automatically uses native TypeScript validation (no Python required).
+ * Wraps the shared `buildHandler` from `deno/lib/middleware.ts` with the
+ * embedded HTML below. All security surface (auth, rate limit, security
+ * headers, logging) lives in the shared handler -- local dev (server.ts)
+ * and prod (this file) cannot drift.
  */
 
-import { validateKaryotypeNative } from "../packages/core/src/validate.ts";
+import { loadConfig } from "./lib/config.ts";
+import { buildHandler } from "./lib/middleware.ts";
 
 // Embedded static files for Deno Deploy
 const INDEX_HTML = `<!DOCTYPE html>
@@ -255,71 +258,9 @@ const INDEX_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-/** Handle validation API request */
-async function handleValidate(req: Request): Promise<Response> {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  };
+const config = loadConfig();
+const kv = await Deno.openKv(config.kvPath ?? undefined);
 
-  try {
-    let karyotype: string;
+const handler = buildHandler({ kv, config, staticHtml: INDEX_HTML });
 
-    if (req.method === "POST") {
-      const body = await req.json();
-      karyotype = body.karyotype;
-    } else {
-      const url = new URL(req.url);
-      karyotype = url.searchParams.get("karyotype") ?? "";
-    }
-
-    if (!karyotype) {
-      return new Response(
-        JSON.stringify({ valid: false, errors: ["No karyotype provided"], parsed: null }),
-        { status: 400, headers }
-      );
-    }
-
-    const result = validateKaryotypeNative(karyotype);
-    return new Response(JSON.stringify(result), { headers });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        valid: false,
-        errors: [error instanceof Error ? error.message : String(error)],
-        parsed: null,
-      }),
-      { status: 500, headers }
-    );
-  }
-}
-
-/** Main request handler */
-async function handler(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const path = url.pathname;
-
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
-
-  // API endpoint
-  if (path === "/validate") {
-    return await handleValidate(req);
-  }
-
-  // Serve index.html for root and all other paths
-  return new Response(INDEX_HTML, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
-}
-
-// Start server
 Deno.serve(handler);

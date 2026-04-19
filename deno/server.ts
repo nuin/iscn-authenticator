@@ -1,126 +1,29 @@
-#!/usr/bin/env -S deno run --allow-run --allow-read --allow-net --allow-env
-
+#!/usr/bin/env -S deno run --allow-run --allow-read --allow-write --allow-net --allow-env
 /**
- * ISCN Karyotype Validator Web Server
+ * ISCN Karyotype Validator Web Server — local dev entry point.
+ *
+ * Wraps the shared `buildHandler` from `lib/middleware.ts` and serves the
+ * filesystem-backed `static/` directory for the landing page. Prod runs
+ * via `main.ts` (Deno Deploy) which embeds the same HTML inline; both
+ * entry points share the same auth / rate-limit / security-headers pipeline.
  *
  * Usage:
  *   deno task serve
- *   deno task dev  (with hot reload)
- *
- * Then open http://localhost:8000
+ *   deno task dev  (with --watch)
  */
 
-import { validateKaryotype } from "./lib/validator.ts";
+import { loadConfig } from "./lib/config.ts";
+import { buildHandler } from "./lib/middleware.ts";
 
 const PORT = parseInt(Deno.env.get("PORT") ?? "8000");
 
-/** Get content type for a file extension */
-function getContentType(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase();
-  const types: Record<string, string> = {
-    html: "text/html; charset=utf-8",
-    css: "text/css; charset=utf-8",
-    js: "application/javascript; charset=utf-8",
-    json: "application/json; charset=utf-8",
-    png: "image/png",
-    svg: "image/svg+xml",
-    ico: "image/x-icon",
-  };
-  return types[ext ?? ""] ?? "application/octet-stream";
-}
+const config = loadConfig();
+const kv = await Deno.openKv(config.kvPath ?? undefined);
 
-/** Serve a static file */
-async function serveStaticFile(path: string): Promise<Response> {
-  try {
-    const moduleUrl = new URL(import.meta.url);
-    const modulePath = moduleUrl.pathname;
-    const staticDir = modulePath.replace(/\/server\.ts$/, "/static");
-    const filePath = `${staticDir}${path}`;
+const staticDir = new URL("./static", import.meta.url).pathname;
 
-    const content = await Deno.readFile(filePath);
-    return new Response(content, {
-      headers: { "Content-Type": getContentType(path) },
-    });
-  } catch {
-    return new Response("Not Found", { status: 404 });
-  }
-}
+const handler = buildHandler({ kv, config, staticDir });
 
-/** Handle validation API request */
-async function handleValidate(req: Request): Promise<Response> {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  };
-
-  try {
-    let karyotype: string;
-
-    if (req.method === "POST") {
-      const body = await req.json();
-      karyotype = body.karyotype;
-    } else {
-      const url = new URL(req.url);
-      karyotype = url.searchParams.get("karyotype") ?? "";
-    }
-
-    if (!karyotype) {
-      return new Response(
-        JSON.stringify({ valid: false, errors: ["No karyotype provided"], parsed: null }),
-        { status: 400, headers }
-      );
-    }
-
-    const result = await validateKaryotype(karyotype);
-    return new Response(JSON.stringify(result), { headers });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        valid: false,
-        errors: [error instanceof Error ? error.message : String(error)],
-        parsed: null,
-      }),
-      { status: 500, headers }
-    );
-  }
-}
-
-/** Main request handler */
-async function handler(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const path = url.pathname;
-
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
-
-  // API endpoint
-  if (path === "/validate") {
-    return handleValidate(req);
-  }
-
-  // Serve index.html for root
-  if (path === "/" || path === "/index.html") {
-    return serveStaticFile("/index.html");
-  }
-
-  // Serve static files
-  if (path.startsWith("/static/") || path.endsWith(".css") || path.endsWith(".js")) {
-    const filePath = path.startsWith("/static/") ? path.replace("/static", "") : path;
-    return serveStaticFile(filePath);
-  }
-
-  return new Response("Not Found", { status: 404 });
-}
-
-// Start server
 console.log(`
   ISCN Karyotype Validator Server
   ================================
@@ -129,8 +32,9 @@ console.log(`
 
   Endpoints:
     GET  /              Web UI
-    POST /validate      Validate karyotype (JSON body: {"karyotype": "..."})
-    GET  /validate?karyotype=...  Validate via query string
+    GET  /health        Liveness probe
+    GET  /validate?karyotype=...   (requires Bearer token)
+    POST /validate                 (requires Bearer token, JSON body)
 
   Press Ctrl+C to stop
 `);
