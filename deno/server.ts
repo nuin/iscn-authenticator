@@ -14,6 +14,7 @@
 
 import { loadConfig } from "./lib/config.ts";
 import { buildHandler } from "./lib/middleware.ts";
+import { createAxiomSink, tee } from "./lib/axiom.ts";
 
 const PORT = parseInt(Deno.env.get("PORT") ?? "8000");
 
@@ -22,7 +23,16 @@ const kv = await Deno.openKv(config.kvPath ?? undefined);
 
 const staticDir = new URL("./static", import.meta.url).pathname;
 
-const handler = buildHandler({ kv, config, staticDir });
+let logSink: ((line: string) => void) | undefined;
+if (config.axiomApiToken && config.axiomDataset) {
+  const axiom = createAxiomSink({
+    token: config.axiomApiToken,
+    dataset: config.axiomDataset,
+  });
+  logSink = tee((line) => console.log(line), axiom.log);
+}
+
+const handler = buildHandler({ kv, config, staticDir, logSink });
 
 console.log(`
   ISCN Karyotype Validator Server

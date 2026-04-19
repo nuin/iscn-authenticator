@@ -25,6 +25,10 @@ export interface Config {
   monthlyQuotaFree: number;
   /** Monthly request cap for Pro-tier customers. */
   monthlyQuotaPro: number;
+  /** Axiom ingest token. Empty string disables Axiom forwarding. */
+  axiomApiToken: string;
+  /** Axiom dataset name. Empty string disables Axiom forwarding. */
+  axiomDataset: string;
 }
 
 const DEFAULTS: Config = {
@@ -37,6 +41,8 @@ const DEFAULTS: Config = {
   debugErrors: false,
   monthlyQuotaFree: 10_000,
   monthlyQuotaPro: 1_000_000,
+  axiomApiToken: "",
+  axiomDataset: "",
 };
 
 function parseIntEnv(name: string, fallback: number): number {
@@ -76,6 +82,8 @@ export function loadConfig(): Config {
     debugErrors: parseBoolEnv("DEBUG_ERRORS", DEFAULTS.debugErrors),
     monthlyQuotaFree: parseIntEnv("MONTHLY_QUOTA_FREE", DEFAULTS.monthlyQuotaFree),
     monthlyQuotaPro: parseIntEnv("MONTHLY_QUOTA_PRO", DEFAULTS.monthlyQuotaPro),
+    axiomApiToken: Deno.env.get("AXIOM_API_TOKEN") ?? DEFAULTS.axiomApiToken,
+    axiomDataset: Deno.env.get("AXIOM_DATASET") ?? DEFAULTS.axiomDataset,
   };
 }
 

@@ -9,6 +9,7 @@
 
 import { loadConfig } from "./lib/config.ts";
 import { buildHandler } from "./lib/middleware.ts";
+import { createAxiomSink, tee } from "./lib/axiom.ts";
 
 // Embedded static files for Deno Deploy
 const INDEX_HTML = `<!DOCTYPE html>
@@ -337,6 +338,18 @@ curl -H "Authorization: Bearer iscn_live_..." \\
 const config = loadConfig();
 const kv = await Deno.openKv(config.kvPath ?? undefined);
 
-const handler = buildHandler({ kv, config, staticHtml: INDEX_HTML });
+// When both Axiom env vars are set, tee every request log line to Axiom
+// alongside stdout. Missing either → stdout only (Deno Deploy still retains
+// ~24h of console output so observability is not lost).
+let logSink: ((line: string) => void) | undefined;
+if (config.axiomApiToken && config.axiomDataset) {
+  const axiom = createAxiomSink({
+    token: config.axiomApiToken,
+    dataset: config.axiomDataset,
+  });
+  logSink = tee((line) => console.log(line), axiom.log);
+}
+
+const handler = buildHandler({ kv, config, staticHtml: INDEX_HTML, logSink });
 
 Deno.serve(handler);
