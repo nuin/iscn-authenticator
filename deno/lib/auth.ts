@@ -17,6 +17,8 @@
 
 import { UnauthenticatedError } from "./errors.ts";
 import { lookupKeyByPlaintext } from "./keys.ts";
+import { validateSessionFromRequest } from "./sessions.ts";
+import type { SessionRecord } from "./sessions.ts";
 
 export interface AuthIdentity {
   key_id: string;
@@ -65,4 +67,25 @@ export async function authenticate(
     throw new UnauthenticatedError();
   }
   return { key_id: record.id, label: record.label };
+}
+
+/**
+ * Authenticate a browser request against the session store.
+ *
+ * Reads the `iscn_session` cookie, verifies its HMAC signature, confirms the
+ * session row exists and has not expired, and returns the underlying record.
+ * Used by HTML / HTMX dashboard routes — API routes continue to use
+ * `authenticate()` (Bearer / X-API-Key).
+ *
+ * Throws `UnauthenticatedError` on any failure so the caller can map to 401
+ * (JSON handlers) or 303 to `/login` (HTML handlers) uniformly.
+ */
+export async function authenticateSession(
+  req: Request,
+  kv: Deno.Kv,
+  secret: string,
+): Promise<SessionRecord> {
+  const session = await validateSessionFromRequest(req, kv, secret);
+  if (session === null) throw new UnauthenticatedError();
+  return session;
 }

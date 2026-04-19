@@ -29,6 +29,13 @@ export interface Config {
   axiomApiToken: string;
   /** Axiom dataset name. Empty string disables Axiom forwarding. */
   axiomDataset: string;
+  /**
+   * HMAC secret for signing session cookies. Required in production
+   * (`DENO_ENV=production`); auto-generated with a stderr warning in dev so
+   * local runs "just work". Rotating this value invalidates every active
+   * session — intentional, since there is no in-flight secret rotation.
+   */
+  sessionSecret: string;
 }
 
 const DEFAULTS: Config = {
@@ -43,6 +50,7 @@ const DEFAULTS: Config = {
   monthlyQuotaPro: 1_000_000,
   axiomApiToken: "",
   axiomDataset: "",
+  sessionSecret: "",
 };
 
 function parseIntEnv(name: string, fallback: number): number {
@@ -84,10 +92,47 @@ export function loadConfig(): Config {
     monthlyQuotaPro: parseIntEnv("MONTHLY_QUOTA_PRO", DEFAULTS.monthlyQuotaPro),
     axiomApiToken: Deno.env.get("AXIOM_API_TOKEN") ?? DEFAULTS.axiomApiToken,
     axiomDataset: Deno.env.get("AXIOM_DATASET") ?? DEFAULTS.axiomDataset,
+    sessionSecret: resolveSessionSecret(),
   };
+}
+
+/**
+ * Pull `SESSION_SECRET` from the environment. In production, it is mandatory:
+ * rotating the secret invalidates every live session but there is no startup-
+ * time fallback, so a missing value is a hard stop. In development we
+ * auto-generate a 32-byte random secret and print a loud stderr warning so
+ * operators notice when they've forgotten to configure it.
+ */
+function resolveSessionSecret(): string {
+  const raw = Deno.env.get("SESSION_SECRET");
+  if (raw && raw.length > 0) return raw;
+  const env = (Deno.env.get("DENO_ENV") ?? "").toLowerCase();
+  if (env === "production" || env === "prod") {
+    throw new Error("SESSION_SECRET is required when DENO_ENV=production");
+  }
+  const generated = randomHex(32);
+  console.warn(
+    "[config] SESSION_SECRET not set — generated a dev-only value. " +
+      "Sessions will reset on every restart. Set SESSION_SECRET before prod.",
+  );
+  return generated;
+}
+
+function randomHex(numBytes: number): string {
+  const buf = new Uint8Array(numBytes);
+  crypto.getRandomValues(buf);
+  let out = "";
+  for (const b of buf) out += b.toString(16).padStart(2, "0");
+  return out;
 }
 
 /** Test helper — returns a config with every field at default. */
 export function defaultConfig(): Config {
-  return { ...DEFAULTS, allowedOrigins: [...DEFAULTS.allowedOrigins] };
+  return {
+    ...DEFAULTS,
+    allowedOrigins: [...DEFAULTS.allowedOrigins],
+    // Tests that exercise session code need a stable non-empty secret. Tests
+    // that don't care about sessions can ignore this field.
+    sessionSecret: "test-session-secret",
+  };
 }
