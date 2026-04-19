@@ -361,6 +361,120 @@ Deno.test("GET /validate without karyotype query → 400", async () => {
   }
 });
 
+Deno.test("POST /validate: karyotype too long → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({
+      kv,
+      configOverrides: { maxKaryotypeLength: 10, maxBodyBytes: 1024 },
+    });
+    const req = new Request("http://x/validate", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${plaintext}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ karyotype: "A".repeat(50) }),
+    });
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.error, "invalid_request");
+    assert(body.message.toLowerCase().includes("max length"));
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("GET /validate: karyotype too long → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({
+      kv,
+      configOverrides: { maxKaryotypeLength: 5 },
+    });
+    const url = `http://x/validate?karyotype=${"A".repeat(50)}`;
+    const req = new Request(url, {
+      headers: { authorization: `Bearer ${plaintext}` },
+    });
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.error, "invalid_request");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /validate: empty karyotype string → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({ kv });
+    const req = new Request("http://x/validate", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${plaintext}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ karyotype: "" }),
+    });
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.error, "invalid_request");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /validate: karyotype non-string → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({ kv });
+    const req = new Request("http://x/validate", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${plaintext}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ karyotype: 42 }),
+    });
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /validate: Content-Length over max → 413 (no body read)", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "test");
+    const handler = testHandler({
+      kv,
+      configOverrides: { maxBodyBytes: 16 },
+    });
+    // Create a Request with a real body larger than limit; Content-Length
+    // is set implicitly by the Request constructor.
+    const req = new Request("http://x/validate", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${plaintext}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ karyotype: "46,XX", padding: "X".repeat(200) }),
+    });
+    const res = await handler(req);
+    assertEquals(res.status, 413);
+  } finally {
+    kv.close();
+  }
+});
+
 Deno.test("DELETE /validate → 405 method_not_allowed", async () => {
   const kv = await openMemoryKv();
   try {

@@ -241,6 +241,11 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
     const url = new URL(req.url);
     const k = url.searchParams.get("karyotype") ?? "";
     if (!k) throw new BadRequestError("Missing 'karyotype' query parameter");
+    if (k.length > config.maxKaryotypeLength) {
+      throw new BadRequestError(
+        `'karyotype' exceeds max length (${config.maxKaryotypeLength})`,
+      );
+    }
     karyotype = k;
   }
 
