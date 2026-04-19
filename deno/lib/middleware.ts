@@ -35,7 +35,14 @@ import type { ErrorCode } from "./errors.ts";
 import { authenticate } from "./auth.ts";
 import { RateLimitError } from "./errors.ts";
 import { checkRateLimit, rateLimitHeaders } from "./ratelimit.ts";
-import { touchKey } from "./keys.ts";
+import { lookupCustomerForKey, touchKey } from "./keys.ts";
+import { lookupCustomerById } from "./customers.ts";
+import {
+  incrementUsage,
+  monthlyQuotaHeaders,
+  type QuotaSnapshot,
+  quotaFor,
+} from "./quota.ts";
 import {
   baseSecurityHeaders,
   htmlCspHeader,
@@ -241,6 +248,16 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
     throw err;
   }
 
+  // 2b. Monthly quota (customer-owned keys only — grandfathered keys skip).
+  // The denorm `key_customer:<id>` entry is absent for internal keys so
+  // this read doubles as the skip check in a single KV hit.
+  const quotaHeaders = await enforceMonthlyQuota({
+    kv,
+    keyId: identity.key_id,
+    config,
+    now,
+  });
+
   // 3. Extract karyotype.
   let karyotype: string;
   if (req.method === "POST") {
@@ -267,11 +284,50 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
       headers: {
         "Content-Type": CONTENT_TYPE_JSON,
         ...rlHeaders,
+        ...quotaHeaders,
       },
     },
   ) as ResponseWithMeta;
   response._keyId = identity.key_id;
   return response;
+}
+
+/**
+ * Resolve the authenticated key's owning customer, charge one request against
+ * that customer's monthly quota, and return the headers that advertise the
+ * current state on the response.
+ *
+ * Returns an empty record (no headers) for grandfathered keys whose
+ * `customer_id` is null — those keys predate the customer model and bypass
+ * quota entirely, by design.
+ *
+ * Throws `QuotaExceededError` when the counter is already at the limit.
+ */
+async function enforceMonthlyQuota(args: {
+  kv: Deno.Kv;
+  keyId: string;
+  config: Config;
+  now: () => number;
+}): Promise<Record<string, string>> {
+  const { kv, keyId, config, now } = args;
+  const customerId = await lookupCustomerForKey(kv, keyId);
+  if (customerId === null) return {};
+
+  const customer = await lookupCustomerById(kv, customerId);
+  if (customer === null) {
+    // Denorm entry points at a deleted customer — should not happen in
+    // practice. Fail safe by letting the request through; the stale denorm
+    // is an internal-data-integrity bug, not a client error.
+    return {};
+  }
+
+  const limit = quotaFor(customer.tier, config);
+  const snapshot: QuotaSnapshot = await incrementUsage(kv, customerId, {
+    tier: customer.tier,
+    limit,
+    now: new Date(now()),
+  });
+  return monthlyQuotaHeaders(snapshot);
 }
 
 async function extractKaryotypeFromBody(

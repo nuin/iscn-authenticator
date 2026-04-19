@@ -10,6 +10,7 @@
 export type ErrorCode =
   | "unauthenticated"
   | "rate_limited"
+  | "quota_exceeded"
   | "body_too_large"
   | "invalid_request"
   | "not_found"
@@ -55,6 +56,25 @@ export class RateLimitError extends AppError {
   constructor(retryAfterSeconds: number, message = "Rate limit exceeded") {
     super("rate_limited", 429, message, {
       "Retry-After": String(Math.max(1, Math.ceil(retryAfterSeconds))),
+    });
+  }
+}
+
+/**
+ * Monthly quota exhausted — distinct from per-minute rate limiting.
+ * The 402 status is chosen deliberately to let integrators distinguish
+ * "try again in a second" (429) from "upgrade your plan" (402).
+ */
+export class QuotaExceededError extends AppError {
+  constructor(
+    limit: number,
+    resetAt: number,
+    message = "Monthly request quota exceeded",
+  ) {
+    super("quota_exceeded", 402, message, {
+      "X-Monthly-Quota-Limit": String(limit),
+      "X-Monthly-Quota-Remaining": "0",
+      "X-Monthly-Quota-Reset": String(resetAt),
     });
   }
 }

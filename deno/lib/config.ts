@@ -19,6 +19,10 @@ export interface Config {
   kvPath: string | null;
   /** When true, include stack traces in 500 responses (dev only). */
   debugErrors: boolean;
+  /** Monthly request cap for Free-tier customers. */
+  monthlyQuotaFree: number;
+  /** Monthly request cap for Pro-tier customers. */
+  monthlyQuotaPro: number;
 }
 
 const DEFAULTS: Config = {
@@ -28,6 +32,8 @@ const DEFAULTS: Config = {
   maxKaryotypeLength: 2048, // 2 KB of text
   kvPath: null,
   debugErrors: false,
+  monthlyQuotaFree: 10_000,
+  monthlyQuotaPro: 1_000_000,
 };
 
 function parseIntEnv(name: string, fallback: number): number {
@@ -61,6 +67,8 @@ export function loadConfig(): Config {
     maxKaryotypeLength: parseIntEnv("MAX_KARYOTYPE_LENGTH", DEFAULTS.maxKaryotypeLength),
     kvPath: Deno.env.get("KV_PATH") ?? DEFAULTS.kvPath,
     debugErrors: parseBoolEnv("DEBUG_ERRORS", DEFAULTS.debugErrors),
+    monthlyQuotaFree: parseIntEnv("MONTHLY_QUOTA_FREE", DEFAULTS.monthlyQuotaFree),
+    monthlyQuotaPro: parseIntEnv("MONTHLY_QUOTA_PRO", DEFAULTS.monthlyQuotaPro),
   };
 }
 

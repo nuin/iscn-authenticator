@@ -7,6 +7,7 @@ import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { buildHandler } from "../lib/middleware.ts";
 import { defaultConfig } from "../lib/config.ts";
 import { createKey, revokeKey } from "../lib/keys.ts";
+import { createCustomer } from "../lib/customers.ts";
 
 async function openMemoryKv(): Promise<Deno.Kv> {
   return await Deno.openKv(":memory:");
@@ -227,6 +228,67 @@ Deno.test("rate limit: over quota → 429 with Retry-After + X-RateLimit-*", asy
     assert(r3.headers.get("retry-after"));
     assertEquals(r3.headers.get("x-ratelimit-limit"), "2");
     assertEquals(r3.headers.get("x-ratelimit-remaining"), "0");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("monthly quota: customer-owned key over quota → 402 quota_exceeded", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const customer = await createCustomer(kv, "quota@example.com");
+    assert(customer !== null);
+    const { plaintext } = await createKey(kv, "pay-test", {
+      customerId: customer.id,
+    });
+    const handler = testHandler({
+      kv,
+      configOverrides: { monthlyQuotaFree: 2, rateLimitPerMin: 100 },
+    });
+    const mk = () =>
+      new Request("http://x/validate?karyotype=46,XX", {
+        headers: { authorization: `Bearer ${plaintext}` },
+      });
+
+    const r1 = await handler(mk());
+    const r2 = await handler(mk());
+    const r3 = await handler(mk());
+    assertEquals(r1.status, 200);
+    assertEquals(r1.headers.get("x-monthly-quota-limit"), "2");
+    assertEquals(r1.headers.get("x-monthly-quota-remaining"), "1");
+    assertEquals(r2.status, 200);
+    assertEquals(r2.headers.get("x-monthly-quota-remaining"), "0");
+    assertEquals(r3.status, 402);
+    const body = await r3.json();
+    assertEquals(body.error, "quota_exceeded");
+    assertEquals(r3.headers.get("x-monthly-quota-limit"), "2");
+    assertEquals(r3.headers.get("x-monthly-quota-remaining"), "0");
+    assert(r3.headers.get("x-monthly-quota-reset"));
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("monthly quota: grandfathered key (no customer) skips enforcement", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "internal-admin"); // no customer
+    const handler = testHandler({
+      kv,
+      configOverrides: { monthlyQuotaFree: 1, rateLimitPerMin: 100 },
+    });
+    const mk = () =>
+      new Request("http://x/validate?karyotype=46,XX", {
+        headers: { authorization: `Bearer ${plaintext}` },
+      });
+    // Both requests must succeed even though Free limit is 1 — internal keys
+    // never hit the counter.
+    const r1 = await handler(mk());
+    const r2 = await handler(mk());
+    assertEquals(r1.status, 200);
+    assertEquals(r2.status, 200);
+    assertEquals(r1.headers.get("x-monthly-quota-limit"), null);
+    assertEquals(r2.headers.get("x-monthly-quota-limit"), null);
   } finally {
     kv.close();
   }
