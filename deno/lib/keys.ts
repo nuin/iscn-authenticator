@@ -2,8 +2,9 @@
  * API key CRUD against Deno KV.
  *
  * Storage schema:
- *   ["keys", <sha256-hex>]    → ApiKeyRecord          primary store (lookup by plaintext)
- *   ["keys_index", <id>]      → <sha256-hex>          reverse index (lookup by id)
+ *   ["keys", <sha256-hex>]        → ApiKeyRecord      primary store (lookup by plaintext)
+ *   ["keys_index", <id>]          → <sha256-hex>      reverse index (lookup by id)
+ *   ["key_customer", <id>]        → <customer_id>     denorm for quota hot path
  *
  * Plaintext is never persisted. `createKey()` returns it once; callers must
  * show it to the operator at that moment or it is unrecoverable.
@@ -11,6 +12,11 @@
  * Key format:  iscn_live_<32 hex>  or  iscn_test_<32 hex>
  * The literal `iscn_live_` / `iscn_test_` prefix is deliberate — GitHub and
  * GitLab secret scanners detect this shape and flag leaked keys.
+ *
+ * `customer_id` is nullable: keys created before M2 have `customer_id = null`
+ * and bypass quota enforcement (grandfathered "internal" keys). New
+ * customer-owned keys populate both the record field and the denormalised
+ * `key_customer:<id>` index.
  */
 
 export type KeyEnvironment = "live" | "test";
@@ -22,6 +28,8 @@ export interface ApiKeyRecord {
   created_at: string; // ISO 8601
   last_used_at: string | null;
   revoked_at: string | null;
+  /** Null = grandfathered / internal. Non-null = owned by a customer. */
+  customer_id: string | null;
 }
 
 export interface CreatedKey {
@@ -85,9 +93,10 @@ export function isWellFormedKey(plaintext: string): boolean {
 export async function createKey(
   kv: Deno.Kv,
   label: string,
-  opts: { env?: KeyEnvironment } = {},
+  opts: { env?: KeyEnvironment; customerId?: string | null } = {},
 ): Promise<CreatedKey> {
   const env = opts.env ?? "live";
+  const customerId = opts.customerId ?? null;
   const plaintext = newPlaintext(env);
   const hash = await sha256Hex(plaintext);
   const record: ApiKeyRecord = {
@@ -97,14 +106,21 @@ export async function createKey(
     created_at: new Date().toISOString(),
     last_used_at: null,
     revoked_at: null,
+    customer_id: customerId,
   };
 
-  const result = await kv.atomic()
+  let tx = kv.atomic()
     .check({ key: ["keys", hash], versionstamp: null })
     .check({ key: ["keys_index", record.id], versionstamp: null })
     .set(["keys", hash], record)
-    .set(["keys_index", record.id], hash)
-    .commit();
+    .set(["keys_index", record.id], hash);
+  // Populate the denormalised index only for customer-owned keys. The
+  // quota middleware reads this key directly; grandfathered keys skip the
+  // lookup entirely when the denorm entry is absent.
+  if (customerId !== null) {
+    tx = tx.set(["key_customer", record.id], customerId);
+  }
+  const result = await tx.commit();
 
   if (!result.ok) {
     // Hash collision (astronomically unlikely) or id collision (retriable).
@@ -115,11 +131,34 @@ export async function createKey(
   return { record, plaintext };
 }
 
+/**
+ * Resolve a key's owning customer via the denormalised index.
+ * Returns `null` for grandfathered/internal keys (no customer).
+ */
+export async function lookupCustomerForKey(
+  kv: Deno.Kv,
+  keyId: string,
+): Promise<string | null> {
+  const entry = await kv.get<string>(["key_customer", keyId]);
+  return entry.value;
+}
+
+/**
+ * Coerce a KV-read record to current schema. Records written before M2
+ * lack `customer_id` — treat those as grandfathered (null).
+ */
+function normaliseRecord(raw: ApiKeyRecord): ApiKeyRecord {
+  if (raw.customer_id === undefined) {
+    return { ...raw, customer_id: null };
+  }
+  return raw;
+}
+
 /** Return all keys, sorted newest-first. */
 export async function listKeys(kv: Deno.Kv): Promise<ApiKeyRecord[]> {
   const out: ApiKeyRecord[] = [];
   for await (const entry of kv.list<ApiKeyRecord>({ prefix: ["keys"] })) {
-    out.push(entry.value);
+    out.push(normaliseRecord(entry.value));
   }
   out.sort((a, b) => b.created_at.localeCompare(a.created_at));
   return out;
@@ -174,7 +213,7 @@ export async function lookupKeyByPlaintext(
   const entry = await kv.get<ApiKeyRecord>(["keys", hash]);
   if (entry.value === null) return null;
   if (entry.value.revoked_at !== null) return null;
-  return entry.value;
+  return normaliseRecord(entry.value);
 }
 
 /**

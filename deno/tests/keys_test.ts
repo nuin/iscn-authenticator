@@ -3,6 +3,7 @@ import {
   createKey,
   isWellFormedKey,
   listKeys,
+  lookupCustomerForKey,
   lookupKeyByPlaintext,
   revokeKey,
   sha256Hex,
@@ -39,7 +40,74 @@ Deno.test("createKey: returns plaintext with correct shape", async () => {
     assertMatch(record.id, /^k_[0-9a-f]{12}$/);
     assertEquals(record.last_used_at, null);
     assertEquals(record.revoked_at, null);
+    assertEquals(record.customer_id, null);
     assertMatch(record.created_at, /^\d{4}-\d{2}-\d{2}T/);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("createKey: without customerId → no key_customer index entry", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { record } = await createKey(kv, "internal");
+    assertEquals(await lookupCustomerForKey(kv, record.id), null);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("createKey: with customerId populates denorm index", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { record } = await createKey(kv, "acme-labs", {
+      customerId: "c_abcdef0123456789",
+    });
+    assertEquals(record.customer_id, "c_abcdef0123456789");
+    assertEquals(
+      await lookupCustomerForKey(kv, record.id),
+      "c_abcdef0123456789",
+    );
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("lookupKeyByPlaintext: returns customer_id when set", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const { plaintext } = await createKey(kv, "acme", {
+      customerId: "c_deadbeef00000000",
+    });
+    const found = await lookupKeyByPlaintext(kv, plaintext);
+    assert(found !== null);
+    assertEquals(found.customer_id, "c_deadbeef00000000");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("lookupKeyByPlaintext: normalises legacy record (missing customer_id)", async () => {
+  // Simulate an M1-era record written without the customer_id field.
+  const kv = await openMemoryKv();
+  try {
+    const legacyPlaintext = "iscn_live_" + "a".repeat(32);
+    const hash = await sha256Hex(legacyPlaintext);
+    const legacyRecord = {
+      id: "k_legacy00001",
+      label: "legacy",
+      env: "live" as const,
+      created_at: "2026-01-01T00:00:00Z",
+      last_used_at: null,
+      revoked_at: null,
+      // intentionally no customer_id
+    };
+    await kv.set(["keys", hash], legacyRecord);
+    await kv.set(["keys_index", legacyRecord.id], hash);
+
+    const found = await lookupKeyByPlaintext(kv, legacyPlaintext);
+    assert(found !== null);
+    assertEquals(found.customer_id, null);
   } finally {
     kv.close();
   }
