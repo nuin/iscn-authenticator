@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [master, milestone-0-library-consolidation, milestone-1-security-hardening]
+    branches:
+      - master
+      - milestone-0-library-consolidation
+      - milestone-1-security-hardening
+      - milestone-2-monetization
   pull_request:
     branches: [master]
 
@@ -45,6 +49,12 @@ jobs:
         run: deno test --allow-read --unstable-sloppy-imports tests/
       - name: Run Deno app tests (auth, ratelimit, keys, integration)
         working-directory: deno
+        env:
+          SESSION_SECRET: ci_test_session_secret_32_bytes_min_length_ok
+          STRIPE_WEBHOOK_SECRET: whsec_ci_test_dummy
+          STRIPE_SECRET_KEY: sk_test_ci_dummy
+          STRIPE_PRICE_ID_PRO: price_ci_dummy
+          PUBLIC_BASE_URL: http://localhost:8000
         run: deno task test
 
   node-build-smoke:
