@@ -37,6 +37,8 @@ import { listKeysByCustomer, lookupKeyByPlaintext, revokeKey, rotateKey } from "
 import type { ApiKeyRecord } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
 import type { CustomerRecord } from "./customers.ts";
+import { createBillingPortalSession, createCheckoutSession } from "./stripe.ts";
+import { lookupSubscription, type SubscriptionRecord } from "./webhooks.ts";
 import {
   clearSessionCookie,
   createSession,
@@ -116,7 +118,15 @@ export async function handleDashboardRoute(
   }
   if (path === "/dashboard/billing") {
     if (req.method !== "GET") throw new MethodNotAllowedError(["GET"]);
-    return handleDashboardBilling(customer);
+    return await handleDashboardBilling(ctx, customer);
+  }
+  if (path === "/dashboard/billing/upgrade") {
+    if (req.method !== "POST") throw new MethodNotAllowedError(["POST"]);
+    return await handleDashboardBillingUpgrade(ctx, customer);
+  }
+  if (path === "/dashboard/billing/manage") {
+    if (req.method !== "POST") throw new MethodNotAllowedError(["POST"]);
+    return await handleDashboardBillingManage(ctx, customer);
   }
   throw new NotFoundError();
 }
@@ -275,14 +285,88 @@ async function handleDashboardKeysRevoke(
 // /dashboard/billing
 // ---------------------------------------------------------------------------
 
-function handleDashboardBilling(customer: CustomerRecord): Response {
+async function handleDashboardBilling(
+  ctx: DashboardCtx,
+  customer: CustomerRecord,
+): Promise<Response> {
+  const subscription = await lookupSubscription(ctx.kv, customer.id);
   return htmlResponse(
     renderDashboardLayout({
       tab: "billing",
       customer,
-      body: renderBillingBody(customer),
+      body: renderBillingBody(customer, ctx.config, subscription),
     }),
   );
+}
+
+/**
+ * Create a Stripe Checkout Session and redirect the browser to it.
+ *
+ * Guardrails:
+ *   - Pro customers cannot upgrade again — return to /dashboard/billing.
+ *   - Stripe config must be present; otherwise the button should not have
+ *     been rendered, but we surface a 400 just in case.
+ */
+async function handleDashboardBillingUpgrade(
+  ctx: DashboardCtx,
+  customer: CustomerRecord,
+): Promise<Response> {
+  if (customer.tier === "pro") {
+    return redirect303("/dashboard/billing");
+  }
+  if (!isStripeConfigured(ctx.config)) {
+    throw new BadRequestError("Stripe is not configured on this deployment");
+  }
+  const baseUrl = ctx.config.publicBaseUrl;
+  const session = await createCheckoutSession(ctx.config, {
+    customerId: customer.id,
+    customerEmail: customer.email,
+    stripeCustomerId: customer.stripe_customer_id,
+    priceId: ctx.config.stripePriceIdPro,
+    successUrl: `${baseUrl}/dashboard/billing?checkout=success`,
+    cancelUrl: `${baseUrl}/dashboard/billing?checkout=cancel`,
+  });
+  return redirect303(session.url);
+}
+
+/**
+ * Hand the customer over to Stripe's Billing Portal so they can update
+ * card details, download invoices, or cancel. Requires that we have
+ * already attached a Stripe customer id — which we only do via
+ * `checkout.session.completed`. Free customers who somehow hit this path
+ * get redirected back to billing.
+ */
+async function handleDashboardBillingManage(
+  ctx: DashboardCtx,
+  customer: CustomerRecord,
+): Promise<Response> {
+  if (!customer.stripe_customer_id) {
+    return redirect303("/dashboard/billing");
+  }
+  if (!isStripeConfigured(ctx.config)) {
+    throw new BadRequestError("Stripe is not configured on this deployment");
+  }
+  const session = await createBillingPortalSession(
+    ctx.config,
+    customer.stripe_customer_id,
+    `${ctx.config.publicBaseUrl}/dashboard/billing`,
+  );
+  return redirect303(session.url);
+}
+
+function isStripeConfigured(config: Config): boolean {
+  return Boolean(
+    config.stripeSecretKey &&
+      config.stripePriceIdPro &&
+      config.publicBaseUrl,
+  );
+}
+
+function redirect303(location: string): Response {
+  return new Response(null, {
+    status: 303,
+    headers: { "Location": location },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -584,18 +668,54 @@ function renderKeyRow(k: ApiKeyRecord): string {
   </tr>`;
 }
 
-function renderBillingBody(customer: CustomerRecord): string {
+function renderBillingBody(
+  customer: CustomerRecord,
+  config: Config,
+  subscription: SubscriptionRecord | null,
+): string {
+  const stripeReady = Boolean(
+    config.stripeSecretKey &&
+      config.stripePriceIdPro &&
+      config.publicBaseUrl,
+  );
+
   if (customer.tier === "pro") {
+    const period = subscription
+      ? `<p class="muted" style="margin-top: 0.5rem;">Current period ends <code>${
+        escHtml(subscription.current_period_end)
+      }</code>${
+        subscription.cancel_at_period_end ? " · <strong>will cancel at period end</strong>" : ""
+      }.</p>`
+      : "";
+    const manageForm = stripeReady && customer.stripe_customer_id
+      ? `<form method="POST" action="/dashboard/billing/manage" style="margin-top: 1rem;">
+          <button type="submit" class="btn btn-primary">Manage billing in Stripe</button>
+        </form>`
+      : `<p class="muted" style="margin-top: 0.5rem;">Stripe portal is unavailable on this deployment. Contact support to change billing.</p>`;
+    const statusBadge = customer.status === "past_due"
+      ? ' <span class="tag revoked">Payment past due</span>'
+      : customer.status === "cancelled"
+      ? ' <span class="tag revoked">Cancelled</span>'
+      : "";
     return `
       <h2>Billing</h2>
-      <p>You are on the <strong>Pro</strong> plan.</p>
-      <p class="muted" style="margin-top: 0.5rem;">Stripe self-serve portal launches with M2/9 — for now, contact support to cancel or change card.</p>
+      <p>You are on the <strong>Pro</strong> plan.${statusBadge}</p>
+      ${period}
+      ${manageForm}
     `;
   }
+
+  // Free tier: show upgrade button when Stripe is configured.
+  const upgradeForm = stripeReady
+    ? `<form method="POST" action="/dashboard/billing/upgrade" style="margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">Upgrade to Pro</button>
+      </form>`
+    : `<p class="muted" style="margin-top: 0.5rem;">Upgrade is disabled: Stripe is not configured on this deployment.</p>`;
   return `
     <h2>Billing</h2>
     <p>You are on the <strong>Free</strong> plan.</p>
-    <p class="muted" style="margin-top: 0.5rem;">Upgrade-to-Pro checkout launches with M2/9. The button will appear here.</p>
+    <p class="muted" style="margin-top: 0.5rem;">Pro removes the monthly-quota ceiling and unlocks higher burst limits.</p>
+    ${upgradeForm}
   `;
 }
 

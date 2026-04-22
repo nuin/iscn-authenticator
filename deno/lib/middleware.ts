@@ -49,6 +49,9 @@ import { clientIp, logRequest, requestId } from "./logging.ts";
 import type { RequestLog } from "./logging.ts";
 import { handleDashboardRoute, isDashboardPath } from "./dashboard.ts";
 import { handleSignupRoute, isSignupPath } from "./signup.ts";
+import { constructEvent, verifyWebhookSignature } from "./stripe.ts";
+import { handleStripeEvent } from "./webhooks.ts";
+import { StripeWebhookError } from "./errors.ts";
 import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
 
 export interface BuildHandlerOptions {
@@ -114,6 +117,8 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       } else if (path === "/keys/rotate") {
         response = await handleKeysRotate({ req, kv });
         keyId = (response as ResponseWithMeta)._keyId;
+      } else if (path === "/billing/webhook") {
+        response = await handleStripeWebhook({ req, kv, config, now });
       } else if (isDashboardPath(path)) {
         response = await handleDashboardRoute(req, { kv, config });
       } else if (isSignupPath(path)) {
@@ -340,6 +345,62 @@ async function handleKeysRotate(args: HandleKeysRotateArgs): Promise<Response> {
   }) as ResponseWithMeta;
   response._keyId = identity.key_id;
   return response;
+}
+
+/**
+ * POST /billing/webhook — Stripe-signed webhook.
+ *
+ * Pipeline:
+ *   1. Only POST is permitted.
+ *   2. Read the raw body as text (HMAC must see the exact bytes Stripe sent).
+ *   3. Verify the signature. Any failure → 400 via StripeWebhookError.
+ *   4. Parse the event into a typed StripeEvent.
+ *   5. Idempotency: CAS-check `stripe_events:<event.id>`. If already seen,
+ *      no-op (200). We set the marker BEFORE dispatch — this keeps a
+ *      persistently-failing handler from being DoS'd by Stripe's retry
+ *      machine. Operators investigate via logs + manual replay.
+ *   6. Dispatch to `handleStripeEvent`. Handler errors surface as 500 so
+ *      Stripe will retry (subject to (5) which prevents infinite loops).
+ *
+ * Response body is deliberately empty — Stripe only checks the status code.
+ */
+async function handleStripeWebhook(args: {
+  req: Request;
+  kv: Deno.Kv;
+  config: Config;
+  now: () => number;
+}): Promise<Response> {
+  const { req, kv, config, now } = args;
+  if (req.method !== "POST") {
+    throw new MethodNotAllowedError(["POST"]);
+  }
+  if (!config.stripeWebhookSecret) {
+    throw new StripeWebhookError("Webhook secret not configured");
+  }
+  const rawBody = await req.text();
+  const sigHeader = req.headers.get("stripe-signature");
+  await verifyWebhookSignature(
+    rawBody,
+    sigHeader,
+    config.stripeWebhookSecret,
+    Math.floor(now() / 1000),
+  );
+  const event = constructEvent(rawBody);
+
+  // Idempotency: atomic insert-if-absent. 7-day TTL covers Stripe's retry
+  // window (~3 days) comfortably without holding marker keys forever.
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const cas = await kv.atomic()
+    .check({ key: ["stripe_events", event.id], versionstamp: null })
+    .set(["stripe_events", event.id], 1, { expireIn: SEVEN_DAYS_MS })
+    .commit();
+  if (!cas.ok) {
+    // Already processed — Stripe retrying a successful delivery. Ack.
+    return new Response(null, { status: 200 });
+  }
+
+  await handleStripeEvent(kv, event);
+  return new Response(null, { status: 200 });
 }
 
 /**

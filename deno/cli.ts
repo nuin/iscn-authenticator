@@ -10,7 +10,7 @@
  */
 
 import { validateKaryotype } from "./lib/validator.ts";
-import type { ValidationResult, Abnormality } from "../packages/core/src/types.ts";
+import type { Abnormality, ValidationResult } from "../packages/core/src/types.ts";
 
 // ANSI color codes
 const colors = {
@@ -154,7 +154,7 @@ function printHumanReadable(karyotype: string, result: ValidationResult, verbose
       console.log(`  Abnormalities (${parsed.abnormalities.length}):`);
       for (const abn of parsed.abnormalities) {
         console.log(
-          `    - ${color(abn.raw, colors.yellow)}: ${formatAbnormality(abn)}`
+          `    - ${color(abn.raw, colors.yellow)}: ${formatAbnormality(abn)}`,
         );
       }
     } else {
@@ -202,10 +202,13 @@ async function main(): Promise<void> {
           valid: false,
           errors: [error instanceof Error ? error.message : String(error)],
           parsed: null,
-        })
+        }),
       );
     } else {
-      console.error(color("Error:", colors.bold, colors.red), error instanceof Error ? error.message : String(error));
+      console.error(
+        color("Error:", colors.bold, colors.red),
+        error instanceof Error ? error.message : String(error),
+      );
     }
     Deno.exit(2);
   }

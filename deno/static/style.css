@@ -12,7 +12,7 @@
   --color-invalid: #dc3545;
   --color-invalid-bg: #f8d7da;
   --color-border: #dee2e6;
-  --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  --font-mono: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   --radius: 8px;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -24,7 +24,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.6;

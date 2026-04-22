@@ -36,6 +36,27 @@ export interface Config {
    * session — intentional, since there is no in-flight secret rotation.
    */
   sessionSecret: string;
+  /**
+   * Stripe secret API key (`sk_test_...` or `sk_live_...`). Empty string
+   * disables all Stripe-backed flows (checkout, billing portal, webhooks
+   * return 503). Test vs live is inferred from the key prefix — no separate
+   * toggle.
+   */
+  stripeSecretKey: string;
+  /**
+   * Signing secret used to verify `Stripe-Signature` headers on webhook
+   * requests (`whsec_...`). Required whenever `stripeSecretKey` is set;
+   * otherwise webhooks reject all traffic.
+   */
+  stripeWebhookSecret: string;
+  /** Stripe Price ID for the Pro recurring subscription (e.g. `price_...`). */
+  stripePriceIdPro: string;
+  /**
+   * Public origin used to build Stripe Checkout success/cancel callback
+   * URLs (e.g. `https://api.example.com`). No trailing slash. Falls back to
+   * the request's own origin when empty — convenient for local dev.
+   */
+  publicBaseUrl: string;
 }
 
 const DEFAULTS: Config = {
@@ -51,6 +72,10 @@ const DEFAULTS: Config = {
   axiomApiToken: "",
   axiomDataset: "",
   sessionSecret: "",
+  stripeSecretKey: "",
+  stripeWebhookSecret: "",
+  stripePriceIdPro: "",
+  publicBaseUrl: "",
 };
 
 function parseIntEnv(name: string, fallback: number): number {
@@ -93,7 +118,15 @@ export function loadConfig(): Config {
     axiomApiToken: Deno.env.get("AXIOM_API_TOKEN") ?? DEFAULTS.axiomApiToken,
     axiomDataset: Deno.env.get("AXIOM_DATASET") ?? DEFAULTS.axiomDataset,
     sessionSecret: resolveSessionSecret(),
+    stripeSecretKey: Deno.env.get("STRIPE_SECRET_KEY") ?? DEFAULTS.stripeSecretKey,
+    stripeWebhookSecret: Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? DEFAULTS.stripeWebhookSecret,
+    stripePriceIdPro: Deno.env.get("STRIPE_PRICE_ID_PRO") ?? DEFAULTS.stripePriceIdPro,
+    publicBaseUrl: trimTrailingSlash(Deno.env.get("PUBLIC_BASE_URL") ?? DEFAULTS.publicBaseUrl),
   };
+}
+
+function trimTrailingSlash(s: string): string {
+  return s.endsWith("/") ? s.slice(0, -1) : s;
 }
 
 /**

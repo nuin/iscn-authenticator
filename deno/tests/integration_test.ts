@@ -7,7 +7,7 @@ import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { buildHandler } from "../lib/middleware.ts";
 import { defaultConfig } from "../lib/config.ts";
 import { createKey, revokeKey } from "../lib/keys.ts";
-import { createCustomer } from "../lib/customers.ts";
+import { attachStripeCustomer, createCustomer } from "../lib/customers.ts";
 
 async function openMemoryKv(): Promise<Deno.Kv> {
   return await Deno.openKv(":memory:");
@@ -313,7 +313,9 @@ Deno.test("OPTIONS preflight returns 204 with CORS headers", async () => {
     assertEquals(res.status, 204);
     assertEquals(res.headers.get("access-control-allow-origin"), "https://app.example");
     assert(res.headers.get("access-control-allow-methods")?.includes("POST"));
-    assert(res.headers.get("access-control-allow-headers")?.toLowerCase().includes("authorization"));
+    assert(
+      res.headers.get("access-control-allow-headers")?.toLowerCase().includes("authorization"),
+    );
   } finally {
     kv.close();
   }
@@ -734,4 +736,203 @@ Deno.test("debugErrors=true exposes error message in 500 body (dev only)", async
   // Debug mode exposes the raw message but NEVER a stack field.
   assert(body.message !== "Internal server error");
   assertEquals(body.stack, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// /billing/webhook — signature verification + idempotency end-to-end
+// ---------------------------------------------------------------------------
+
+const WEBHOOK_SECRET = "whsec_integration";
+
+async function hmacHex(secret: string, payload: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const buf = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(payload),
+  );
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function signedWebhookRequest(
+  body: string,
+  secret: string,
+  ts: number,
+): Promise<Request> {
+  const sig = await hmacHex(secret, `${ts}.${body}`);
+  return new Request("http://x/billing/webhook", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "stripe-signature": `t=${ts},v1=${sig}`,
+    },
+    body,
+  });
+}
+
+Deno.test("POST /billing/webhook: verified event flips tier to pro + is idempotent", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const customer = await createCustomer(kv, "webhook@example.com");
+    assert(customer);
+    const now = 1_700_000_000;
+    const handler = testHandler({
+      kv,
+      configOverrides: { stripeWebhookSecret: WEBHOOK_SECRET },
+      now: () => now * 1000,
+    });
+
+    const body = JSON.stringify({
+      id: "evt_int_1",
+      type: "checkout.session.completed",
+      created: now,
+      livemode: false,
+      data: {
+        object: {
+          id: "cs_test_1",
+          client_reference_id: customer.id,
+          customer: "cus_test_1",
+        },
+      },
+    });
+
+    // First delivery — processed and marked seen.
+    const res1 = await handler(await signedWebhookRequest(body, WEBHOOK_SECRET, now));
+    assertEquals(res1.status, 200);
+    const seen = await kv.get<number>(["stripe_events", "evt_int_1"]);
+    assertEquals(seen.value, 1);
+
+    // Second delivery (Stripe retry) — short-circuits on idempotency CAS.
+    const res2 = await handler(await signedWebhookRequest(body, WEBHOOK_SECRET, now));
+    assertEquals(res2.status, 200);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /billing/webhook: missing signature header → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({
+      kv,
+      configOverrides: { stripeWebhookSecret: WEBHOOK_SECRET },
+    });
+    const res = await handler(
+      new Request("http://x/billing/webhook", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+    );
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.error, "stripe_error");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /billing/webhook: bad signature → 400, event NOT marked seen", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const now = 1_700_000_000;
+    const handler = testHandler({
+      kv,
+      configOverrides: { stripeWebhookSecret: WEBHOOK_SECRET },
+      now: () => now * 1000,
+    });
+    const body = JSON.stringify({
+      id: "evt_bad_sig",
+      type: "checkout.session.completed",
+      created: now,
+      livemode: false,
+      data: { object: { id: "cs_bad" } },
+    });
+    // Sign under a different secret.
+    const req = await signedWebhookRequest(body, "whsec_other", now);
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+    // Idempotency marker must not be set — otherwise an attacker could
+    // poison future legitimate deliveries of the same event id.
+    const seen = await kv.get(["stripe_events", "evt_bad_sig"]);
+    assertEquals(seen.value, null);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /billing/webhook: no secret configured → 400", async () => {
+  const kv = await openMemoryKv();
+  try {
+    // Default config has stripeWebhookSecret: "".
+    const handler = testHandler({ kv });
+    const now = 1_700_000_000;
+    const req = await signedWebhookRequest(
+      JSON.stringify({
+        id: "evt_x",
+        type: "checkout.session.completed",
+        created: now,
+        livemode: false,
+        data: { object: {} },
+      }),
+      WEBHOOK_SECRET,
+      now,
+    );
+    const res = await handler(req);
+    assertEquals(res.status, 400);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /billing/webhook: GET → 405", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({
+      kv,
+      configOverrides: { stripeWebhookSecret: WEBHOOK_SECRET },
+    });
+    const res = await handler(
+      new Request("http://x/billing/webhook", { method: "GET" }),
+    );
+    assertEquals(res.status, 405);
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("POST /billing/webhook: invoice.payment_failed flips status to past_due", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const customer = await createCustomer(kv, "pd@example.com");
+    assert(customer);
+    await attachStripeCustomer(kv, customer.id, "cus_pd");
+    const now = 1_700_000_000;
+    const handler = testHandler({
+      kv,
+      configOverrides: { stripeWebhookSecret: WEBHOOK_SECRET },
+      now: () => now * 1000,
+    });
+    const body = JSON.stringify({
+      id: "evt_pd_1",
+      type: "invoice.payment_failed",
+      created: now,
+      livemode: false,
+      data: { object: { id: "in_1", customer: "cus_pd" } },
+    });
+    const res = await handler(await signedWebhookRequest(body, WEBHOOK_SECRET, now));
+    assertEquals(res.status, 200);
+    const entry = await kv.get<{ status: string }>(["customers", customer.id]);
+    assertEquals(entry.value?.status, "past_due");
+  } finally {
+    kv.close();
+  }
 });

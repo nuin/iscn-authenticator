@@ -38,7 +38,7 @@ function shouldUseNative(config?: boolean): boolean {
 async function validateViaApi(
   karyotype: string,
   apiUrl: string,
-  timeout: number
+  timeout: number,
 ): Promise<ValidationResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -119,7 +119,7 @@ function getScriptPath(customPath?: string): string {
 /** Validate via Python subprocess */
 async function validateViaSubprocess(
   karyotype: string,
-  config: ValidatorConfig
+  config: ValidatorConfig,
 ): Promise<ValidationResult> {
   const { timeout = 10000 } = config;
 
@@ -195,7 +195,7 @@ async function validateViaSubprocess(
  */
 export async function validateKaryotype(
   karyotype: string,
-  config: ValidatorConfig = {}
+  config: ValidatorConfig = {},
 ): Promise<ValidationResult> {
   const { timeout = 10000 } = config;
 

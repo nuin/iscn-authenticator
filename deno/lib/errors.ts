@@ -16,6 +16,7 @@ export type ErrorCode =
   | "invalid_signup"
   | "not_found"
   | "method_not_allowed"
+  | "stripe_error"
   | "internal";
 
 export interface ErrorPayload {
@@ -114,6 +115,17 @@ export class MethodNotAllowedError extends AppError {
     super("method_not_allowed", 405, "Method not allowed", {
       Allow: allowed.join(", "),
     });
+  }
+}
+
+/**
+ * Stripe webhook rejection (400). Distinct from `invalid_request` so log
+ * alerts can target webhook signature / payload problems specifically — a
+ * surge of these usually means a rotated webhook secret or a bad deploy.
+ */
+export class StripeWebhookError extends AppError {
+  constructor(message = "Stripe webhook rejected") {
+    super("stripe_error", 400, message);
   }
 }
 

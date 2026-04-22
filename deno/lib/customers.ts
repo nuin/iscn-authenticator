@@ -4,6 +4,7 @@
  * Storage schema:
  *   ["customers", <customer_id>]                    → CustomerRecord
  *   ["customers_by_email", <email_lowercase>]       → <customer_id>   (unique-by-email index)
+ *   ["customers_by_stripe", <stripe_customer_id>]   → <customer_id>   (reverse index; populated on attachStripeCustomer)
  *
  * A customer owns zero or more API keys (many-to-one). Keys created before
  * M2 have `customer_id = null` and bypass quota enforcement — see
@@ -173,6 +174,10 @@ export async function updateCustomerStatus(
 /**
  * Attach a Stripe customer id. Called the first time a customer hits
  * Checkout; subsequent checkouts reuse the same Stripe customer record.
+ *
+ * Also writes the `customers_by_stripe:<stripe_customer_id>` reverse
+ * index so webhook handlers can resolve a `CustomerRecord` from the
+ * Stripe customer id alone — avoiding a full-table scan.
  */
 export async function attachStripeCustomer(
   kv: Deno.Kv,
@@ -188,9 +193,24 @@ export async function attachStripeCustomer(
   const result = await kv.atomic()
     .check(entry)
     .set(["customers", id], updated)
+    .set(["customers_by_stripe", stripeCustomerId], id)
     .commit();
   if (!result.ok) return attachStripeCustomer(kv, id, stripeCustomerId);
   return updated;
+}
+
+/**
+ * Look up our customer by the Stripe customer id. Used by webhook
+ * handlers to resolve events whose payload carries only the Stripe
+ * side's identifier.
+ */
+export async function lookupCustomerByStripeId(
+  kv: Deno.Kv,
+  stripeCustomerId: string,
+): Promise<CustomerRecord | null> {
+  const idx = await kv.get<string>(["customers_by_stripe", stripeCustomerId]);
+  if (idx.value === null) return null;
+  return await lookupCustomerById(kv, idx.value);
 }
 
 /** Return all customers, sorted newest-first. */

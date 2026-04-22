@@ -1,9 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertMatch,
-  assertRejects,
-} from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertMatch, assertRejects } from "jsr:@std/assert@^1.0.0";
 import {
   attachStripeCustomer,
   canonicaliseEmail,

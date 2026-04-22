@@ -22,12 +22,7 @@
  */
 
 import { loadConfig } from "./lib/config.ts";
-import {
-  createKey,
-  type KeyEnvironment,
-  listKeys,
-  revokeKey,
-} from "./lib/keys.ts";
+import { createKey, type KeyEnvironment, listKeys, revokeKey } from "./lib/keys.ts";
 import {
   createCustomer,
   type CustomerTier,
@@ -137,11 +132,8 @@ async function cmdKeysList(kv: Deno.Kv): Promise<void> {
     k.last_used_at ?? "-",
     k.revoked_at ?? "-",
   ]);
-  const widths = header.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => r[i].length))
-  );
-  const fmt = (cols: string[]) =>
-    cols.map((c, i) => c.padEnd(widths[i])).join("  ");
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
+  const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
   console.log(fmt(header));
   console.log(fmt(widths.map((w) => "-".repeat(w))));
   for (const row of rows) console.log(fmt(row));
@@ -197,11 +189,8 @@ async function cmdCustomersList(kv: Deno.Kv): Promise<void> {
     c.stripe_customer_id ?? "-",
     c.created_at,
   ]);
-  const widths = header.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => r[i].length))
-  );
-  const fmt = (cols: string[]) =>
-    cols.map((c, i) => c.padEnd(widths[i])).join("  ");
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
+  const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
   console.log(fmt(header));
   console.log(fmt(widths.map((w) => "-".repeat(w))));
   for (const row of rows) console.log(fmt(row));
@@ -227,9 +216,7 @@ if (import.meta.main) {
     Deno.exit(0);
   }
   const cfg = loadConfig();
-  const kv = cfg.kvPath !== null
-    ? await Deno.openKv(cfg.kvPath)
-    : await Deno.openKv();
+  const kv = cfg.kvPath !== null ? await Deno.openKv(cfg.kvPath) : await Deno.openKv();
   try {
     if (cmd === "keys:create") await cmdKeysCreate(kv, rest);
     else if (cmd === "keys:list") await cmdKeysList(kv);
