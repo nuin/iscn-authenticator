@@ -38,7 +38,14 @@ import { RateLimitError } from "./errors.ts";
 import { checkAndConsume, tokenBucketHeaders } from "./token_bucket.ts";
 import { lookupCustomerForKey, rotateKey, touchKey } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
-import { incrementUsage, monthlyQuotaHeaders, quotaFor, type QuotaSnapshot } from "./quota.ts";
+import {
+  currentMonthYYYYMM,
+  incrementUsage,
+  monthlyQuotaHeaders,
+  peekUsage,
+  quotaFor,
+  type QuotaSnapshot,
+} from "./quota.ts";
 import {
   baseSecurityHeaders,
   dashboardCspHeader,
@@ -116,6 +123,9 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
         keyId = (response as ResponseWithMeta)._keyId;
       } else if (path === "/keys/rotate") {
         response = await handleKeysRotate({ req, kv });
+        keyId = (response as ResponseWithMeta)._keyId;
+      } else if (path === "/usage") {
+        response = await handleUsage({ req, kv, config, now });
         keyId = (response as ResponseWithMeta)._keyId;
       } else if (path === "/billing/webhook") {
         response = await handleStripeWebhook({ req, kv, config, now });
@@ -345,6 +355,88 @@ async function handleKeysRotate(args: HandleKeysRotateArgs): Promise<Response> {
   }) as ResponseWithMeta;
   response._keyId = identity.key_id;
   return response;
+}
+
+/**
+ * GET /usage — JSON quota snapshot for the authenticated customer.
+ *
+ * Response shape:
+ *   {
+ *     customer_id: string,
+ *     tier: "free" | "pro",
+ *     month: "YYYY-MM",
+ *     used: number,
+ *     limit: number,
+ *     remaining: number,
+ *     reset_at: number,        // Unix seconds at start of next UTC month
+ *   }
+ *
+ * Read-only: does NOT bump the counter (validate bumps on its own hot path).
+ * Grandfathered keys (customer_id=null) → 404. The endpoint is meaningless
+ * for internal keys that bypass quota.
+ */
+interface HandleUsageArgs {
+  req: Request;
+  kv: Deno.Kv;
+  config: Config;
+  now: () => number;
+}
+
+async function handleUsage(args: HandleUsageArgs): Promise<Response> {
+  const { req, kv, config, now } = args;
+
+  if (req.method !== "GET") {
+    throw new MethodNotAllowedError(["GET"]);
+  }
+
+  const identity = await authenticate(req, kv);
+
+  const customerId = await lookupCustomerForKey(kv, identity.key_id);
+  if (customerId === null) {
+    // Internal/grandfathered key — the concept of monthly quota does not
+    // apply. 404 rather than 200 with zeroes so a misconfigured client
+    // cannot silently assume a 0-usage pro plan.
+    throw new NotFoundError();
+  }
+
+  const customer = await lookupCustomerById(kv, customerId);
+  if (customer === null) {
+    // Denorm points at a deleted customer — internal integrity issue.
+    throw new NotFoundError();
+  }
+
+  const limit = quotaFor(customer.tier, config);
+  const nowDate = new Date(now());
+  const snapshot = await peekUsage(kv, customer.id, {
+    tier: customer.tier,
+    limit,
+    now: nowDate,
+  });
+  const month = formatMonth(currentMonthYYYYMM(nowDate));
+
+  const body = {
+    customer_id: customer.id,
+    tier: snapshot.tier,
+    month,
+    used: snapshot.used,
+    limit: snapshot.limit,
+    remaining: snapshot.remaining,
+    reset_at: snapshot.reset_at,
+  };
+  const response: ResponseWithMeta = new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      "Content-Type": CONTENT_TYPE_JSON,
+      ...monthlyQuotaHeaders(snapshot),
+    },
+  }) as ResponseWithMeta;
+  response._keyId = identity.key_id;
+  return response;
+}
+
+/** "202604" -> "2026-04" for wire-level readability. */
+function formatMonth(yyyymm: string): string {
+  return `${yyyymm.slice(0, 4)}-${yyyymm.slice(4, 6)}`;
 }
 
 /**
