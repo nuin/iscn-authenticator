@@ -936,3 +936,50 @@ Deno.test("POST /billing/webhook: invoice.payment_failed flips status to past_du
     kv.close();
   }
 });
+
+// ---------------------------------------------------------------------------
+// /explain — SEO landing pages
+// ---------------------------------------------------------------------------
+
+Deno.test("GET /explain returns curated list index", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv, configOverrides: {} });
+    const res = await handler(new Request("http://x/explain"));
+    assertEquals(res.status, 200);
+    const html = await res.text();
+    assert(html.includes("Curated ISCN Explanations"));
+    assert(html.includes("47,XX,+21")); // At least one known signature from curated.json
+    assertEquals(res.headers.get("content-type"), "text/html; charset=utf-8");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("GET /explain/:signature returns detail page", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv, configOverrides: {} });
+    // Signature from curated.json (t(9;22)(q34;q11.2))
+    const sig = encodeURIComponent("t(9;22)(q34;q11.2)");
+    const res = await handler(new Request(`http://x/explain/${sig}`));
+    assertEquals(res.status, 200);
+    const html = await res.text();
+    assert(html.includes("Philadelphia chromosome"));
+    assert(html.includes("t(9;22)(q34;q11.2)"));
+    assert(html.includes("Chronic Myeloid Leukemia"));
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("GET /explain/:signature returns 404 for unknown signature", async () => {
+  const kv = await openMemoryKv();
+  try {
+    const handler = testHandler({ kv, configOverrides: {} });
+    const res = await handler(new Request("http://x/explain/not-a-signature"));
+    assertEquals(res.status, 404);
+  } finally {
+    kv.close();
+  }
+});

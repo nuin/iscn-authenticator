@@ -15,13 +15,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./data/*": "./data/*"
   },
   "files": [
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
     "dist/**/*.d.ts.map",
+    "data/**/*",
     "README.md",
     "LICENSE"
   ],

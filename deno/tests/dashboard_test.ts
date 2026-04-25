@@ -538,6 +538,49 @@ Deno.test("GET /dashboard/billing shows Pro plan for pro customer", async () => 
 });
 
 // ---------------------------------------------------------------------------
+// /dashboard/batch
+// ---------------------------------------------------------------------------
+
+Deno.test("GET /dashboard/batch allowed for Pro customer", async () => {
+  const kv = await openKv();
+  try {
+    const customer = await createCustomer(kv, "pro-batch@example.com", { tier: "pro" });
+    assert(customer !== null);
+    const cookie = await sessionFor(kv, customer!.id);
+    const res = await handleDashboardRoute(
+      new Request("http://x/dashboard/batch", {
+        headers: sessionCookieHeader(cookie),
+      }),
+      ctxFor(kv),
+    );
+    assertEquals(res.status, 200);
+    const body = await res.text();
+    assertStringIncludes(body, "Batch Validation");
+    assertStringIncludes(body, "id=\"batch-input\"");
+  } finally {
+    kv.close();
+  }
+});
+
+Deno.test("GET /dashboard/batch redirects Free customer to billing", async () => {
+  const kv = await openKv();
+  try {
+    const { customer } = await seedCustomerWithKey(kv, "free@example.com");
+    const cookie = await sessionFor(kv, customer.id);
+    const res = await handleDashboardRoute(
+      new Request("http://x/dashboard/batch", {
+        headers: sessionCookieHeader(cookie),
+      }),
+      ctxFor(kv),
+    );
+    assertEquals(res.status, 303);
+    assertEquals(res.headers.get("location"), "/dashboard/billing");
+  } finally {
+    kv.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Unknown route under /dashboard/*
 // ---------------------------------------------------------------------------
 

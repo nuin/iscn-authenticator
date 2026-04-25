@@ -6,14 +6,13 @@ from iscn_authenticator.parser import KaryotypeParser, ParseError
 from iscn_authenticator.engine import RuleEngine
 from iscn_authenticator.rules.chromosome import ALL_CHROMOSOME_RULES
 from iscn_authenticator.rules.abnormality import ALL_ABNORMALITY_RULES
+from iscn_authenticator.explain import explain
 
 # Initialize parser and engine
 _parser = KaryotypeParser()
 _engine = RuleEngine()
 _engine.add_rules(ALL_CHROMOSOME_RULES)
 _engine.add_abnormality_rules(ALL_ABNORMALITY_RULES)
-
-
 def validate_karyotype(karyotype: str) -> ValidationResult:
     """
     Validate an ISCN karyotype string.
@@ -22,6 +21,7 @@ def validate_karyotype(karyotype: str) -> ValidationResult:
     - valid: bool indicating if karyotype is valid
     - errors: list of error messages if invalid
     - parsed: KaryotypeAST if parsing succeeded
+    - explanation: Optional[ExplainResult] providing clinical context
     """
     try:
         ast = _parser.parse(karyotype)
@@ -32,7 +32,15 @@ def validate_karyotype(karyotype: str) -> ValidationResult:
             parsed=None
         )
 
-    return _engine.validate(ast)
+    result = _engine.validate(ast)
+
+    # Populate explanations
+    if result.parsed:
+        result.explanation = explain(result.parsed)
+        for abn in result.parsed.abnormalities:
+            abn.explanation = explain(abn)
+
+    return result
 
 
 def is_valid_karyotype(karyotype: str) -> bool:

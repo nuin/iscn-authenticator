@@ -1,0 +1,26 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "iscn-web"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "iscn-db"
+database_id = "your-database-id-here"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "your-kv-id-here"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "iscn-batches"
+
+[vars]
+# Axiom for structured logs
+# AXIOM_API_TOKEN = ""
+# AXIOM_DATASET = ""
+# Stripe
+# STRIPE_SECRET_KEY = ""
+# STRIPE_WEBHOOK_SECRET = ""
+# STRIPE_PRICE_ID_PRO = ""
+# PUBLIC_BASE_URL = ""

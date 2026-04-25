@@ -21,6 +21,7 @@ export interface Abnormality {
   uncertain: boolean;
   copy_count: number | null;
   raw: string; // Original string
+  explanation?: ExplainResult;
 }
 
 /** Karyotype-level modifiers. */
@@ -61,7 +62,29 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   parsed: KaryotypeAST | null;
+  explanation?: ExplainResult;
 }
+
+/** Result of the Explain module. */
+export interface ExplainResult {
+  /** One sentence, used in hover tooltip */
+  summary: string;
+  /** 1-3 paragraphs, used in side panel */
+  detail: string;
+  /** ISCN spec citation */
+  citation: { section: string; page?: number } | null;
+  /** External references */
+  refs: {
+    omim?: string[];
+    hpo?: string[];
+    clinvar?: string[];
+  };
+  /** Source of the explanation */
+  confidence: "template" | "curated" | "none";
+}
+
+/** Any node in the Karyotype AST that can be explained. */
+export type KaryotypeNode = KaryotypeAST | Abnormality;
 
 /** A validation rule for karyotype components. */
 export interface Rule {

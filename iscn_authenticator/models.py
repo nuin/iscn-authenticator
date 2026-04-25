@@ -3,6 +3,15 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
+class ExplainResult:
+    """Result of the Explain module."""
+    summary: str                     # One sentence summary
+    detail: str                      # Detailed description
+    citation: Optional[dict]         # ISCN spec citation: {"section": "...", "page": ...}
+    refs: dict[str, list[str]]       # External references: {"omim": [...]}
+    confidence: str                  # "template" | "curated" | "none"
+
+@dataclass
 class Breakpoint:
     """Represents a chromosomal breakpoint like p11.2 or q34."""
     arm: str                         # "p", "q", "cen", "ter"
@@ -54,3 +63,6 @@ class ValidationResult:
     valid: bool
     errors: list[str]
     parsed: Optional[KaryotypeAST]
+    explanation: Optional[ExplainResult] = None
+
+KaryotypeNode = KaryotypeAST | Abnormality

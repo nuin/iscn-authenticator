@@ -25,6 +25,17 @@ export type {
 export { KaryotypeParser, ParseError } from "./parser.js";
 export { RuleEngine } from "./engine.js";
 
+// Explain module
+export { explain } from "./explain/index.js";
+
+// Ideogram data + helpers
+export {
+  getChromosomeBands,
+  mapBandToRange,
+  getAvailableChromosomes,
+} from "./ideogram.js";
+export type { Band, ChromosomeBands } from "./ideogram.js";
+
 // Rule sets (consumers building custom rule stacks)
 export { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
 export { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
