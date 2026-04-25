@@ -5,27 +5,50 @@ build-backend = "hatchling.build"
 [project]
 name = "iscn-authenticator"
 version = "0.2.0"
-description = "ISCN 2024 karyotype validation — parser, rule engine, and types."
+description = "ISCN 2024 karyotype validation — parser, rule engine, and types. Pure Python, zero runtime dependencies."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Paulo Nuin" }]
-keywords = ["iscn", "karyotype", "cytogenetics", "bioinformatics", "validation"]
+keywords = [
+  "iscn",
+  "iscn-2024",
+  "karyotype",
+  "cytogenetics",
+  "cytogenomics",
+  "bioinformatics",
+  "validation",
+  "nomenclature",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
+  "Intended Audience :: Healthcare Industry",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+  "Typing :: Typed",
 ]
 dependencies = []
 
 [project.urls]
 Homepage = "https://iscn.bioinformat.com"
 Repository = "https://github.com/nuin/iscn-authenticator"
+Issues = "https://github.com/nuin/iscn-authenticator/issues"
+Changelog = "https://github.com/nuin/iscn-authenticator/blob/master/CHANGELOG.md"
+Documentation = "https://github.com/nuin/iscn-authenticator#readme"
+
+[project.optional-dependencies]
+# Stdlib-only test runner; this exists so `pip install .[test]` is a no-op
+# and downstream packagers can install a single extra to confirm the test
+# suite is wired up. unittest itself is part of the stdlib.
+test = []
 
 [tool.hatch.build.targets.wheel]
 packages = ["iscn_authenticator"]
@@ -36,5 +59,7 @@ include = [
   "fixtures/",
   "tests/",
   "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
   "pyproject.toml",
 ]
