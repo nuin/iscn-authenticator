@@ -7,7 +7,7 @@ tag conventions, one per publishable artefact:
 | ---------------- | -------------------- | -------- | ------------------------------------------ |
 | `v*-core`        | `@iscn/core`         | npm      | `.github/workflows/publish-npm.yml`        |
 | `v*-client`      | `@iscn/client`       | npm      | `.github/workflows/publish-npm-client.yml` (M3a/8) |
-| `v*-py`          | `iscn-authenticator` | PyPI     | `.github/workflows/publish-pypi.yml` (M3a/4) |
+| `v*-py`          | `iscn-authenticator` | PyPI     | `.github/workflows/publish-pypi.yml`       |
 | `v*-py-client`   | `iscn-client`        | PyPI     | `.github/workflows/publish-pypi-client.yml` (M3a/7) |
 
 The version embedded in the tag must match the version recorded in the
@@ -55,15 +55,40 @@ The `publish-npm.yml` workflow will:
 5. Smoke-test the built bundle against `46,XX`.
 6. `npm publish --access public --provenance`.
 
+## Publishing `iscn-authenticator`
+
+```bash
+# bump version in pyproject.toml + CHANGELOG.md, commit
+git commit -am "chore(py): v0.2.1"
+git tag v0.2.1-py
+git push origin master --tags
+```
+
+The `publish-pypi.yml` workflow will:
+
+1. Check out the tagged commit.
+2. Run `scripts/verify-pypi-tag.py` (asserts tag == `pyproject.toml` version,
+   rejects `v*-py-client` tags so the wrong workflow can never fire).
+3. `pip install build twine`.
+4. `python -m build` (sdist + wheel via hatchling).
+5. `twine check dist/*`.
+6. Smoke-test the wheel: `pip install dist/*.whl` in a fresh venv and import.
+7. `twine upload --non-interactive dist/*` using `PYPI_TOKEN`.
+
 ## Post-release verification
 
 ```bash
+# npm
 npm view @iscn/core version
-# → 0.1.1
 npm install @iscn/core@latest --prefix /tmp/verify
-node -e "import('@iscn/core').then(m => console.log(m.isValidKaryotypeNative('46,XX')))" \
-  --input-type=module
+node --input-type=module \
+  -e "import('@iscn/core').then(m => console.log(m.isValidKaryotypeNative('46,XX')))"
+
+# PyPI
+pip index versions iscn-authenticator
+python -m venv /tmp/verify-py && /tmp/verify-py/bin/pip install -U iscn-authenticator
+/tmp/verify-py/bin/python -c "from iscn_authenticator import is_valid_karyotype; print(is_valid_karyotype('46,XX'))"
 ```
 
-Additional sections for the other three packages will be added as their
-workflows land (M3a/4, M3a/7, M3a/8).
+Additional sections for the two client packages will be added as their
+workflows land (M3a/7, M3a/8).
