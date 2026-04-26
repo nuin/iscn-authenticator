@@ -22,6 +22,9 @@ const config = loadConfig();
 const kv = await Deno.openKv(config.kvPath ?? undefined);
 
 const staticDir = new URL("./static", import.meta.url).pathname;
+const openapiYaml = await Deno.readTextFile(
+  new URL("../docs/openapi.yaml", import.meta.url),
+);
 
 let logSink: ((line: string) => void) | undefined;
 if (config.axiomApiToken && config.axiomDataset) {
@@ -32,7 +35,7 @@ if (config.axiomApiToken && config.axiomDataset) {
   logSink = tee((line) => console.log(line), axiom.log);
 }
 
-const handler = buildHandler({ kv, config, staticDir, logSink });
+const handler = buildHandler({ kv, config, staticDir, openapiYaml, logSink });
 
 console.log(`
   ISCN Karyotype Validator Server

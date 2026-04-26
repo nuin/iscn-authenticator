@@ -1,0 +1,553 @@
+openapi: 3.1.0
+info:
+  title: ISCN Authenticator API
+  version: 0.2.0
+  summary: ISCN 2024 karyotype validation as a service.
+  description: |
+    Validates karyotype strings against the 2024 International System for
+    Human Cytogenomic Nomenclature (ISCN) and returns a structured AST
+    alongside any rule violations.
+
+    All requests are authenticated by API key (Bearer or `X-API-Key`)
+    except for `/health`, `/status`, `/openapi.json`, and `/docs`.
+
+    Errors share a common envelope:
+
+    ```json
+    { "error": "rate_limited", "message": "...", "request_id": "..." }
+    ```
+
+    See the `ApiError` schema and the `ErrorCode` enum for the full set.
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: ISCN Authenticator
+    url: https://github.com/nuin/iscn-authenticator
+    email: nuin@genedrift.org
+
+servers:
+  - url: https://iscn.bioinformat.com
+    description: Reference deployment
+  - url: http://localhost:8000
+    description: Local dev
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: validation
+    description: ISCN karyotype validation.
+  - name: account
+    description: Customer-facing account endpoints (usage, key management).
+  - name: meta
+    description: Liveness, status, spec discovery.
+  - name: billing
+    description: Stripe webhook ingest. Not for direct customer use.
+
+paths:
+  /health:
+    get:
+      tags: [meta]
+      summary: Liveness probe
+      description: Cheap liveness check; does not touch KV.
+      security: []
+      responses:
+        "200":
+          description: Service is live.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+
+  /openapi.json:
+    get:
+      tags: [meta]
+      summary: OpenAPI 3.1 specification (JSON)
+      description: |
+        The full OpenAPI 3.1 spec for this API as JSON. The canonical source
+        is `docs/openapi.yaml` in the repository; this endpoint serves the
+        same document parsed to JSON.
+      security: []
+      responses:
+        "200":
+          description: OpenAPI document.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /validate:
+    get:
+      tags: [validation]
+      summary: Validate a karyotype string (query parameter)
+      parameters:
+        - name: karyotype
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/KaryotypeString"
+      responses:
+        "200":
+          description: Validation result.
+          headers:
+            X-RateLimit-Limit: { $ref: "#/components/headers/X-RateLimit-Limit" }
+            X-RateLimit-Remaining: { $ref: "#/components/headers/X-RateLimit-Remaining" }
+            X-RateLimit-Reset: { $ref: "#/components/headers/X-RateLimit-Reset" }
+            X-Monthly-Quota-Limit: { $ref: "#/components/headers/X-Monthly-Quota-Limit" }
+            X-Monthly-Quota-Remaining: { $ref: "#/components/headers/X-Monthly-Quota-Remaining" }
+            X-Monthly-Quota-Reset: { $ref: "#/components/headers/X-Monthly-Quota-Reset" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "402":
+          $ref: "#/components/responses/QuotaExceeded"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+    post:
+      tags: [validation]
+      summary: Validate a karyotype string (JSON body)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [karyotype]
+              properties:
+                karyotype:
+                  $ref: "#/components/schemas/KaryotypeString"
+      responses:
+        "200":
+          description: Validation result.
+          headers:
+            X-RateLimit-Limit: { $ref: "#/components/headers/X-RateLimit-Limit" }
+            X-RateLimit-Remaining: { $ref: "#/components/headers/X-RateLimit-Remaining" }
+            X-RateLimit-Reset: { $ref: "#/components/headers/X-RateLimit-Reset" }
+            X-Monthly-Quota-Limit: { $ref: "#/components/headers/X-Monthly-Quota-Limit" }
+            X-Monthly-Quota-Remaining: { $ref: "#/components/headers/X-Monthly-Quota-Remaining" }
+            X-Monthly-Quota-Reset: { $ref: "#/components/headers/X-Monthly-Quota-Reset" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "402":
+          $ref: "#/components/responses/QuotaExceeded"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "413":
+          $ref: "#/components/responses/BodyTooLarge"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /usage:
+    get:
+      tags: [account]
+      summary: Monthly usage snapshot
+      description: |
+        Returns the current month's request count and quota for the
+        authenticated customer. Read-only; does not bump the counter.
+
+        Grandfathered keys (no associated customer) return `404`.
+      responses:
+        "200":
+          description: Usage snapshot.
+          headers:
+            X-Monthly-Quota-Limit: { $ref: "#/components/headers/X-Monthly-Quota-Limit" }
+            X-Monthly-Quota-Remaining: { $ref: "#/components/headers/X-Monthly-Quota-Remaining" }
+            X-Monthly-Quota-Reset: { $ref: "#/components/headers/X-Monthly-Quota-Reset" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageSnapshot"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /keys/rotate:
+    post:
+      tags: [account]
+      summary: Rotate the calling API key
+      description: |
+        Issues a new API key with the same label/customer/environment as
+        the calling key, then immediately revokes the calling key. There is
+        no grace window — the next request must use the new key.
+
+        The plaintext is shown only in this response. Store it before the
+        connection closes.
+      responses:
+        "200":
+          description: New key issued. Old key is revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RotateKeyResult"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /billing/webhook:
+    post:
+      tags: [billing]
+      summary: Stripe webhook ingest
+      description: |
+        Stripe-only endpoint. Validates the `Stripe-Signature` header against
+        `STRIPE_WEBHOOK_SECRET` and dispatches the event to the billing
+        handlers. Idempotent on `event.id` for 7 days. The body is empty
+        on success — Stripe checks status code only.
+      security:
+        - StripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Stripe Event payload (see Stripe API docs).
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Event accepted (or already processed).
+        "400":
+          description: Signature or payload rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: |
+        `Authorization: Bearer iscn_live_...` — the value returned by
+        `/signup` or by `keys:create` in the admin CLI.
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Alternative to `Authorization: Bearer`. Either header alone is
+        sufficient. Sending both is allowed but redundant.
+    StripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: |
+        Stripe webhook signature header. Validated against
+        `STRIPE_WEBHOOK_SECRET` server-side; not for general use.
+
+  headers:
+    X-RateLimit-Limit:
+      description: Token-bucket capacity (max burst).
+      schema: { type: integer, minimum: 1 }
+    X-RateLimit-Remaining:
+      description: Tokens remaining in the bucket after this request.
+      schema: { type: integer, minimum: 0 }
+    X-RateLimit-Reset:
+      description: Unix seconds at which the bucket would be fully refilled.
+      schema: { type: integer, minimum: 0 }
+    X-Monthly-Quota-Limit:
+      description: Monthly request quota for the customer's tier.
+      schema: { type: integer, minimum: 0 }
+    X-Monthly-Quota-Remaining:
+      description: Requests remaining in the current calendar month (UTC).
+      schema: { type: integer, minimum: 0 }
+    X-Monthly-Quota-Reset:
+      description: Unix seconds at the start of the next UTC month.
+      schema: { type: integer, minimum: 0 }
+    Retry-After:
+      description: Seconds the client should wait before retrying.
+      schema: { type: integer, minimum: 1 }
+    WWW-Authenticate:
+      description: Authentication challenge for 401 responses.
+      schema: { type: string }
+
+  schemas:
+    KaryotypeString:
+      type: string
+      description: |
+        ISCN 2024 karyotype, e.g. `46,XX`, `47,XY,+21`, `46,XX,t(9;22)(q34;q11.2)`.
+      minLength: 1
+      maxLength: 4096
+      examples:
+        - "46,XX"
+        - "47,XY,+21"
+        - "46,XX,del(5)(q13q33)"
+        - "46,XX,t(9;22)(q34;q11.2)"
+        - "47,XY,+21[8]/46,XY[12]"
+
+    ErrorCode:
+      type: string
+      enum:
+        - unauthenticated
+        - rate_limited
+        - quota_exceeded
+        - body_too_large
+        - invalid_request
+        - invalid_signup
+        - not_found
+        - method_not_allowed
+        - stripe_error
+        - internal
+
+    ApiError:
+      type: object
+      required: [error, message, request_id]
+      properties:
+        error: { $ref: "#/components/schemas/ErrorCode" }
+        message:
+          type: string
+          description: Human-readable detail (never includes a stack trace).
+        request_id:
+          type: string
+          description: Server-assigned ID for log correlation.
+
+    Breakpoint:
+      type: object
+      required: [arm, region, band, subband, uncertain]
+      properties:
+        arm: { type: string, description: "p, q, cen, ter" }
+        region: { type: [integer, "null"] }
+        band: { type: [integer, "null"] }
+        subband: { type: [string, "null"] }
+        uncertain: { type: boolean }
+
+    Abnormality:
+      type: object
+      required: [type, chromosome, breakpoints, inheritance, uncertain, copy_count, raw]
+      properties:
+        type:
+          type: string
+          description: "Operator: +, -, del, dup, inv, t, ins, i, idic, der, dic, r, rob, trp, mar, ..."
+        chromosome:
+          type: string
+          description: Chromosome identifier; multi-chr events use `;` separators.
+        breakpoints:
+          type: array
+          items: { $ref: "#/components/schemas/Breakpoint" }
+        inheritance:
+          type: [string, "null"]
+          enum: [mat, pat, dn, null]
+        uncertain: { type: boolean }
+        copy_count: { type: [integer, "null"] }
+        raw: { type: string }
+        explanation: { $ref: "#/components/schemas/ExplainResult" }
+
+    Modifiers:
+      type: object
+      properties:
+        mosaic: { type: boolean }
+        chimera: { type: boolean }
+        constitutional: { type: boolean }
+        incomplete: { type: boolean }
+        ish: { type: string }
+        arr: { type: string }
+        ogm: { type: string }
+        composite: { type: integer }
+        stemline: { type: boolean }
+        sideline: { type: boolean }
+        interphase: { type: boolean }
+
+    CellLine:
+      type: object
+      required: [chromosome_count, sex_chromosomes, abnormalities, count, is_donor]
+      properties:
+        chromosome_count: { type: integer }
+        sex_chromosomes: { type: string }
+        abnormalities:
+          type: array
+          items: { $ref: "#/components/schemas/Abnormality" }
+        count: { type: integer }
+        is_donor: { type: boolean }
+
+    KaryotypeAST:
+      type: object
+      required: [chromosome_count, sex_chromosomes, abnormalities, cell_lines, modifiers]
+      properties:
+        chromosome_count:
+          oneOf:
+            - { type: integer }
+            - { type: string, description: "Range like '45~48'" }
+            - { type: "null" }
+        sex_chromosomes:
+          type: string
+          description: "Sex chromosome string (e.g. XX, XY, X, XXY, U for undisclosed)."
+        abnormalities:
+          type: array
+          items: { $ref: "#/components/schemas/Abnormality" }
+        cell_lines:
+          oneOf:
+            - { type: array, items: { $ref: "#/components/schemas/CellLine" } }
+            - { type: "null" }
+        modifiers:
+          oneOf:
+            - { $ref: "#/components/schemas/Modifiers" }
+            - { type: "null" }
+
+    ExplainResult:
+      type: object
+      required: [summary, detail, citation, refs, confidence]
+      properties:
+        summary: { type: string }
+        detail: { type: string }
+        citation:
+          oneOf:
+            - type: object
+              required: [section]
+              properties:
+                section: { type: string }
+                page: { type: integer }
+            - { type: "null" }
+        refs:
+          type: object
+          properties:
+            omim: { type: array, items: { type: string } }
+            hpo: { type: array, items: { type: string } }
+            clinvar: { type: array, items: { type: string } }
+        confidence:
+          type: string
+          enum: [template, curated, none]
+
+    ValidationResult:
+      type: object
+      required: [valid, errors, parsed]
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items: { type: string }
+        parsed:
+          oneOf:
+            - { $ref: "#/components/schemas/KaryotypeAST" }
+            - { type: "null" }
+        explanation: { $ref: "#/components/schemas/ExplainResult" }
+
+    UsageSnapshot:
+      type: object
+      required: [customer_id, tier, month, used, limit, remaining, reset_at]
+      properties:
+        customer_id:
+          type: string
+          description: Stable customer identifier (`c_<hex>`).
+        tier:
+          type: string
+          enum: [free, pro]
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          description: Calendar month in `YYYY-MM` (UTC).
+        used: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 0 }
+        remaining: { type: integer, minimum: 0 }
+        reset_at:
+          type: integer
+          minimum: 0
+          description: Unix seconds at the start of the next UTC month.
+
+    RotateKeyResult:
+      type: object
+      required: [old_key_id, new_key, new_key_id]
+      properties:
+        old_key_id: { type: string }
+        new_key:
+          type: string
+          description: New API key plaintext. Store now — never returned again.
+        new_key_id: { type: string }
+
+  responses:
+    InvalidRequest:
+      description: Malformed request.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Unauthenticated:
+      description: Missing or invalid API key.
+      headers:
+        WWW-Authenticate: { $ref: "#/components/headers/WWW-Authenticate" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    QuotaExceeded:
+      description: Monthly request quota exceeded — upgrade plan to continue.
+      headers:
+        X-Monthly-Quota-Limit: { $ref: "#/components/headers/X-Monthly-Quota-Limit" }
+        X-Monthly-Quota-Remaining: { $ref: "#/components/headers/X-Monthly-Quota-Remaining" }
+        X-Monthly-Quota-Reset: { $ref: "#/components/headers/X-Monthly-Quota-Reset" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    MethodNotAllowed:
+      description: Wrong HTTP verb for this route.
+      headers:
+        Allow:
+          schema: { type: string }
+          description: Comma-separated list of allowed methods.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    BodyTooLarge:
+      description: Request body exceeds the configured limit.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    RateLimited:
+      description: Token-bucket exhausted; retry after the indicated interval.
+      headers:
+        Retry-After: { $ref: "#/components/headers/Retry-After" }
+        X-RateLimit-Limit: { $ref: "#/components/headers/X-RateLimit-Limit" }
+        X-RateLimit-Remaining: { $ref: "#/components/headers/X-RateLimit-Remaining" }
+        X-RateLimit-Reset: { $ref: "#/components/headers/X-RateLimit-Reset" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Internal:
+      description: Unhandled server error. The `request_id` is logged.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }

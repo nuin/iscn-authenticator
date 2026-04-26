@@ -63,6 +63,7 @@ import {
   handleDocsPage,
   handlePricingPage,
 } from "./pages.ts";
+import { createOpenApiHandler } from "./openapi.ts";
 import { StripeWebhookError } from "./errors.ts";
 import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
 import { explain } from "../../packages/core/src/index.ts";
@@ -77,6 +78,13 @@ export interface BuildHandlerOptions {
   staticDir?: string;
   /** Embedded static assets (path -> content). */
   staticAssets?: Record<string, string>;
+  /**
+   * Raw `docs/openapi.yaml` text. When set, served at `GET /openapi.json`
+   * (parsed and cached on first request). Both `main.ts` and `server.ts`
+   * pass the same document; tests/openapi_test.ts asserts they stay
+   * aligned with the live route table.
+   */
+  openapiYaml?: string;
   /** Test hook: inject clock for deterministic rate-limit windows. */
   now?: () => number;
   /** Test hook: override the log sink (defaults to stdout). */
@@ -99,11 +107,12 @@ const CONTENT_TYPE_HTML = "text/html; charset=utf-8";
 
 /** Build the composed request handler. */
 export function buildHandler(opts: BuildHandlerOptions): AppHandler {
-  const { kv, config, staticHtml, staticDir, staticAssets } = opts;
+  const { kv, config, staticHtml, staticDir, staticAssets, openapiYaml } = opts;
   const now = opts.now ?? (() => Date.now());
   const logSink = opts.logSink;
   const errorSink = opts.errorSink ??
     ((rid: string, err: unknown) => console.error(`[${rid}] uncaught error:`, err));
+  const openapiHandler = openapiYaml ? createOpenApiHandler(openapiYaml) : null;
 
   return async function handler(req, info) {
     const rid = requestId();
@@ -126,6 +135,14 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
         response = corsPreflight(req, config);
       } else if (path === "/health") {
         response = handleHealth();
+      } else if (path === "/openapi.json") {
+        if (req.method !== "GET") {
+          throw new MethodNotAllowedError(["GET"]);
+        }
+        if (!openapiHandler) {
+          throw new NotFoundError();
+        }
+        response = openapiHandler();
       } else if (path === "/validate") {
         response = await handleValidate({ req, kv, config, rid, now });
         // Pull key_id out of response for logging (see handleValidate).
