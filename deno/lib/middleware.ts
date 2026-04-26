@@ -50,6 +50,7 @@ import {
   baseSecurityHeaders,
   dashboardCspHeader,
   htmlCspHeader,
+  scalarCspHeader,
   mergeHeaders,
 } from "./security_headers.ts";
 import { clientIp, logRequest, requestId } from "./logging.ts";
@@ -200,6 +201,7 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
       rid,
       isHtml: isHtmlResponse(response),
       isDashboard: isDashboardPath(path),
+      isDocs: path === "/docs" || path === "/api",
     });
     status = response.status;
 
@@ -701,6 +703,7 @@ interface ApplyHeadersArgs {
   rid: string;
   isHtml: boolean;
   isDashboard: boolean;
+  isDocs: boolean;
 }
 
 function applyResponseHeaders(
@@ -721,9 +724,15 @@ function applyResponseHeaders(
   }
 
   if (args.isHtml) {
-    // Dashboard needs the widened script-src for HTMX CDN; landing page
-    // keeps the tighter policy.
-    extras["Content-Security-Policy"] = args.isDashboard ? dashboardCspHeader() : htmlCspHeader();
+    // CSP varies by route audience:
+    //   - /docs (Scalar API reference) needs cdn.jsdelivr.net for its bundle
+    //   - /dashboard/* needs unpkg.com for the pinned HTMX script
+    //   - everything else uses the tight landing-page policy
+    extras["Content-Security-Policy"] = args.isDocs
+      ? scalarCspHeader()
+      : args.isDashboard
+      ? dashboardCspHeader()
+      : htmlCspHeader();
   }
 
   const merged = mergeHeaders(res.headers, extras);

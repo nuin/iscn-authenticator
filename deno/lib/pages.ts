@@ -55,52 +55,36 @@ export async function handlePricingPage(): Promise<Response> {
   return new Response(html, { headers: { "Content-Type": CONTENT_TYPE_HTML } });
 }
 
-export async function handleDocsPage(): Promise<Response> {
-  const html = renderSimplePage(
-    "API Documentation",
-    `
-    <h2>REST API Reference</h2>
-    <p>Integrate ISCN validation into your own clinical pipeline. Authentication is handled via Bearer tokens.</p>
-    
-    <div class="endpoint">
-      <span class="method">GET</span> <code>/validate?karyotype={string}</code>
-    </div>
-    <p>Validate a single karyotype string via query parameter.</p>
-
-    <div class="endpoint">
-      <span class="method">POST</span> <code>/validate</code>
-    </div>
-    <pre><code>{
-  "karyotype": "47,XY,+21"
-}</code></pre>
-    
-    <h3>Example Response</h3>
-    <pre><code>{
-  "valid": true,
-  "errors": [],
-  "parsed": {
-    "chromosome_count": 47,
-    "sex_chromosomes": "XY",
-    "abnormalities": [...]
-  },
-  "explanation": {
-    "summary": "Trisomy 21 (Down syndrome), male.",
-    "confidence": "curated"
-  }
-}</code></pre>
-
-    <h3>Rate Limits</h3>
-    <p>Free tier is limited to 60 requests per minute. Pro tier allows up to 600 requests per minute.</p>
-    
-    <style>
-      .endpoint { background: var(--color-bg); padding: 1rem; border-radius: var(--radius); margin: 1.5rem 0 0.5rem; font-family: var(--font-mono); }
-      .method { background: var(--color-primary); color: white; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem; margin-right: 0.5rem; }
-      pre { background: #2d2d2d; color: #f8f8f2; padding: 1rem; border-radius: var(--radius); overflow-x: auto; font-size: 0.875rem; }
-    </style>
-  `,
+/**
+ * `/docs` (and the `/api` alias) serves a Scalar API-reference UI that
+ * fetches `/openapi.json` from this same origin. The page is intentionally
+ * minimal: Scalar bootstraps itself off the `<script id="api-reference">`
+ * tag and the pinned jsDelivr bundle.
+ *
+ * CSP for this route is widened to allow `cdn.jsdelivr.net` for script,
+ * style, font and img sources -- see `scalarCspHeader()` in
+ * `lib/security_headers.ts`. `connect-src` stays `'self'` because the only
+ * runtime fetch the page issues is `GET /openapi.json`.
+ */
+export function handleDocsPage(): Promise<Response> {
+  return Promise.resolve(
+    new Response(SCALAR_HTML, { headers: { "Content-Type": CONTENT_TYPE_HTML } }),
   );
-  return new Response(html, { headers: { "Content-Type": CONTENT_TYPE_HTML } });
 }
+
+const SCALAR_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>ISCN API Reference</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+  </head>
+  <body>
+    <script id="api-reference" data-url="/openapi.json"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1"></script>
+  </body>
+</html>
+`;
 
 export function handleAboutPage(): Promise<Response> {
   const html = renderSimplePage(

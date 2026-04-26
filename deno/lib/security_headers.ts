@@ -67,6 +67,29 @@ export function dashboardCspHeader(): string {
   ].join("; ");
 }
 
+/**
+ * Content-Security-Policy for the Scalar API-reference page at `/docs`.
+ *
+ * Scalar is loaded from a pinned jsDelivr URL (`@scalar/api-reference@1`).
+ * It injects its own inline styles + fetches its bundled fonts, hence the
+ * jsDelivr allowances on script/style/font/img. `connect-src` stays narrow
+ * to `'self'` because the only HTTP request the page issues at runtime is
+ * `GET /openapi.json` on the same origin.
+ */
+export function scalarCspHeader(): string {
+  return [
+    "default-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    "font-src 'self' data: https://cdn.jsdelivr.net",
+    "img-src 'self' data: https://cdn.jsdelivr.net",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
 /** Merge the given headers over a base set without clobbering existing values. */
 export function mergeHeaders(
   base: HeadersInit | undefined,
