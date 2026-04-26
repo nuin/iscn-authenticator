@@ -1,0 +1,68 @@
+name: Deploy iscn-web to Cloudflare Pages
+
+# Triggers:
+#   - Push a tag matching v*-web (e.g. v0.1.0-web) to release.
+#   - workflow_dispatch for manual hotfix deploys from any branch.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   - scoped to "Edit Cloudflare Workers" + Pages
+#   CLOUDFLARE_ACCOUNT_ID  - your Cloudflare account ID
+#
+# One-time bootstrap (per Cloudflare account, do this once):
+#   wrangler pages project create iscn-web --production-branch=master
+#   wrangler d1 create iscn-db                       # paste id into wrangler.toml
+#   wrangler d1 execute iscn-db --file=packages/web/schema.sql
+#   wrangler kv:namespace create KV                  # paste id into wrangler.toml
+#   wrangler r2 bucket create iscn-batches
+#   wrangler pages secret put STRIPE_SECRET_KEY --project-name iscn-web
+#   wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name iscn-web
+#   wrangler pages secret put STRIPE_PRICE_ID_PRO --project-name iscn-web
+#   wrangler pages secret put PUBLIC_BASE_URL --project-name iscn-web
+#   (optional) wrangler pages secret put AXIOM_API_TOKEN AXIOM_DATASET ...
+
+on:
+  push:
+    tags:
+      - "v*-web"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # @iscn/core is referenced as `file:../core`; SvelteKit needs the
+      # built dist/ on disk before vite resolves the import.
+      - name: Install + build @iscn/core
+        working-directory: packages/core
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Install web dependencies
+        working-directory: packages/web
+        run: npm install
+
+      - name: Type-check
+        working-directory: packages/web
+        run: npm run check
+
+      - name: Build (SvelteKit + adapter-cloudflare)
+        working-directory: packages/web
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/web
+          command: pages deploy .svelte-kit/cloudflare --project-name=iscn-web

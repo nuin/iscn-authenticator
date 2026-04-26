@@ -3,12 +3,13 @@
 Packages are published from tagged commits by GitHub Actions. There are four
 tag conventions, one per publishable artefact:
 
-| Tag pattern      | Package              | Registry | Workflow                                   |
-| ---------------- | -------------------- | -------- | ------------------------------------------ |
-| `v*-core`        | `@iscn/core`         | npm      | `.github/workflows/publish-npm.yml`        |
-| `v*-client`      | `@iscn/client`       | npm      | `.github/workflows/publish-npm-client.yml` (M3a/8) |
-| `v*-py`          | `iscn-authenticator` | PyPI     | `.github/workflows/publish-pypi.yml`       |
-| `v*-py-client`   | `iscn-client`        | PyPI     | `.github/workflows/publish-pypi-client.yml` (M3a/7) |
+| Tag pattern      | Package              | Registry          | Workflow                                   |
+| ---------------- | -------------------- | ----------------- | ------------------------------------------ |
+| `v*-core`        | `@iscn/core`         | npm               | `.github/workflows/publish-npm.yml`        |
+| `v*-client`      | `@iscn/client`       | npm               | `.github/workflows/publish-npm-client.yml` (M3a/8) |
+| `v*-py`          | `iscn-authenticator` | PyPI              | `.github/workflows/publish-pypi.yml`       |
+| `v*-py-client`   | `iscn-client`        | PyPI              | `.github/workflows/publish-pypi-client.yml` (M3a/7) |
+| `v*-web`         | `iscn-web`           | Cloudflare Pages  | `.github/workflows/publish-web.yml`        |
 
 The version embedded in the tag must match the version recorded in the
 package's manifest (`packages/core/package.json`, `pyproject.toml`, etc.).
@@ -19,14 +20,17 @@ tags fail loudly.
 
 Configure these as repository secrets in GitHub:
 
-| Secret        | Used by                                             |
-| ------------- | --------------------------------------------------- |
-| `NPM_TOKEN`   | `publish-npm.yml`, `publish-npm-client.yml`         |
-| `PYPI_TOKEN`  | `publish-pypi.yml`, `publish-pypi-client.yml`       |
+| Secret                  | Used by                                             |
+| ----------------------- | --------------------------------------------------- |
+| `NPM_TOKEN`             | `publish-npm.yml`, `publish-npm-client.yml`         |
+| `PYPI_TOKEN`            | `publish-pypi.yml`, `publish-pypi-client.yml`       |
+| `CLOUDFLARE_API_TOKEN`  | `publish-web.yml`                                   |
+| `CLOUDFLARE_ACCOUNT_ID` | `publish-web.yml`                                   |
 
 `NPM_TOKEN` must be an automation token with publish rights on the `@iscn`
 scope. `PYPI_TOKEN` must be a project-scoped token (one per package is
-recommended).
+recommended). `CLOUDFLARE_API_TOKEN` needs the **Pages: Edit** permission
+on the target account.
 
 ## Checklist before tagging
 
@@ -92,3 +96,48 @@ python -m venv /tmp/verify-py && /tmp/verify-py/bin/pip install -U iscn-authenti
 
 Additional sections for the two client packages will be added as their
 workflows land (M3a/7, M3a/8).
+
+## Publishing `iscn-web` (Cloudflare Pages)
+
+```bash
+git tag v0.1.0-web
+git push origin master --tags
+```
+
+The `publish-web.yml` workflow will:
+
+1. Check out the tagged commit.
+2. Install + build `@iscn/core` (the web app imports it via `file:../core`).
+3. `npm install` + `npm run check` + `npm run build` in `packages/web`.
+4. `wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web`.
+
+### One-time bootstrap
+
+Before the first deploy you need a Cloudflare account with a Pages project
+and the bound resources:
+
+```bash
+# create the project (production branch is master)
+wrangler pages project create iscn-web --production-branch=master
+
+# D1 database for users/keys/webhooks; paste the returned id into wrangler.toml
+wrangler d1 create iscn-db
+wrangler d1 execute iscn-db --file=packages/web/schema.sql
+
+# KV namespace + R2 bucket; paste ids into wrangler.toml
+wrangler kv:namespace create KV
+wrangler r2 bucket create iscn-batches
+
+# Secrets (set once per environment in the Pages project)
+wrangler pages secret put STRIPE_SECRET_KEY      --project-name iscn-web
+wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name iscn-web
+wrangler pages secret put STRIPE_PRICE_ID_PRO    --project-name iscn-web
+wrangler pages secret put PUBLIC_BASE_URL        --project-name iscn-web
+# optional log sink
+wrangler pages secret put AXIOM_API_TOKEN        --project-name iscn-web
+wrangler pages secret put AXIOM_DATASET          --project-name iscn-web
+```
+
+After the first deploy, point the Stripe webhook at
+`${PUBLIC_BASE_URL}/api/webhooks/stripe` and copy the resulting
+`whsec_…` value into `STRIPE_WEBHOOK_SECRET`.
