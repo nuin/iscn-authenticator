@@ -150,14 +150,18 @@ cython_debug/
 # Large reference files
 *.pdf
 
-# Deno lock files (regenerated per run)
-deno.lock
+# Deno lock files (regenerated per run; npm lockfiles are committed)
+**/deno.lock
+deno/static/iscn-core.js
+deno/static/iscn-core.js.map
 
 # Node
 node_modules/
 packages/*/node_modules/
 packages/*/dist/
 packages/*/*.tsbuildinfo
+packages/*/.svelte-kit/
+packages/*/.wrangler/
 
 # Claude Code / Superpowers plugin cache
 .superpowers/

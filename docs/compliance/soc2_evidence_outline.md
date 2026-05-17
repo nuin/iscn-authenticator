@@ -70,7 +70,7 @@
 | CC6.3 Role-based access | Session cookies scoped to a single `customer_id`; dashboard routes cannot read other customers' keys. |
 | CC6.6 Network boundary | Deno Deploy enforces TLS 1.2+ at the edge; CSP and security headers set in `deno/lib/middleware.ts`. |
 | CC6.7 Data-in-transit encryption | TLS on all ingress and egress (Stripe, Axiom). |
-| CC6.8 Malicious software prevention | Deno's permission model (no filesystem or network access beyond explicit allowlist); dependencies pinned via `deno.lock`. |
+| CC6.8 Malicious software prevention | Deno's permission model (no filesystem or network access beyond explicit allowlist); npm dependencies locked via committed `package-lock.json` files; Deno dependency versions are scoped in import specifiers and resolved during CI. |
 
 ### CC7 — System operations
 

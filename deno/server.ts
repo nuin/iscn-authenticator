@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-run --allow-read --allow-write --allow-net --allow-env
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env
 /**
  * ISCN Karyotype Validator Web Server — local dev entry point.
  *

@@ -2,8 +2,8 @@
 """JSON wrapper for ISCN karyotype validation.
 
 Usage:
-    python scripts/validate_json.py "46,XX"
-    echo "46,XX" | python scripts/validate_json.py
+    python3 scripts/validate_json.py "46,XX"
+    echo "46,XX" | python3 scripts/validate_json.py
 
 Outputs JSON to stdout with structure:
 {

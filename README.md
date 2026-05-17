@@ -19,7 +19,8 @@ This repository is a monorepo containing parallel implementations of the same va
 | `iscn_authenticator` | [`iscn_authenticator/`](iscn_authenticator/) | Python ≥3.10 | Reference implementation, zero runtime deps. |
 | `@iscn/core` | [`packages/core/`](packages/core/) | Node ≥18 / Deno | TypeScript port, zero runtime deps. |
 | ISCN API | [`api/`](api/) | Python (FastAPI) | HTTP wrapper around the Python library. |
-| Deno app | [`deno/`](deno/) | Deno Deploy | Web UI + HTTP API; imports core from `packages/core/src/`. |
+| Deno API/admin runtime | [`deno/`](deno/) | Deno Deploy | Key-gated HTTP API, admin CLI, middleware, and lightweight static UI; imports core from `packages/core/src/`. |
+| Web app | [`packages/web/`](packages/web/) | SvelteKit / Cloudflare Pages | Canonical dashboard and hosted product UI; imports `@iscn/core` from source. |
 
 ## Use
 
@@ -39,7 +40,7 @@ validate_karyotype("47,XY,+21").errors   # []
 **TypeScript (Node, from source):**
 ```bash
 cd packages/core
-npm install
+npm ci
 npm run build                     # emits dist/
 ```
 ```typescript
@@ -59,8 +60,8 @@ import { isValidKaryotypeNative } from "./packages/core/src/index.ts";
 
 **Python tests:**
 ```bash
-python -m unittest discover tests
-python -m unittest tests.test_fixtures    # cross-implementation fixtures
+python3 -m unittest discover tests
+python3 -m unittest tests.test_fixtures    # cross-implementation fixtures
 ```
 
 **TypeScript tests (Deno):**
@@ -72,7 +73,7 @@ deno test --allow-read --unstable-sloppy-imports tests/
 **TypeScript build (Node):**
 ```bash
 cd packages/core
-npm install
+npm ci
 npm run build
 ```
 
@@ -87,6 +88,21 @@ deno task dev
 cd deno
 deno task test
 ```
+
+**SvelteKit web app:**
+```bash
+cd packages/core && npm ci && npm run build
+cd ../web
+npm ci
+npm run check
+npm run build
+```
+
+## Ownership Notes
+
+- `packages/web/` is the canonical hosted product/dashboard UI.
+- `deno/` owns the API surface, auth/rate-limit/security middleware, admin CLI, and Deno Deploy runtime. Its static HTML is intentionally lightweight and should not become a second full product UI.
+- Deno lockfiles are local/regenerated. Commit npm `package-lock.json` files; do not commit generated build outputs.
 
 ## Deno HTTP API
 

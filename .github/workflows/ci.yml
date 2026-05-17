@@ -68,7 +68,7 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         working-directory: packages/core
-        run: npm install
+        run: npm ci --ignore-scripts
       - name: Build @iscn/core
         working-directory: packages/core
         run: npm run build
@@ -84,6 +84,31 @@ jobs:
           }
           console.log('Smoke test passed: isValidKaryotypeNative(\"46,XX\") === true');
           "
+
+  web-build:
+    name: Web app check and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install core dependencies
+        working-directory: packages/core
+        run: npm ci --ignore-scripts
+      - name: Build @iscn/core
+        working-directory: packages/core
+        run: npm run build
+      - name: Install web dependencies
+        working-directory: packages/web
+        run: npm ci --ignore-scripts
+      - name: Type-check web app
+        working-directory: packages/web
+        run: npm run check
+      - name: Build web app
+        working-directory: packages/web
+        run: npm run build
 
   python-install-smoke:
     name: Python pip install smoke test

@@ -37,17 +37,19 @@ function mockFetch(
       body,
     });
     if (opts.throws) throw new Error("network down");
-    return new Response("", { status: opts.status ?? 204 });
+    return new Response(null, { status: opts.status ?? 204 });
   };
   return impl as unknown as typeof fetch;
 }
 
 Deno.test("createAxiomSink: flush emits NDJSON with bearer token to dataset url", async () => {
   const capture: CapturedCall[] = [];
+  const errors: unknown[] = [];
   const sink = createAxiomSink({
     token: "xaat-abc",
     dataset: "iscn-test",
     fetchImpl: mockFetch({ capture }),
+    onError: (e) => errors.push(e),
     flushMs: 999_999, // disable timer for this test
   });
 
@@ -57,6 +59,7 @@ Deno.test("createAxiomSink: flush emits NDJSON with bearer token to dataset url"
   await sink.stop();
 
   assertEquals(capture.length, 1);
+  assertEquals(errors.length, 0);
   const call = capture[0];
   assertEquals(call.method, "POST");
   assertEquals(call.url, "https://api.axiom.co/v1/datasets/iscn-test/ingest");

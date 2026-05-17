@@ -74,7 +74,7 @@ The `publish-pypi.yml` workflow will:
 2. Run `scripts/verify-pypi-tag.py` (asserts tag == `pyproject.toml` version,
    rejects `v*-py-client` tags so the wrong workflow can never fire).
 3. `pip install build twine`.
-4. `python -m build` (sdist + wheel via hatchling).
+4. `python3 -m build` (sdist + wheel via hatchling).
 5. `twine check dist/*`.
 6. Smoke-test the wheel: `pip install dist/*.whl` in a fresh venv and import.
 7. `twine upload --non-interactive dist/*` using `PYPI_TOKEN`.
@@ -90,7 +90,7 @@ node --input-type=module \
 
 # PyPI
 pip index versions iscn-authenticator
-python -m venv /tmp/verify-py && /tmp/verify-py/bin/pip install -U iscn-authenticator
+python3 -m venv /tmp/verify-py && /tmp/verify-py/bin/pip install -U iscn-authenticator
 /tmp/verify-py/bin/python -c "from iscn_authenticator import is_valid_karyotype; print(is_valid_karyotype('46,XX'))"
 ```
 
@@ -108,7 +108,7 @@ The `publish-web.yml` workflow will:
 
 1. Check out the tagged commit.
 2. Install + build `@iscn/core` (the web app imports it via `file:../core`).
-3. `npm install` + `npm run check` + `npm run build` in `packages/web`.
+3. `npm ci --ignore-scripts` + `npm run check` + `npm run build` in `packages/web`.
 4. `wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web`.
 
 ### One-time bootstrap

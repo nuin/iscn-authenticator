@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
+#!/usr/bin/env -S deno run --allow-read --allow-env
 
 /**
  * ISCN Karyotype Validator CLI
@@ -65,7 +65,7 @@ ${color("EXAMPLES:", colors.bold)}
 ${color("EXIT CODES:", colors.bold)}
   0  Valid karyotype
   1  Invalid karyotype
-  2  Error (e.g., Python not found)
+  2  Error
 `);
 }
 
