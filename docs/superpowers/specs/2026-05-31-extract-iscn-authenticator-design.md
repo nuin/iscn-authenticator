@@ -28,6 +28,7 @@
 - No git history preservation (`git filter-repo` was considered and rejected by the user).
 - No mirror of `fixtures/validity.json` on PyPI as a separate package.
 - No changes to the Deno app or the SvelteKit web app.
+- **No curated explanation lookup in v0.2.0.** During Phase 1, `explain.py` was discovered to read `packages/core/data/explains/curated.json` from a relative path that only resolves inside the monorepo (a hidden runtime dependency on the TypeScript port). The curated lookup (`lookup_curated_explanation`) and its 2.1 KB data file were removed from the v0.2.0 release; `explain()` now always returns a template-based explanation. The curated feature, with proper data-sync mechanism between repos, is deferred to a future minor release. Template explanation via `generate_template_explanation` remains in the public API.
 
 ## 2. New repo layout
 
