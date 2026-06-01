@@ -31,7 +31,7 @@
 
 ## 2. New repo layout
 
-The new repo is created fresh with `git init`. Chosen on-disk path: `/Users/nuin/Projects/iscn-authenticator-py/` (the implementation plan may confirm this with the user but the spec assumes it). Chosen GitHub path: `nuin/iscn-authenticator` (matches the URL already recorded in `pyproject.toml` under `[project.urls].Repository`).
+The new repo is created fresh with `git init`. Chosen on-disk path: `/Users/nuin/Projects/iscn-authenticator-py/`. Chosen GitHub path: `nuin/iscn-authenticator-py` (the monorepo already occupies `nuin/iscn-authenticator`, so the new Python repo takes the `-py` suffix). The PyPI package name remains `iscn-authenticator` — package names and repo names need not match. The existing `Repository` URL in `pyproject.toml` (pointing at `github.com/nuin/iscn-authenticator`, the monorepo) must be updated to `github.com/nuin/iscn-authenticator-py` during the move.
 
 ```
 iscn-authenticator/                    # new repo, fresh git init
@@ -102,7 +102,7 @@ A small Node script in the monorepo fetches `fixtures/validity.json` from a pinn
       "fetch-fixtures": "node scripts/fetch-fixtures.mjs"
     },
     "iscn": {
-      "fixturesRepo": "nuin/iscn-authenticator",
+      "fixturesRepo": "nuin/iscn-authenticator-py",
       "fixturesTag": "v0.2.0-py",
       "fixturesPath": "fixtures/validity.json"
     }
@@ -230,7 +230,7 @@ If ruff surfaces violations on first run against the current `iscn_authenticator
   - The file keeps the `@iscn/core (npm)` section (and any future Deno/web entries). It will not be empty after the split, so it is not deleted. Update the header to reflect that it now covers npm + Deno only.
 - `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`:
   - Remove all Python sections (Python tests, FastAPI commands kept since `api/` remains, but the `iscn_authenticator/` package itself is gone).
-  - Update the monorepo table: drop the `iscn_authenticator/` row; add a note that the Python library now lives at `github.com/nuin/iscn-authenticator` and is installed from PyPI.
+  - Update the monorepo table: drop the `iscn_authenticator/` row; add a note that the Python library now lives at `github.com/nuin/iscn-authenticator-py` and is installed from PyPI.
   - Remove the `tests/test_fixtures.py` row and the parity-test sentence; add a brief note describing the fetch-fixtures sync flow.
 
 ### Files untouched
@@ -247,8 +247,8 @@ Ordered steps. The implementation plan produced by `writing-plans` will expand e
 
 1. **Master prep (in the monorepo, before extraction).** Run ruff on `iscn_authenticator/` + `tests/` and fix any violations as one or more commits on master. Run `python -m build` and `python -m twine check dist/*` locally; verify both succeed. Run the full test suite (`python -m unittest discover tests`) one final time.
 2. **Create new repo on disk.** `mkdir /Users/nuin/Projects/iscn-authenticator-py && cd $_ && git init`. Copy the files per §2. Add the ruff config to `pyproject.toml`. Add `.pre-commit-config.yaml`. Add the new `.github/workflows/ci.yml`. Adapt `.github/workflows/publish-pypi.yml` per §4. Verify `python -m unittest discover tests` passes locally. Verify `python -m build && python -m twine check dist/*` passes locally. Initial commit.
-3. **Push to GitHub.** Create the `nuin/iscn-authenticator` repository on GitHub if it does not already exist. Push.
-4. **Configure PyPI Trusted Publishing.** Via PyPI web UI, register a trusted publisher for `iscn-authenticator` against `nuin/iscn-authenticator`, workflow `publish-pypi.yml`, environment `pypi`. Create the `pypi` environment in the new repo's GitHub settings (no required reviewers needed; can be added later).
+3. **Push to GitHub.** Create the `nuin/iscn-authenticator-py` repository on GitHub. Push.
+4. **Configure PyPI Trusted Publishing.** Via PyPI web UI, register a trusted publisher for the PyPI project `iscn-authenticator` against repo `nuin/iscn-authenticator-py`, workflow `publish-pypi.yml`, environment `pypi`. Create the `pypi` environment in the new repo's GitHub settings (no required reviewers needed; can be added later).
 5. **Tag and publish.** `git tag v0.2.0-py && git push origin v0.2.0-py`. Watch the workflow run. On success, verify the project page at `https://pypi.org/project/iscn-authenticator/` renders correctly (README, classifiers, version, links).
 6. **Open monorepo PR.** Single PR with every change in §6. CI on the PR:
    - `api/` builds with `iscn-authenticator>=0.2.0` resolving from PyPI.
