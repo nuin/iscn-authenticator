@@ -1,5 +1,6 @@
 # tests/test_rules_base.py
 import unittest
+
 from iscn_authenticator.rules.base import Rule
 
 

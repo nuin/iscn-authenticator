@@ -2,7 +2,8 @@
 """Parser for ISCN karyotype strings."""
 
 import re
-from iscn_authenticator.models import KaryotypeAST, Abnormality, Breakpoint, CellLine
+
+from iscn_authenticator.models import Abnormality, Breakpoint, CellLine, KaryotypeAST
 
 # Pattern for cell line count: [10], [20], etc.
 CELL_LINE_COUNT_PATTERN = re.compile(r"^(.+?)\[(\d+)\]$")
@@ -97,9 +98,7 @@ class KaryotypeParser:
 
         # Split on comma
         if "," not in karyotype:
-            raise ParseError(
-                "Missing comma separator between chromosome count and sex chromosomes"
-            )
+            raise ParseError("Missing comma separator between chromosome count and sex chromosomes")
 
         parts = karyotype.split(",")
 
@@ -169,9 +168,7 @@ class KaryotypeParser:
         sex_str = sex_str.strip()
 
         if not self.SEX_CHROMOSOMES_PATTERN.match(sex_str):
-            raise ParseError(
-                f"Invalid sex chromosomes: '{sex_str}' must contain only X, Y, or U"
-            )
+            raise ParseError(f"Invalid sex chromosomes: '{sex_str}' must contain only X, Y, or U")
 
         return sex_str
 
@@ -193,9 +190,7 @@ class KaryotypeParser:
             region = int(region_band)
             band = 0
 
-        return Breakpoint(
-            arm=arm, region=region, band=band, subband=subband, uncertain=False
-        )
+        return Breakpoint(arm=arm, region=region, band=band, subband=subband, uncertain=False)
 
     def _parse_deletion(self, part: str) -> Abnormality:
         """Parse a deletion abnormality."""
@@ -209,9 +204,7 @@ class KaryotypeParser:
         # Parse breakpoints (could be single or double)
         breakpoints = []
         # Check for interstitial deletion (two breakpoints like q13q33)
-        double_bp = re.match(
-            r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-        )
+        double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
         if double_bp:
             breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
             breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -240,9 +233,7 @@ class KaryotypeParser:
 
         # Parse breakpoints (could be single or double)
         breakpoints = []
-        double_bp = re.match(
-            r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-        )
+        double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
         if double_bp:
             breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
             breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -270,9 +261,7 @@ class KaryotypeParser:
 
         # Inversions always have two breakpoints
         breakpoints = []
-        double_bp = re.match(
-            r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-        )
+        double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
         if double_bp:
             breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
             breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -320,9 +309,7 @@ class KaryotypeParser:
             chromosome = short_match.group(1)
             arm = short_match.group(2)
             # Create a breakpoint with just the arm (region/band at centromere)
-            breakpoint = Breakpoint(
-                arm=arm, region=1, band=0, subband=None, uncertain=False
-            )
+            breakpoint = Breakpoint(arm=arm, region=1, band=0, subband=None, uncertain=False)
             return Abnormality(
                 type="i",
                 chromosome=chromosome,
@@ -374,9 +361,7 @@ class KaryotypeParser:
             breakpoint_str = bp_match.group(2)
             # Parse two breakpoints (p arm and q arm)
             breakpoints = []
-            double_bp = re.match(
-                r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-            )
+            double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
             if double_bp:
                 breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
                 breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -415,9 +400,7 @@ class KaryotypeParser:
             breakpoints.append(self._parse_breakpoint(bp_parts[0].strip()))
             # Second part contains two breakpoints (segment boundaries)
             segment_str = bp_parts[1].strip()
-            double_bp = re.match(
-                r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", segment_str
-            )
+            double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", segment_str)
             if double_bp:
                 breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
                 breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -485,9 +468,7 @@ class KaryotypeParser:
 
         # Parse two breakpoints (segment boundaries)
         breakpoints = []
-        double_bp = re.match(
-            r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-        )
+        double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
         if double_bp:
             breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
             breakpoints.append(self._parse_breakpoint(double_bp.group(2)))
@@ -616,9 +597,7 @@ class KaryotypeParser:
 
         # Parse two breakpoints (segment boundaries)
         breakpoints = []
-        double_bp = re.match(
-            r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str
-        )
+        double_bp = re.match(r"^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$", breakpoint_str)
         if double_bp:
             breakpoints.append(self._parse_breakpoint(double_bp.group(1)))
             breakpoints.append(self._parse_breakpoint(double_bp.group(2)))

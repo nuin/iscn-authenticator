@@ -1,12 +1,13 @@
 # tests/test_rules_abnormality.py
 import unittest
+
+from iscn_authenticator.models import Abnormality, Breakpoint, KaryotypeAST
 from iscn_authenticator.rules.abnormality import (
-    numerical_chromosome_valid_rule,
     breakpoint_arm_valid_rule,
     inversion_two_breakpoints_rule,
+    numerical_chromosome_valid_rule,
     translocation_breakpoint_count_rule,
 )
-from iscn_authenticator.models import KaryotypeAST, Abnormality, Breakpoint
 
 
 class TestNumericalChromosomeRule(unittest.TestCase):
@@ -101,9 +102,7 @@ class TestInversionTwoBreakpointsRule(unittest.TestCase):
         bp1 = Breakpoint("p", 1, 2, None, False)
         bp2 = Breakpoint("q", 1, 3, None, False)
         bp3 = Breakpoint("q", 2, 1, None, False)
-        abn = Abnormality(
-            "inv", "9", [bp1, bp2, bp3], None, False, None, "inv(9)(p12q13q21)"
-        )
+        abn = Abnormality("inv", "9", [bp1, bp2, bp3], None, False, None, "inv(9)(p12q13q21)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = inversion_two_breakpoints_rule.validate(ast, abn)
         self.assertIn("two breakpoints", errors[0].lower())
@@ -156,9 +155,7 @@ class TestDeletionBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("q", 1, 3, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
         bp3 = Breakpoint("q", 3, 3, None, False)
-        abn = Abnormality(
-            "del", "5", [bp1, bp2, bp3], None, False, None, "del(5)(q13q21q33)"
-        )
+        abn = Abnormality("del", "5", [bp1, bp2, bp3], None, False, None, "del(5)(q13q21q33)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = deletion_breakpoint_rule.validate(ast, abn)
         self.assertIn("one or two breakpoints", errors[0].lower())
@@ -179,9 +176,7 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
     def test_valid_two_chromosome_two_breakpoint(self):
         bp1 = Breakpoint("q", 3, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, "2", False)
-        abn = Abnormality(
-            "t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11.2)"
-        )
+        abn = Abnormality("t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11.2)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = translocation_breakpoint_count_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -190,9 +185,7 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
         bp1 = Breakpoint("p", 3, 2, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
         bp3 = Breakpoint("q", 3, 1, None, False)
-        abn = Abnormality(
-            "t", "1;3;5", [bp1, bp2, bp3], None, False, None, "t(1;3;5)(p32;q21;q31)"
-        )
+        abn = Abnormality("t", "1;3;5", [bp1, bp2, bp3], None, False, None, "t(1;3;5)(p32;q21;q31)")
         ast = KaryotypeAST(46, "XY", [abn], None, None)
         errors = translocation_breakpoint_count_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -207,9 +200,7 @@ class TestTranslocationBreakpointCountRule(unittest.TestCase):
     def test_invalid_three_chromosomes_two_breakpoints(self):
         bp1 = Breakpoint("p", 3, 2, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
-        abn = Abnormality(
-            "t", "1;3;5", [bp1, bp2], None, False, None, "t(1;3;5)(p32;q21)"
-        )
+        abn = Abnormality("t", "1;3;5", [bp1, bp2], None, False, None, "t(1;3;5)(p32;q21)")
         ast = KaryotypeAST(46, "XY", [abn], None, None)
         errors = translocation_breakpoint_count_rule.validate(ast, abn)
         self.assertIn("breakpoints", errors[0].lower())
@@ -272,9 +263,7 @@ class TestRobertsonianBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 1, 0, None, False)
         bp2 = Breakpoint("q", 1, 0, None, False)
-        abn = Abnormality(
-            "rob", "13;14", [bp1, bp2], None, False, None, "rob(13;14)(q10;q10)"
-        )
+        abn = Abnormality("rob", "13;14", [bp1, bp2], None, False, None, "rob(13;14)(q10;q10)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = robertsonian_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -315,9 +304,7 @@ class TestRobertsonianBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 3, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)"
-        )
+        abn = Abnormality("t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = robertsonian_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -372,9 +359,7 @@ class TestDicentricBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 1, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)"
-        )
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = dicentric_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -415,9 +400,7 @@ class TestDicentricBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 3, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)"
-        )
+        abn = Abnormality("t", "9;22", [bp1, bp2], None, False, None, "t(9;22)(q34;q11)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = dicentric_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -508,9 +491,7 @@ class TestTriplicationBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("q", 2, 1, None, False)
         bp2 = Breakpoint("q", 2, 5, None, False)
         bp3 = Breakpoint("q", 3, 2, None, False)
-        abn = Abnormality(
-            "trp", "1", [bp1, bp2, bp3], None, False, None, "trp(1)(q21q25q32)"
-        )
+        abn = Abnormality("trp", "1", [bp1, bp2, bp3], None, False, None, "trp(1)(q21q25q32)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = triplication_breakpoint_rule.validate(ast, abn)
         self.assertIn("two breakpoints", errors[0].lower())
@@ -620,9 +601,7 @@ class TestRingChromosomeBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("p", 1, 1, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
         bp3 = Breakpoint("q", 3, 1, None, False)
-        abn = Abnormality(
-            "r", "7", [bp1, bp2, bp3], None, False, None, "r(7)(p11q21q31)"
-        )
+        abn = Abnormality("r", "7", [bp1, bp2, bp3], None, False, None, "r(7)(p11q21q31)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = ring_chromosome_breakpoint_rule.validate(ast, abn)
         self.assertIn("two breakpoints", errors[0].lower())
@@ -679,9 +658,7 @@ class TestDuplicationBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("q", 2, 1, None, False)
         bp2 = Breakpoint("q", 2, 5, None, False)
         bp3 = Breakpoint("q", 3, 1, None, False)
-        abn = Abnormality(
-            "dup", "1", [bp1, bp2, bp3], None, False, None, "dup(1)(q21q25q31)"
-        )
+        abn = Abnormality("dup", "1", [bp1, bp2, bp3], None, False, None, "dup(1)(q21q25q31)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = duplication_breakpoint_rule.validate(ast, abn)
         self.assertIn("one or two breakpoints", errors[0].lower())
@@ -737,9 +714,7 @@ class TestInsBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("p", 1, 4, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
         bp3 = Breakpoint("q", 3, 1, None, False)
-        abn = Abnormality(
-            "ins", "5;2", [bp1, bp2, bp3], None, False, None, "ins(5;2)(p14;q21q31)"
-        )
+        abn = Abnormality("ins", "5;2", [bp1, bp2, bp3], None, False, None, "ins(5;2)(p14;q21q31)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = ins_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -750,9 +725,7 @@ class TestInsBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("p", 1, 4, None, False)
         bp2 = Breakpoint("q", 2, 1, None, False)
-        abn = Abnormality(
-            "ins", "5;2", [bp1, bp2], None, False, None, "ins(5;2)(p14;q21)"
-        )
+        abn = Abnormality("ins", "5;2", [bp1, bp2], None, False, None, "ins(5;2)(p14;q21)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = ins_breakpoint_rule.validate(ast, abn)
         self.assertIn("three breakpoints", errors[0].lower())
@@ -877,9 +850,7 @@ class TestPseudicentricBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 1, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "psu dic", "13;14", [bp1, bp2], None, False, None, "psu dic(13;14)(q14;q11)"
-        )
+        abn = Abnormality("psu dic", "13;14", [bp1, bp2], None, False, None, "psu dic(13;14)(q14;q11)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -889,9 +860,7 @@ class TestPseudicentricBreakpointRule(unittest.TestCase):
         from iscn_authenticator.rules.abnormality import pseudodicentric_breakpoint_rule
 
         bp1 = Breakpoint("q", 1, 4, None, False)
-        abn = Abnormality(
-            "psu dic", "13;14", [bp1], None, False, None, "psu dic(13;14)(q14)"
-        )
+        abn = Abnormality("psu dic", "13;14", [bp1], None, False, None, "psu dic(13;14)(q14)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
         self.assertIn("2 chromosomes but 1 breakpoints", errors[0])
@@ -902,9 +871,7 @@ class TestPseudicentricBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 1, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)"
-        )
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = pseudodicentric_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -948,9 +915,7 @@ class TestAcentricBreakpointRule(unittest.TestCase):
         bp1 = Breakpoint("q", 2, 1, None, False)
         bp2 = Breakpoint("q", 2, 5, None, False)
         bp3 = Breakpoint("q", 3, 1, None, False)
-        abn = Abnormality(
-            "ace", "1", [bp1, bp2, bp3], None, False, None, "ace(1)(q21q25q31)"
-        )
+        abn = Abnormality("ace", "1", [bp1, bp2, bp3], None, False, None, "ace(1)(q21q25q31)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = acentric_breakpoint_rule.validate(ast, abn)
         self.assertIn("1-2 breakpoints", errors[0])
@@ -975,9 +940,7 @@ class TestTelomericAssociationBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("p", 1, 1, None, False)
         bp2 = Breakpoint("p", 1, 1, None, False)
-        abn = Abnormality(
-            "tas", "13;14", [bp1, bp2], None, False, None, "tas(13;14)(p11;p11)"
-        )
+        abn = Abnormality("tas", "13;14", [bp1, bp2], None, False, None, "tas(13;14)(p11;p11)")
         ast = KaryotypeAST(46, "XX", [abn], None, None)
         errors = telomeric_association_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])
@@ -1024,9 +987,7 @@ class TestTelomericAssociationBreakpointRule(unittest.TestCase):
 
         bp1 = Breakpoint("q", 1, 4, None, False)
         bp2 = Breakpoint("q", 1, 1, None, False)
-        abn = Abnormality(
-            "dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)"
-        )
+        abn = Abnormality("dic", "13;14", [bp1, bp2], None, False, None, "dic(13;14)(q14;q11)")
         ast = KaryotypeAST(45, "XX", [abn], None, None)
         errors = telomeric_association_breakpoint_rule.validate(ast, abn)
         self.assertEqual(errors, [])

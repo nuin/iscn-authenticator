@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Optional
+
 from .models import Abnormality, ExplainResult, KaryotypeAST, KaryotypeNode
 
 ABNORMALITY_NAMES = {
@@ -77,9 +78,7 @@ def generate_template_explanation(node: KaryotypeNode) -> ExplainResult:
         else:
             detail += f"There are {abncount} abnormality/abnormalities described."
 
-    return ExplainResult(
-        summary=summary, detail=detail, citation=None, refs={}, confidence="template"
-    )
+    return ExplainResult(summary=summary, detail=detail, citation=None, refs={}, confidence="template")
 
 
 def generate_signature(node: KaryotypeNode) -> str:
@@ -129,9 +128,7 @@ def load_curated_data():
 
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_path = os.path.join(
-            base_dir, "packages", "core", "data", "explains", "curated.json"
-        )
+        json_path = os.path.join(base_dir, "packages", "core", "data", "explains", "curated.json")
 
         # If not found (e.g. installed via pip), check internal package data if we added it
         if not os.path.exists(json_path):
@@ -139,7 +136,7 @@ def load_curated_data():
             json_path = os.path.join(os.path.dirname(__file__), "data", "curated.json")
 
         if os.path.exists(json_path):
-            with open(json_path, "r") as f:
+            with open(json_path) as f:
                 _curated_data = json.load(f)
         else:
             _curated_data = {"signatures": {}}

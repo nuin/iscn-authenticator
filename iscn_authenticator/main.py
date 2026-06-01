@@ -2,12 +2,13 @@
 """ISCN Karyotype Validation API."""
 
 import re
+
+from iscn_authenticator.engine import RuleEngine
+from iscn_authenticator.explain import explain
 from iscn_authenticator.models import ValidationResult
 from iscn_authenticator.parser import KaryotypeParser, ParseError
-from iscn_authenticator.engine import RuleEngine
-from iscn_authenticator.rules.chromosome import ALL_CHROMOSOME_RULES
 from iscn_authenticator.rules.abnormality import ALL_ABNORMALITY_RULES
-from iscn_authenticator.explain import explain
+from iscn_authenticator.rules.chromosome import ALL_CHROMOSOME_RULES
 
 _parser = KaryotypeParser()
 _engine = RuleEngine()
@@ -70,9 +71,8 @@ def _validate_coherence(total_chromosome_number: int, sex_chromosomes: str) -> b
     if total_chromosome_number == 46:
         if len(sex_chromosomes) != 2:
             return False
-    elif total_chromosome_number == 45:
-        if len(sex_chromosomes) != 1:
-            return False
+    elif total_chromosome_number == 45 and len(sex_chromosomes) != 1:
+        return False
     return True
 
 
@@ -83,10 +83,7 @@ def _validate_deletion_content(content: str) -> bool:
         return True
 
     # Interstitial deletion: [pq]\d+(\.\d+)?[pq]\d+(\.\d+)?
-    if re.fullmatch(r"[pq]\d+(\.\d+)?[pq]\d+(\.\d+)?", content):
-        return True
-
-    return False
+    return bool(re.fullmatch("[pq]\\d+(\\.\\d+)?[pq]\\d+(\\.\\d+)?", content))
 
 
 def _validate_abnormalities(abnormality_parts: list[str]) -> bool:

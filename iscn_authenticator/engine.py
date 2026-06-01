@@ -43,6 +43,4 @@ class RuleEngine:
                 errors = rule.validate(ast, abnormality)
                 all_errors.extend(errors)
 
-        return ValidationResult(
-            valid=len(all_errors) == 0, errors=all_errors, parsed=ast
-        )
+        return ValidationResult(valid=len(all_errors) == 0, errors=all_errors, parsed=ast)

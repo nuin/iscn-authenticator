@@ -1,10 +1,11 @@
 import unittest
-from iscn_authenticator.parser import KaryotypeParser
+
 from iscn_authenticator.explain import (
+    explain,
     generate_template_explanation,
     lookup_curated_explanation,
-    explain,
 )
+from iscn_authenticator.parser import KaryotypeParser
 
 
 class TestExplain(unittest.TestCase):

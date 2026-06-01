@@ -1,10 +1,11 @@
 # tests/test_models.py
 import unittest
+
 from iscn_authenticator.models import (
-    ValidationResult,
-    KaryotypeAST,
-    Breakpoint,
     Abnormality,
+    Breakpoint,
+    KaryotypeAST,
+    ValidationResult,
 )
 
 
@@ -15,9 +16,7 @@ class TestValidationResult(unittest.TestCase):
         self.assertEqual(result.errors, [])
 
     def test_invalid_result_with_errors(self):
-        result = ValidationResult(
-            valid=False, errors=["Invalid chromosome count"], parsed=None
-        )
+        result = ValidationResult(valid=False, errors=["Invalid chromosome count"], parsed=None)
         self.assertFalse(result.valid)
         self.assertEqual(result.errors, ["Invalid chromosome count"])
 

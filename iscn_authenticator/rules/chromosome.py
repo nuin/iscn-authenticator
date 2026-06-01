@@ -1,8 +1,8 @@
 # iscn_authenticator/rules/chromosome.py
 """Validation rules for chromosome count and sex chromosomes."""
 
-from iscn_authenticator.rules.base import Rule
 from iscn_authenticator.models import KaryotypeAST
+from iscn_authenticator.rules.base import Rule
 
 
 def _validate_chromosome_count_numeric(ast: KaryotypeAST, _) -> list[str]:
@@ -22,9 +22,7 @@ def _validate_chromosome_count_range(ast: KaryotypeAST, _) -> list[str]:
         # Skip range validation for range notation
         return []
     if count < 23 or count > 92:
-        return [
-            f"Chromosome count {count} is outside valid range (must be between 23 and 92)"
-        ]
+        return [f"Chromosome count {count} is outside valid range (must be between 23 and 92)"]
     return []
 
 
@@ -56,13 +54,9 @@ def _validate_sex_chromosomes_coherence(ast: KaryotypeAST, _) -> list[str]:
     # specified in the sex chromosomes alone.
     if not ast.abnormalities:
         if count == 46 and sex_count != 2:
-            return [
-                f"Chromosome count 46 requires 2 sex chromosomes, but found {sex_count} ('{sex}')"
-            ]
+            return [f"Chromosome count 46 requires 2 sex chromosomes, but found {sex_count} ('{sex}')"]
         if count == 45 and sex_count != 1:
-            return [
-                f"Chromosome count 45 requires 1 sex chromosome, but found {sex_count} ('{sex}')"
-            ]
+            return [f"Chromosome count 45 requires 1 sex chromosome, but found {sex_count} ('{sex}')"]
 
     return []
 

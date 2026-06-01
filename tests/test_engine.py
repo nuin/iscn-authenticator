@@ -1,8 +1,9 @@
 # tests/test_engine.py
 import unittest
+
 from iscn_authenticator.engine import RuleEngine
-from iscn_authenticator.rules.base import Rule
 from iscn_authenticator.models import KaryotypeAST
+from iscn_authenticator.rules.base import Rule
 
 
 class TestRuleEngine(unittest.TestCase):

@@ -1,12 +1,13 @@
 # tests/test_rules_chromosome.py
 import unittest
+
+from iscn_authenticator.models import KaryotypeAST
 from iscn_authenticator.rules.chromosome import (
     chromosome_count_numeric_rule,
     chromosome_count_range_rule,
-    sex_chromosomes_valid_rule,
     sex_chromosomes_coherence_rule,
+    sex_chromosomes_valid_rule,
 )
-from iscn_authenticator.models import KaryotypeAST
 
 
 class TestChromosomeCountRules(unittest.TestCase):

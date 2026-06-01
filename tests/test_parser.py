@@ -1,5 +1,6 @@
 # tests/test_parser.py
 import unittest
+
 from iscn_authenticator.parser import KaryotypeParser, ParseError
 
 

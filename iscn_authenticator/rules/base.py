@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Callable, Any, Optional
+from typing import Any, Callable, Optional
+
 from iscn_authenticator.models import KaryotypeAST
 
 
