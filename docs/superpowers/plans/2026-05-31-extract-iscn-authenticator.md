@@ -400,7 +400,7 @@ Append to `/Users/nuin/Projects/iscn-authenticator-py/pyproject.toml`:
 
 [tool.ruff]
 target-version = "py310"
-line-length = 100
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

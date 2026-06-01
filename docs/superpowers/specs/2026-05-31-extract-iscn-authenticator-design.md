@@ -153,7 +153,7 @@ No `PYPI_TOKEN` secret is created in the new repo. PyPI rejects uploads that do 
 ```toml
 [tool.ruff]
 target-version = "py310"
-line-length = 100
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
