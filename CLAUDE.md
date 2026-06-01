@@ -15,11 +15,12 @@ Nothing is published. All components are consumed from source.
 | `iscn_authenticator/` | Python reference library, zero runtime deps. Installable locally via `pip install .`. |
 | `packages/core/` | TypeScript port (`@iscn/core`), Deno + Node dual-runtime. Build with `npm run build` for Node; import `.ts` directly from Deno. |
 | `api/` | FastAPI HTTP wrapper around the Python library. |
-| `deno/` | Deno Deploy web app; imports core from `packages/core/src/`. |
+| `deno/` | Deno Deploy API/admin runtime with lightweight static UI; imports core from `packages/core/src/`. |
+| `packages/web/` | SvelteKit + Cloudflare Pages app. Canonical hosted product/dashboard UI; depends on `@iscn/core` via `file:../core`. |
 | `fixtures/validity.json` | Shared valid/invalid karyotype corpus driving parity tests. |
 | `tests/test_fixtures.py` | Python fixture-driven parity test. |
 | `packages/core/tests/fixtures.test.ts` | TypeScript fixture-driven parity test. |
-| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node build smoke. |
+| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node/core build + web check/build smoke. |
 
 **Dual-runtime TypeScript:** `packages/core/src/` uses `.js` import specifiers so `tsc` (Node build) emits matching filenames in `dist/`. Deno resolves `.js` specifiers back to the `.ts` source via `"unstable": ["sloppy-imports"]`, which is enabled in:
 - the root `deno.json` (Deno Deploy reads this file)
@@ -55,6 +56,15 @@ uvicorn api.server:app --reload     # dev
 python api/server.py                 # prod-like (reads $PORT, default 8000)
 ```
 
+**SvelteKit web app** (from `packages/web/`, after building core):
+```bash
+cd packages/core && npm ci && npm run build    # produces dist/ that web links against
+cd ../web && npm ci
+npm run check                                  # svelte-check (typecheck)
+npm run build                                  # Cloudflare Pages adapter output
+npm run dev                                    # local vite dev server
+```
+
 **Deno (from `deno/` directory):**
 ```bash
 deno task serve    # run server.ts (reads static/ from disk)
@@ -76,10 +86,16 @@ Inside `buildHandler`:
 
 1. Assign `request_id` (uuid v4)
 2. CORS preflight short-circuit (`OPTIONS` → 204)
-3. Route dispatch
+3. Route dispatch (auth-free unless noted)
    - `GET /` → static HTML (`staticHtml` string or `staticDir` from disk)
-   - `GET /health` → 200 liveness probe (no auth)
-   - `GET|POST /validate` → **auth → rate-limit → body/input validation → validator**
+   - `GET /health` → 200 liveness probe
+   - `GET /openapi.json` → OpenAPI 3.1 document (served from embedded YAML; canonical source is `docs/openapi.yaml`)
+   - `GET /docs`, `GET /api` → Scalar API reference UI (loads bundle from cdn.jsdelivr.net — see `scalarCspHeader()`)
+   - `GET|POST /validate` → **auth → rate-limit → quota → body/input validation → validator**
+   - `GET /usage` → **auth** → monthly usage snapshot for caller's customer
+   - `POST /keys/rotate` → **auth** → issues new key, revokes caller's key (no grace window)
+   - `POST /signup` → public signup → returns plaintext key once
+   - `POST /billing/webhook` → Stripe-signature auth → idempotent on `event.id`
    - Anything else → 404
 4. `AppError` catch → typed error response via `errorToResponse()` (stack never exposed)
 5. Non-`AppError` catch → 500 `internal`; full error sent to `errorSink` (default `console.error`), keyed to `request_id`
@@ -88,11 +104,20 @@ Inside `buildHandler`:
 
 ### Deno KV schema
 
-- `keys:<sha256(plaintext)>` → `{ id, label, created_at, last_used_at, revoked_at }`
-- `keys_index:<id>` → `<sha256(plaintext)>` (reverse lookup by id)
-- `rl:<key_id>:<minute_bucket>` → counter, TTL ≈ 120s (two windows so we can still read the previous one)
+Keys (Deno KV tuples, not colon-strings):
 
-Atomic increment via `kv.atomic().sum(...)`. Fixed-window limiter (60 req/min default); clients can burst to 2× the limit at window boundaries — acceptable for M1, swap to token-bucket post-M1 if abuse observed.
+- `["keys", <sha256(plaintext)>]` → `{ id, label, created_at, last_used_at, revoked_at, ... }`
+- `["keys_index", <id>]` → hash (reverse lookup by key id)
+- `["key_customer", <key_id>]` → `<customer_id>` (grandfathered keys have no entry)
+- `["customers", <id>]` → customer record (tier, stripe ids, ...)
+- `["customers_by_email", <email>]` → `<customer_id>` (signup dedupe)
+- `["customers_by_stripe", <stripe_customer_id>]` → `<customer_id>` (webhook lookup)
+- `["subscriptions", <customer_id>]` → SubscriptionRecord (managed by webhooks)
+- `["usage", <customer_id>, <yyyymm>]` → monthly request counter
+- `["tb", <key_id>]` → `{ tokens, updated_ms }` — token-bucket rate-limit state
+- `["stripe_events", <event_id>]` → idempotency marker (7-day TTL)
+
+Rate limiting is **token bucket** (per `deno/lib/token_bucket.ts`): capacity = burst, refilled continuously. `X-RateLimit-Limit` is the bucket capacity. Monthly quota is a separate counter enforced after the rate limit, returning 402 with `X-Monthly-Quota-*` headers.
 
 ### Admin CLI (deno/admin.ts)
 
@@ -132,10 +157,10 @@ Adding a new abnormality type: add a regex constant + `_parse_X` method in `Kary
 
 `packages/core/src/` mirrors the Python structure: `parser.ts`, `engine.ts`, `validate.ts`, `types.ts`, `rules/chromosome.ts`, `rules/abnormality.ts`. `validate.ts` exposes `validateKaryotypeNative`, re-exported from the package entry `packages/core/src/index.ts` (the public API surface of `@iscn/core`).
 
-`deno/lib/validator.ts` is the **Deno-app-specific** multi-mode orchestrator (HTTP API / native TS / Python subprocess) — it imports from `../../packages/core/src/`. It is not part of the published `@iscn/core` package.
+`deno/lib/validator.ts` is a thin **Deno-app-specific** re-export of `validateKaryotypeNative` from `../../packages/core/src/`. It is not part of the published `@iscn/core` package. (Historical note: this file used to be a multi-mode orchestrator with HTTP/subprocess fallbacks; those modes were removed when the native TS port reached parity.)
 
 When changing validation semantics, update **both** `iscn_authenticator/` and `packages/core/src/` — `fixtures/validity.json` and the two `test_fixtures` suites will catch parity drift in CI.
 
 ## ISCN Reference
 
-`iscn_2024.txt` (extracted from the PDF of the same name in the project root) is the authoritative nomenclature spec. Consult it before extending grammar coverage. `docs/plans/` contains design documents for the validation engine.
+`iscn_2024.txt` (extracted from the PDF of the same name in the project root) is the authoritative nomenclature spec. Consult it before extending grammar coverage. Historical design documents live under `docs/archive/plans/` — treat them as archive, not current operating guidance. The canonical API contract lives in `docs/openapi.yaml` (mirrored to the embedded `OPENAPI_YAML` in `deno/main.ts`; `deno/tests/openapi_test.ts` asserts they stay in sync).
