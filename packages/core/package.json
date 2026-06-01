@@ -30,7 +30,13 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "deno test --allow-read tests/fixtures.test.ts"
+    "fetch-fixtures": "node scripts/fetch-fixtures.mjs",
+    "test": "npm run fetch-fixtures && deno test --allow-read tests/fixtures.test.ts"
+  },
+  "iscn": {
+    "fixturesRepo": "nuin/iscn-authenticator-py",
+    "fixturesTag": "v0.2.0-py",
+    "fixturesPath": "fixtures/validity.json"
   },
   "repository": {
     "type": "git",

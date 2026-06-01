@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# Fetched at test time from the iscn-authenticator-py repo (see scripts/fetch-fixtures.mjs)
+tests/fixtures/

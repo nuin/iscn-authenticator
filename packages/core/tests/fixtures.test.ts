@@ -25,7 +25,7 @@ interface Fixtures {
   invalid: InvalidCase[];
 }
 
-const fixturesUrl = new URL("../../../fixtures/validity.json", import.meta.url);
+const fixturesUrl = new URL("./fixtures/validity.json", import.meta.url);
 const fixtures: Fixtures = JSON.parse(await Deno.readTextFile(fixturesUrl));
 
 Deno.test("all valid fixtures pass validation", () => {
