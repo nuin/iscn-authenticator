@@ -1,6 +1,6 @@
 # iscn_authenticator/engine.py
 """Rule engine for applying validation rules to karyotype AST."""
-from typing import Optional
+
 from iscn_authenticator.models import KaryotypeAST, ValidationResult
 from iscn_authenticator.rules.base import Rule
 
@@ -44,7 +44,5 @@ class RuleEngine:
                 all_errors.extend(errors)
 
         return ValidationResult(
-            valid=len(all_errors) == 0,
-            errors=all_errors,
-            parsed=ast
+            valid=len(all_errors) == 0, errors=all_errors, parsed=ast
         )

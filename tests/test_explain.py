@@ -1,6 +1,11 @@
 import unittest
 from iscn_authenticator.parser import KaryotypeParser
-from iscn_authenticator.explain import generate_template_explanation, lookup_curated_explanation, explain
+from iscn_authenticator.explain import (
+    generate_template_explanation,
+    lookup_curated_explanation,
+    explain,
+)
+
 
 class TestExplain(unittest.TestCase):
     @classmethod
@@ -50,6 +55,7 @@ class TestExplain(unittest.TestCase):
         result = explain(abn)
         self.assertEqual(result.confidence, "template")
         self.assertEqual(result.summary, "Deletion on chromosome 7 at q22, q36.")
+
 
 if __name__ == "__main__":
     unittest.main()

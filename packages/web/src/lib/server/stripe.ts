@@ -115,10 +115,6 @@ export async function createBillingPortalSession(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Webhook signature verification
-// ---------------------------------------------------------------------------
-
 /**
  * Verify a `Stripe-Signature` header against the raw payload.
  *

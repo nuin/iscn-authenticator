@@ -171,10 +171,6 @@ export function clearSessionCookie(opts: { secure?: boolean } = {}): string {
   return attrs.join("; ");
 }
 
-// ---------------------------------------------------------------------------
-// Internal: cookie parsing + hex HMAC helpers
-// ---------------------------------------------------------------------------
-
 function splitCookie(cookieValue: string): { id: string; sig: string } | null {
   const dot = cookieValue.lastIndexOf(".");
   if (dot <= 0 || dot === cookieValue.length - 1) return null;

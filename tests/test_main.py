@@ -3,12 +3,12 @@ import sys
 import os
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from iscn_authenticator.main import is_valid_karyotype, validate_karyotype
 
-class TestIsValidKaryotype(unittest.TestCase):
 
+class TestIsValidKaryotype(unittest.TestCase):
     def test_valid_karyotypes(self):
         self.assertTrue(is_valid_karyotype("46,XX"))
         self.assertTrue(is_valid_karyotype("47,XY"))
@@ -81,5 +81,5 @@ class TestValidateKaryotype(unittest.TestCase):
         self.assertIn("comma", result.errors[0].lower())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

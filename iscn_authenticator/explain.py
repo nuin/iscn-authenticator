@@ -22,6 +22,7 @@ ABNORMALITY_NAMES = {
     "mar": "Marker chromosome",
 }
 
+
 def format_breakpoints(node: Abnormality) -> str:
     """Formats breakpoints into a human-readable string."""
     if not node.breakpoints:
@@ -33,6 +34,7 @@ def format_breakpoints(node: Abnormality) -> str:
             s += "." + bp.subband
         bps.append(s)
     return f" at {', '.join(bps)}"
+
 
 def generate_template_explanation(node: KaryotypeNode) -> ExplainResult:
     """Generates a deterministic, mechanical description of an AST node."""
@@ -76,12 +78,9 @@ def generate_template_explanation(node: KaryotypeNode) -> ExplainResult:
             detail += f"There are {abncount} abnormality/abnormalities described."
 
     return ExplainResult(
-        summary=summary,
-        detail=detail,
-        citation=None,
-        refs={},
-        confidence="template"
+        summary=summary, detail=detail, citation=None, refs={}, confidence="template"
     )
+
 
 def generate_signature(node: KaryotypeNode) -> str:
     """Generates a canonical signature for a KaryotypeNode."""
@@ -109,7 +108,9 @@ def generate_signature(node: KaryotypeNode) -> str:
             sig += f",{','.join(abns)}"
         return sig
 
+
 _curated_data = None
+
 
 def load_curated_data():
     """Loads curated data from the shared JSON file."""
@@ -121,19 +122,21 @@ def load_curated_data():
     # TS: packages/core/data/explains/curated.json
     # Py: iscn_authenticator/explain.py
     # From project root: packages/core/data/explains/curated.json
-    
+
     # We'll look in the packages/core/data/explains/curated.json from the project root
     # or a copy if we were installed as a package. For now, we'll try to find it
     # relative to the project root.
-    
+
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_path = os.path.join(base_dir, "packages", "core", "data", "explains", "curated.json")
-        
+        json_path = os.path.join(
+            base_dir, "packages", "core", "data", "explains", "curated.json"
+        )
+
         # If not found (e.g. installed via pip), check internal package data if we added it
         if not os.path.exists(json_path):
-             # Fallback to local copy if it exists (for packaged version)
-             json_path = os.path.join(os.path.dirname(__file__), "data", "curated.json")
+            # Fallback to local copy if it exists (for packaged version)
+            json_path = os.path.join(os.path.dirname(__file__), "data", "curated.json")
 
         if os.path.exists(json_path):
             with open(json_path, "r") as f:
@@ -142,8 +145,9 @@ def load_curated_data():
             _curated_data = {"signatures": {}}
     except Exception:
         _curated_data = {"signatures": {}}
-    
+
     return _curated_data
+
 
 def lookup_curated_explanation(node: KaryotypeNode) -> Optional[ExplainResult]:
     """
@@ -154,11 +158,11 @@ def lookup_curated_explanation(node: KaryotypeNode) -> Optional[ExplainResult]:
     """
     data = load_curated_data()
     signatures = data.get("signatures", {})
-    
+
     # 1. Try exact canonical signature
     exact_sig = generate_signature(node)
     curated = signatures.get(exact_sig)
-    
+
     # 2. Try structural signature (type + chromosome only)
     if not curated and isinstance(node, Abnormality) and node.breakpoints:
         structural_sig = f"{node.type}({node.chromosome})"
@@ -170,22 +174,23 @@ def lookup_curated_explanation(node: KaryotypeNode) -> Optional[ExplainResult]:
             detail=curated["detail"],
             citation=curated.get("citation"),
             refs=curated.get("refs", {}),
-            confidence="curated"
+            confidence="curated",
         )
     return None
+
 
 def explain(node: KaryotypeNode, on_miss=None) -> ExplainResult:
     """
     Explains a Karyotype AST node in human-readable terms.
-    
+
     If on_miss is provided, it should be a callable that takes the canonical
     signature string as its only argument.
     """
     curated = lookup_curated_explanation(node)
     if curated:
         return curated
-    
+
     if on_miss:
         on_miss(generate_signature(node))
-        
+
     return generate_template_explanation(node)

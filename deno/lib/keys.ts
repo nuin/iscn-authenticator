@@ -164,12 +164,6 @@ export async function listKeys(kv: Deno.Kv): Promise<ApiKeyRecord[]> {
   return out;
 }
 
-/**
- * Return all keys owned by a specific customer, sorted newest-first.
- *
- * Used by the dashboard's Keys tab to render only the caller's own keys.
- * Grandfathered keys (customer_id null) are excluded by definition.
- */
 export async function listKeysByCustomer(
   kv: Deno.Kv,
   customerId: string,

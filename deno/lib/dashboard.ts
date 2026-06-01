@@ -33,10 +33,8 @@ import {
   NotFoundError,
   UnauthenticatedError,
 } from "./errors.ts";
-import { listKeysByCustomer, lookupKeyByPlaintext, revokeKey, rotateKey } from "./keys.ts";
-import type { ApiKeyRecord } from "./keys.ts";
-import { lookupCustomerById } from "./customers.ts";
-import type { CustomerRecord } from "./customers.ts";
+import { listKeysByCustomer, lookupKeyByPlaintext, revokeKey, rotateKey, type ApiKeyRecord } from "./keys.ts";
+import { lookupCustomerById, type CustomerRecord } from "./customers.ts";
 import { createBillingPortalSession, createCheckoutSession } from "./stripe.ts";
 import { lookupSubscription, type SubscriptionRecord } from "./webhooks.ts";
 import {
@@ -47,10 +45,6 @@ import {
 } from "./sessions.ts";
 import type { SessionRecord } from "./sessions.ts";
 import { currentMonthYYYYMM, peekUsage, quotaFor } from "./quota.ts";
-
-// ---------------------------------------------------------------------------
-// Route entry points
-// ---------------------------------------------------------------------------
 
 export interface DashboardCtx {
   kv: Deno.Kv;
@@ -67,12 +61,6 @@ export function isDashboardPath(path: string): boolean {
   return false;
 }
 
-/** Return true if the response should carry the dashboard CSP (allows HTMX CDN). */
-export function isDashboardResponse(path: string): boolean {
-  return isDashboardPath(path);
-}
-
-/** Top-level dispatcher called from middleware for any dashboard path. */
 export async function handleDashboardRoute(
   req: Request,
   ctx: DashboardCtx,
@@ -135,10 +123,6 @@ export async function handleDashboardRoute(
   throw new NotFoundError();
 }
 
-// ---------------------------------------------------------------------------
-// /login
-// ---------------------------------------------------------------------------
-
 function handleLoginGet(): Response {
   return htmlResponse(renderLoginPage({}));
 }
@@ -192,10 +176,6 @@ async function handleLogout(req: Request, ctx: DashboardCtx): Promise<Response> 
   });
 }
 
-// ---------------------------------------------------------------------------
-// /dashboard (Overview)
-// ---------------------------------------------------------------------------
-
 async function handleDashboardOverview(
   ctx: DashboardCtx,
   customer: CustomerRecord,
@@ -221,10 +201,6 @@ async function handleDashboardOverview(
     }),
   );
 }
-
-// ---------------------------------------------------------------------------
-// /dashboard/keys
-// ---------------------------------------------------------------------------
 
 async function handleDashboardKeys(
   ctx: DashboardCtx,
@@ -284,10 +260,6 @@ async function handleDashboardKeysRevoke(
   const keys = await listKeysByCustomer(ctx.kv, customer.id);
   return htmlFragmentResponse(renderKeysBody(keys, null));
 }
-
-// ---------------------------------------------------------------------------
-// /dashboard/billing
-// ---------------------------------------------------------------------------
 
 async function handleDashboardBilling(
   ctx: DashboardCtx,
@@ -373,10 +345,6 @@ function redirect303(location: string): Response {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Reject an attempt to operate on someone else's key. The rotate/revoke
  * forms are rendered from the keys list so this check is defence-in-depth —
@@ -439,10 +407,6 @@ function htmlFragmentResponse(body: string, status = 200): Response {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 }
-
-// ---------------------------------------------------------------------------
-// HTML rendering
-// ---------------------------------------------------------------------------
 
 /** Minimal HTML-escape for untrusted values injected into templates. */
 export function escHtml(s: string): string {
@@ -579,7 +543,7 @@ function renderDashboardLayout(opts: {
     <nav class="tabs">
       ${link("/dashboard", "Overview", "overview")}
       ${link("/dashboard/keys", "Keys", "keys")}
-      ${customer.tier === "pro" ? link("/dashboard/batch", "Batch", "batch" as any) : ""}
+      ${customer.tier === "pro" ? link("/dashboard/batch", "Batch", "batch") : ""}
       ${link("/dashboard/billing", "Billing", "billing")}
     </nav>
     <main class="panel">${body}</main>
@@ -880,11 +844,6 @@ function renderBillingBody(
     ${upgradeForm}
   `;
 }
-
-// ---------------------------------------------------------------------------
-// Re-exports kept narrow — consumers outside middleware.ts don't need the
-// renderers. Exported for tests + main.ts embedding checks.
-// ---------------------------------------------------------------------------
 
 export { HTMX_SCRIPT_TAG, renderDashboardLayout, renderKeysBody, renderLoginPage };
 export type { SessionRecord };

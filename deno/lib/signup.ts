@@ -201,10 +201,6 @@ function htmlResponse(body: string, status = 200): Response {
   });
 }
 
-// ---------------------------------------------------------------------------
-// HTML rendering
-// ---------------------------------------------------------------------------
-
 /** Tiny standalone stylesheet so signup pages stay self-contained. */
 const SIGNUP_CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; }

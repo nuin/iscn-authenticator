@@ -975,5 +975,5 @@ class TestParserIncomplete(unittest.TestCase):
         self.assertEqual(abn.type, "inc")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -55,36 +55,38 @@ function validateTranslocationBreakpointCount(_ast: KaryotypeAST, abn: Abnormali
   return [];
 }
 
-function validateDeletionBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "del") return [];
+/**
+ * Shared check for `del` / `dup` style abnormalities: one or two breakpoints
+ * with both breakpoints on the same arm when two are present. The two
+ * message variants preserve the historically-asserted wording.
+ */
+function validateOneOrTwoSameArmBreakpoints(
+  abn: Abnormality,
+  countLabel: string,
+  sameArmLabel: string,
+): string[] {
   const bpCount = abn.breakpoints.length;
   if (bpCount !== 1 && bpCount !== 2) {
-    return [`Deletion requires one or two breakpoints, found ${bpCount} in ${abn.raw}`];
+    return [`${countLabel} requires one or two breakpoints, found ${bpCount} in ${abn.raw}`];
   }
   if (bpCount === 2) {
     const arm1 = abn.breakpoints[0].arm;
     const arm2 = abn.breakpoints[1].arm;
     if (arm1 !== arm2) {
-      return [`Interstitial deletion breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
+      return [`${sameArmLabel} breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
     }
   }
   return [];
 }
 
+function validateDeletionBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
+  if (abn.type !== "del") return [];
+  return validateOneOrTwoSameArmBreakpoints(abn, "Deletion", "Interstitial deletion");
+}
+
 function validateDuplicationBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
   if (abn.type !== "dup") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1 && bpCount !== 2) {
-    return [`Duplication requires one or two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  if (bpCount === 2) {
-    const arm1 = abn.breakpoints[0].arm;
-    const arm2 = abn.breakpoints[1].arm;
-    if (arm1 !== arm2) {
-      return [`Duplication breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
-    }
-  }
-  return [];
+  return validateOneOrTwoSameArmBreakpoints(abn, "Duplication", "Duplication");
 }
 
 function validateRingChromosomeBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {

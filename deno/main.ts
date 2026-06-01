@@ -11,6 +11,12 @@ import { loadConfig } from "./lib/config.ts";
 import { buildHandler } from "./lib/middleware.ts";
 import { createAxiomSink, tee } from "./lib/axiom.ts";
 
+// Public API origin shown in the embedded curl examples. Override via
+// `PUBLIC_API_ORIGIN` so the docs reflect the actual deployment.
+const PUBLIC_API_ORIGIN = (typeof Deno !== "undefined" && Deno.env)
+  ? (Deno.env.get("PUBLIC_API_ORIGIN") || "https://your-host.example.com")
+  : "https://your-host.example.com";
+
 // Embedded static files for Deno Deploy
 const INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -209,14 +215,14 @@ const INDEX_HTML = `<!DOCTYPE html>
         <div class="api-docs-body">
           <p>All <code>/validate</code> calls require a Bearer token or <code>X-API-Key</code> header. Rate-limit headers are returned on every authenticated response.</p>
           <pre><code># POST (JSON body)
-curl -X POST https://your-host/validate \\
+curl -X POST ${PUBLIC_API_ORIGIN}/validate \\
   -H "Authorization: Bearer iscn_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{"karyotype": "46,XX"}'
 
 # GET (query parameter)
 curl -H "Authorization: Bearer iscn_live_..." \\
-  'https://your-host/validate?karyotype=46,XX'
+  '${PUBLIC_API_ORIGIN}/validate?karyotype=46,XX'
 
 # Error responses:
 # 401 unauthenticated  429 rate_limited (+ Retry-After)
@@ -366,7 +372,6 @@ if (config.axiomApiToken && config.axiomDataset) {
     token: config.axiomApiToken,
     dataset: config.axiomDataset,
   });
-  logSink = tee((line) => console.log(line), axiom.log);
 }
 
 const staticAssets = {

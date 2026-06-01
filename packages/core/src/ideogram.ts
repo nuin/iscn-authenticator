@@ -9,7 +9,10 @@ export interface Band {
 
 export type ChromosomeBands = Record<string, Band[]>;
 
-const bandsData = bandsDataRaw as unknown as ChromosomeBands;
+// Single typed projection of the raw JSON import. The JSON's literal-keyed
+// shape is structurally compatible with `Record<string, Band[]>`, so a
+// direct cast is sound and avoids an `unknown` bridge.
+const bandsData: ChromosomeBands = bandsDataRaw as ChromosomeBands;
 
 /**
  * Returns the band data for a specific chromosome.

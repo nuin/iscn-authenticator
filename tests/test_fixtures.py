@@ -11,7 +11,9 @@ import unittest
 
 from iscn_authenticator.main import is_valid_karyotype
 
-FIXTURES_PATH = pathlib.Path(__file__).resolve().parent.parent / "fixtures" / "validity.json"
+FIXTURES_PATH = (
+    pathlib.Path(__file__).resolve().parent.parent / "fixtures" / "validity.json"
+)
 
 
 class TestValidityFixtures(unittest.TestCase):

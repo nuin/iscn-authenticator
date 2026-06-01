@@ -31,10 +31,6 @@ const STRIPE_API_BASE = "https://api.stripe.com/v1";
 /** Default replay-protection window — Stripe's recommended value. */
 const DEFAULT_TOLERANCE_SECONDS = 300;
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 export interface CheckoutSessionArgs {
   /** Our opaque customer id (`c_<hex>`). Carried as `client_reference_id` + metadata. */
   customerId: string;
@@ -71,10 +67,6 @@ export interface StripeEvent {
   created: number;
   livemode: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// API calls
-// ---------------------------------------------------------------------------
 
 /**
  * Create a Stripe Checkout Session in `subscription` mode and return
@@ -136,10 +128,6 @@ export async function retrieveSubscription(
 ): Promise<Record<string, unknown>> {
   return await stripeGet(config, `/subscriptions/${subscriptionId}`);
 }
-
-// ---------------------------------------------------------------------------
-// Webhook signature verification
-// ---------------------------------------------------------------------------
 
 /**
  * Verify a Stripe webhook signature header against the raw request body.
@@ -215,10 +203,6 @@ export function constructEvent(rawBody: string): StripeEvent {
     livemode: ev.livemode,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Internals
-// ---------------------------------------------------------------------------
 
 interface StripeResponse extends Record<string, unknown> {
   id?: unknown;

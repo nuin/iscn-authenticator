@@ -11,7 +11,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	// Anonymize the signature
 	const hash = await sha256Hex(signature);
 
-	// Log to Axiom or just console
 	const log = {
 		ts: new Date().toISOString(),
 		level: 'info',

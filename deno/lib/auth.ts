@@ -17,8 +17,7 @@
 
 import { UnauthenticatedError } from "./errors.ts";
 import { lookupKeyByPlaintext } from "./keys.ts";
-import { validateSessionFromRequest } from "./sessions.ts";
-import type { SessionRecord } from "./sessions.ts";
+import { validateSessionFromRequest, type SessionRecord } from "./sessions.ts";
 
 export interface AuthIdentity {
   key_id: string;

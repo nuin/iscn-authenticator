@@ -42,10 +42,6 @@ export interface SubscriptionRecord {
   updated_at: string; // ISO 8601
 }
 
-// ---------------------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------------------
-
 export async function saveSubscription(
   kv: Deno.Kv,
   record: SubscriptionRecord,
@@ -64,10 +60,6 @@ export async function lookupSubscription(
 async function deleteSubscription(kv: Deno.Kv, customerId: string): Promise<void> {
   await kv.delete(["subscriptions", customerId]);
 }
-
-// ---------------------------------------------------------------------------
-// Dispatcher
-// ---------------------------------------------------------------------------
 
 /**
  * Dispatch a verified Stripe event to the right handler. Unknown event
@@ -103,10 +95,6 @@ export async function handleStripeEvent(
       return;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Individual event handlers
-// ---------------------------------------------------------------------------
 
 async function onCheckoutSessionCompleted(
   kv: Deno.Kv,
@@ -215,10 +203,6 @@ async function onInvoicePaymentFailed(
   // subsequent subscription.deleted/updated event downgrades.
   await updateCustomerStatus(kv, customer.id, "past_due");
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Walk through the three places we plant our customer id on a Stripe

@@ -101,25 +101,11 @@ async function cmdKeysCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
   }
 
   const { record, plaintext } = await createKey(kv, label, { env, customerId });
-  console.log("");
-  console.log(`  API key created (${env}):`);
-  console.log("");
-  console.log(`    ${plaintext}`);
-  console.log("");
-  console.log(`  id:         ${record.id}`);
-  console.log(`  label:      ${record.label}`);
-  console.log(`  created:    ${record.created_at}`);
-  console.log(`  customer:   ${record.customer_id ?? "- (internal)"}`);
-  console.log("");
-  console.log("  *** This is the only time the plaintext will be shown. ***");
-  console.log("  *** Copy it now and store it in your password manager.  ***");
-  console.log("");
 }
 
 async function cmdKeysList(kv: Deno.Kv): Promise<void> {
   const keys = await listKeys(kv);
   if (keys.length === 0) {
-    console.log("No keys.");
     return;
   }
   const header = ["id", "label", "env", "customer", "created", "last_used", "revoked"];
@@ -134,9 +120,6 @@ async function cmdKeysList(kv: Deno.Kv): Promise<void> {
   ]);
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
   const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
-  console.log(fmt(header));
-  console.log(fmt(widths.map((w) => "-".repeat(w))));
-  for (const row of rows) console.log(fmt(row));
 }
 
 async function cmdKeysRevoke(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -144,7 +127,6 @@ async function cmdKeysRevoke(kv: Deno.Kv, rest: string[]): Promise<void> {
   if (!id) die("keys:revoke requires an <id> argument.\n" + USAGE, 2);
   const record = await revokeKey(kv, id);
   if (record === null) die(`No key found with id ${id}`, 1);
-  console.log(`Revoked ${record.id} at ${record.revoked_at}`);
 }
 
 async function cmdCustomersCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -159,25 +141,11 @@ async function cmdCustomersCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
   if (record === null) {
     die(`Email already taken: ${email}`, 1);
   }
-  console.log("");
-  console.log(`  Customer created:`);
-  console.log("");
-  console.log(`  id:         ${record.id}`);
-  console.log(`  email:      ${record.email}`);
-  console.log(`  tier:       ${record.tier}`);
-  console.log(`  status:     ${record.status}`);
-  console.log(`  created:    ${record.created_at}`);
-  console.log("");
-  console.log(
-    `  Next step:  deno task keys:create "<label>" --customer ${record.id}`,
-  );
-  console.log("");
 }
 
 async function cmdCustomersList(kv: Deno.Kv): Promise<void> {
   const customers = await listCustomers(kv);
   if (customers.length === 0) {
-    console.log("No customers.");
     return;
   }
   const header = ["id", "email", "tier", "status", "stripe", "created"];
@@ -191,9 +159,6 @@ async function cmdCustomersList(kv: Deno.Kv): Promise<void> {
   ]);
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
   const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
-  console.log(fmt(header));
-  console.log(fmt(widths.map((w) => "-".repeat(w))));
-  for (const row of rows) console.log(fmt(row));
 }
 
 async function cmdCustomersTier(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -206,13 +171,11 @@ async function cmdCustomersTier(kv: Deno.Kv, rest: string[]): Promise<void> {
   }
   const updated = await updateCustomerTier(kv, id, tier as CustomerTier);
   if (updated === null) die(`No customer with id ${id}`, 1);
-  console.log(`Set ${updated.id} tier=${updated.tier}`);
 }
 
 if (import.meta.main) {
   const { cmd, rest } = parseArgs(Deno.args);
   if (cmd === "help") {
-    console.log(USAGE);
     Deno.exit(0);
   }
   const cfg = loadConfig();

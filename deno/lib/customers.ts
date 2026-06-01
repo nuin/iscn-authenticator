@@ -150,10 +150,6 @@ export async function updateCustomerTier(
   return updated;
 }
 
-/**
- * Update a customer's status (active / past_due / cancelled). Called by
- * Stripe webhook handlers; also used by admin CLI for manual override.
- */
 export async function updateCustomerStatus(
   kv: Deno.Kv,
   id: string,
@@ -199,11 +195,6 @@ export async function attachStripeCustomer(
   return updated;
 }
 
-/**
- * Look up our customer by the Stripe customer id. Used by webhook
- * handlers to resolve events whose payload carries only the Stripe
- * side's identifier.
- */
 export async function lookupCustomerByStripeId(
   kv: Deno.Kv,
   stripeCustomerId: string,

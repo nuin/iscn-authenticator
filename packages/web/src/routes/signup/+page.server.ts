@@ -31,13 +31,10 @@ export const actions: Actions = {
 			return fail(400, { email, error: 'Email already registered' });
 		}
 
-		// Create user
 		const user = await db.createUser(platform.env.DB, email);
 
-		// Create first key
 		const { record: keyRecord, plaintext } = await db.createKey(platform.env.DB, user.id, 'Initial key');
 
-		// Create session
 		const session = await db.createSession(platform.env.DB, user.id);
 
 		// Set session cookie

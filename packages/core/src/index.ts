@@ -27,6 +27,8 @@ export { RuleEngine } from "./engine.js";
 
 // Explain module
 export { explain } from "./explain/index.js";
+export { getCuratedSignatures } from "./explain/curated.js";
+export type { CuratedEntry, CuratedData } from "./explain/curated.js";
 
 // Ideogram data + helpers
 export {

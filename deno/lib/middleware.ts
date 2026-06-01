@@ -32,9 +32,8 @@ import {
   NotFoundError,
   UnauthenticatedError,
 } from "./errors.ts";
-import type { ErrorCode } from "./errors.ts";
+import { RateLimitError, StripeWebhookError, type ErrorCode } from "./errors.ts";
 import { authenticate } from "./auth.ts";
-import { RateLimitError } from "./errors.ts";
 import { checkAndConsume, tokenBucketHeaders } from "./token_bucket.ts";
 import { lookupCustomerForKey, rotateKey, sha256Hex, touchKey } from "./keys.ts";
 import { lookupCustomerById } from "./customers.ts";
@@ -53,8 +52,7 @@ import {
   scalarCspHeader,
   mergeHeaders,
 } from "./security_headers.ts";
-import { clientIp, logRequest, requestId } from "./logging.ts";
-import type { RequestLog } from "./logging.ts";
+import { clientIp, logRequest, requestId, type RequestLog } from "./logging.ts";
 import { handleDashboardRoute, isDashboardPath } from "./dashboard.ts";
 import { handleSignupRoute, isSignupPath } from "./signup.ts";
 import { constructEvent, verifyWebhookSignature } from "./stripe.ts";
@@ -65,10 +63,8 @@ import {
   handlePricingPage,
 } from "./pages.ts";
 import { createOpenApiHandler } from "./openapi.ts";
-import { StripeWebhookError } from "./errors.ts";
 import { validateKaryotypeNative } from "../../packages/core/src/validate.ts";
-import { explain } from "../../packages/core/src/index.ts";
-import curatedData from "../../packages/core/data/explains/curated.json" with { type: "json" };
+import { explain, getCuratedSignatures } from "../../packages/core/src/index.ts";
 
 export interface BuildHandlerOptions {
   kv: Deno.Kv;
@@ -226,10 +222,6 @@ export function buildHandler(opts: BuildHandlerOptions): AppHandler {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Route handlers
-// ---------------------------------------------------------------------------
-
 function handleHealth(): Response {
   return new Response(
     JSON.stringify({ ok: true }),
@@ -334,7 +326,6 @@ async function handleValidate(args: HandleValidateArgs): Promise<Response> {
   // 1. Auth (throws UnauthenticatedError on any failure path).
   const identity = await authenticate(req, kv);
 
-  // Fire-and-forget last_used_at update.
   touchKey(kv, identity.key_id).catch(() => {});
 
   // 2. Rate limit via token bucket (state bump happens BEFORE we do work).
@@ -669,10 +660,6 @@ async function extractKaryotypeFromBody(
   return k;
 }
 
-// ---------------------------------------------------------------------------
-// Header + CORS helpers
-// ---------------------------------------------------------------------------
-
 function corsPreflight(req: Request, config: Config): Response {
   const origin = req.headers.get("origin") ?? "";
   const allowedOrigin = pickAllowedOrigin(origin, config);
@@ -777,7 +764,7 @@ async function handleExplainRoute(req: Request): Promise<Response> {
   }
 
   const signature = decodeURIComponent(path.substring("/explain/".length));
-  const entry = (curatedData.signatures as any)[signature];
+  const entry = getCuratedSignatures()[signature];
 
   if (!entry) {
     throw new NotFoundError();
@@ -787,7 +774,7 @@ async function handleExplainRoute(req: Request): Promise<Response> {
 }
 
 function renderExplainIndex(): Response {
-  const signatures = Object.keys(curatedData.signatures);
+  const signatures = Object.keys(getCuratedSignatures());
   const listItems = signatures
     .map(
       (sig) => `<li><a href="/explain/${encodeURIComponent(sig)}">${escapeHtml(sig)}</a></li>`,

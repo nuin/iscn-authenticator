@@ -1,7 +1,7 @@
 # tests/test_rules_base.py
 import unittest
 from iscn_authenticator.rules.base import Rule
-from iscn_authenticator.models import KaryotypeAST
+
 
 class TestRule(unittest.TestCase):
     def test_rule_creation(self):
@@ -12,7 +12,7 @@ class TestRule(unittest.TestCase):
             id="CHR_COUNT_46",
             category="chromosome_count",
             description="Chromosome count must be 46",
-            validate=validator
+            validate=validator,
         )
         self.assertEqual(rule.id, "CHR_COUNT_46")
         self.assertEqual(rule.category, "chromosome_count")
@@ -25,7 +25,7 @@ class TestRule(unittest.TestCase):
             id="CHR_COUNT_46",
             category="chromosome_count",
             description="Test rule",
-            validate=validator
+            validate=validator,
         )
         errors = rule.validate(46, None)
         self.assertEqual(errors, [])
@@ -38,10 +38,11 @@ class TestRule(unittest.TestCase):
             id="CHR_COUNT_46",
             category="chromosome_count",
             description="Test rule",
-            validate=validator
+            validate=validator,
         )
         errors = rule.validate(45, None)
         self.assertEqual(errors, ["Expected 46, got 45"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

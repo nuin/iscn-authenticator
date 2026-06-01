@@ -4,7 +4,6 @@ import type { PageServerLoad, Actions } from './$types';
 export const load: PageServerLoad = async ({ locals, platform }) => {
 	// User session is verified in +layout.server.ts
 	
-	// Fetch usage stats
 	const now = new Date();
 	const month = now.getUTCFullYear().toString() + (now.getUTCMonth() + 1).toString().padStart(2, '0');
 

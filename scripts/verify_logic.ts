@@ -32,6 +32,11 @@ for (const k of testCases) {
       console.log(`Ideogram Mapping (Chr 5): q13 -> ${range1?.start}-${range1?.end}, q33 -> ${range2?.start}-${range2?.end}`);
     }
   } catch (err) {
-    console.log(`System Error for ${k}: ${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    const name = err instanceof Error ? err.name : "UnknownError";
+    console.error(`System Error for ${k}: [${name}] ${message}`);
+    if (err instanceof Error && err.stack) console.error(err.stack);
+    // Re-throw so a CI run surfaces the failure instead of silently passing.
+    throw err;
   }
 }

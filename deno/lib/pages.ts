@@ -4,6 +4,14 @@
 
 const CONTENT_TYPE_HTML = "text/html; charset=utf-8";
 
+// Scalar API-reference bundle. Pinned to `@1` major so updates land via
+// rebuild rather than at runtime. Override via `SCALAR_CDN_URL` for
+// air-gapped deployments or to pin a more specific version.
+const SCALAR_CDN_URL_DEFAULT = "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1";
+const SCALAR_CDN_URL = (typeof Deno !== "undefined" && Deno.env)
+  ? (Deno.env.get("SCALAR_CDN_URL") || SCALAR_CDN_URL_DEFAULT)
+  : SCALAR_CDN_URL_DEFAULT;
+
 export async function handlePricingPage(): Promise<Response> {
   const html = renderSimplePage(
     "Pricing",
@@ -81,7 +89,7 @@ const SCALAR_HTML = `<!doctype html>
   </head>
   <body>
     <script id="api-reference" data-url="/openapi.json"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1"></script>
+    <script src="${SCALAR_CDN_URL}"></script>
   </body>
 </html>
 `;

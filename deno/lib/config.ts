@@ -159,13 +159,22 @@ function randomHex(numBytes: number): string {
   return out;
 }
 
+/**
+ * Returns a stable non-secret placeholder for test configs. Reads from the
+ * `TEST_SESSION_SECRET` env var when set so CI can pin a value; otherwise
+ * returns a fixed dev-only placeholder. Never use in production.
+ */
+function testSessionSecret(): string {
+  return Deno.env.get("TEST_SESSION_SECRET") ?? "dev-only-placeholder-do-not-use-in-prod";
+}
+
 /** Test helper — returns a config with every field at default. */
 export function defaultConfig(): Config {
   return {
     ...DEFAULTS,
     allowedOrigins: [...DEFAULTS.allowedOrigins],
-    // Tests that exercise session code need a stable non-empty secret. Tests
-    // that don't care about sessions can ignore this field.
-    sessionSecret: "test-session-secret",
+    // Tests that exercise session code need a stable non-empty value here.
+    // Tests that don't care about sessions can ignore this field.
+    sessionSecret: testSessionSecret(),
   };
 }

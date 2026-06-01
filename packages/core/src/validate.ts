@@ -11,7 +11,6 @@ import { RuleEngine } from "./engine.js";
 import { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
 import { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
 
-// Initialize parser and engine
 const parser = new KaryotypeParser();
 const engine = new RuleEngine();
 engine.addRules(ALL_CHROMOSOME_RULES);

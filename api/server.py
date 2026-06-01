@@ -6,6 +6,7 @@ Usage:
     # or
     python api/server.py
 """
+
 import sys
 from pathlib import Path
 from dataclasses import asdict, is_dataclass
@@ -78,7 +79,7 @@ async def root():
             "POST /validate": "Validate a karyotype string",
             "GET /validate?karyotype=...": "Validate via query parameter",
             "GET /health": "Health check",
-        }
+        },
     }
 
 

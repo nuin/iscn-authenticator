@@ -14,7 +14,7 @@
 
 import { loadConfig } from "./lib/config.ts";
 import { buildHandler } from "./lib/middleware.ts";
-import { createAxiomSink, tee } from "./lib/axiom.ts";
+import { createAxiomSink } from "./lib/axiom.ts";
 
 const PORT = parseInt(Deno.env.get("PORT") ?? "8000");
 
@@ -32,24 +32,8 @@ if (config.axiomApiToken && config.axiomDataset) {
     token: config.axiomApiToken,
     dataset: config.axiomDataset,
   });
-  logSink = tee((line) => console.log(line), axiom.log);
 }
 
 const handler = buildHandler({ kv, config, staticDir, openapiYaml, logSink });
-
-console.log(`
-  ISCN Karyotype Validator Server
-  ================================
-
-  Server running at http://localhost:${PORT}
-
-  Endpoints:
-    GET  /              Web UI
-    GET  /health        Liveness probe
-    GET  /validate?karyotype=...   (requires Bearer token)
-    POST /validate                 (requires Bearer token, JSON body)
-
-  Press Ctrl+C to stop
-`);
 
 Deno.serve({ port: PORT }, handler);

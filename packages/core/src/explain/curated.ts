@@ -1,18 +1,26 @@
 import type { Abnormality, ExplainResult, KaryotypeNode } from "../types.js";
 import curatedDataRaw from "../../data/explains/curated.json" with { type: "json" };
 
-interface CuratedEntry {
+export interface CuratedEntry {
   summary: string;
   detail: string;
   citation?: { section: string; page?: number };
   refs?: { omim?: string[]; hpo?: string[]; clinvar?: string[] };
 }
 
-interface CuratedData {
+export interface CuratedData {
   signatures: Record<string, CuratedEntry>;
 }
 
-const curatedData = curatedDataRaw as unknown as CuratedData;
+// Single typed projection of the raw JSON import. The JSON's literal-keyed
+// shape is structurally compatible with `Record<string, CuratedEntry>`, so
+// a direct cast is sound and avoids an `unknown` bridge.
+const curatedData: CuratedData = curatedDataRaw as CuratedData;
+
+/** Typed accessor for the curated signature map. */
+export function getCuratedSignatures(): Record<string, CuratedEntry> {
+  return curatedData.signatures;
+}
 
 /**
  * Generates a canonical signature for a KaryotypeNode.

@@ -9,7 +9,7 @@
  *   deno task cli --help
  */
 
-import { validateKaryotype } from "./lib/validator.ts";
+import { validateKaryotypeNative } from "./lib/validator.ts";
 import type { Abnormality, ValidationResult } from "../packages/core/src/types.ts";
 
 // ANSI color codes
@@ -33,7 +33,7 @@ function color(text: string, ...codes: string[]): string {
 }
 
 function printHelp(): void {
-  console.log(`
+  console.error(`
 ${color("ISCN Karyotype Validator", colors.bold, colors.cyan)}
 
 ${color("USAGE:", colors.bold)}
@@ -125,54 +125,36 @@ function formatAbnormality(abn: Abnormality): string {
 }
 
 function printHumanReadable(karyotype: string, result: ValidationResult, verbose: boolean): void {
-  console.log();
-  console.log(color("Validating:", colors.bold), color(karyotype, colors.cyan));
-  console.log();
 
   if (result.valid) {
-    console.log(color("  VALID", colors.bold, colors.green));
   } else {
-    console.log(color("  INVALID", colors.bold, colors.red));
+    console.error(color("  INVALID", colors.bold, colors.red));
   }
 
   if (result.errors.length > 0) {
-    console.log();
-    console.log(color("Errors:", colors.bold));
     for (const error of result.errors) {
-      console.log(color("  - ", colors.red) + error);
+      console.error(color("  - ", colors.red) + error);
     }
   }
 
   if (verbose && result.parsed) {
     const parsed = result.parsed;
-    console.log();
-    console.log(color("Parsed:", colors.bold));
-    console.log(`  Chromosome count: ${color(String(parsed.chromosome_count), colors.cyan)}`);
-    console.log(`  Sex chromosomes:  ${color(parsed.sex_chromosomes, colors.cyan)}`);
 
     if (parsed.abnormalities.length > 0) {
-      console.log(`  Abnormalities (${parsed.abnormalities.length}):`);
       for (const abn of parsed.abnormalities) {
-        console.log(
-          `    - ${color(abn.raw, colors.yellow)}: ${formatAbnormality(abn)}`,
-        );
       }
     } else {
-      console.log(`  Abnormalities: ${color("none", colors.dim)}`);
     }
 
     if (parsed.cell_lines && parsed.cell_lines.length > 0) {
-      console.log(`  Cell lines (mosaic): ${parsed.cell_lines.length}`);
     }
   }
 
-  console.log();
 }
 
 async function main(): Promise<void> {
   const args = Deno.args;
 
-  // Parse flags
   const jsonOutput = args.includes("--json");
   const verbose = args.includes("--verbose") || args.includes("-v");
   const help = args.includes("--help") || args.includes("-h");
@@ -186,7 +168,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await validateKaryotype(karyotype);
+    const result = validateKaryotypeNative(karyotype);
 
     if (jsonOutput) {
       console.log(JSON.stringify(result, null, 2));
@@ -197,7 +179,7 @@ async function main(): Promise<void> {
     Deno.exit(result.valid ? 0 : 1);
   } catch (error) {
     if (jsonOutput) {
-      console.log(
+      console.error(
         JSON.stringify({
           valid: false,
           errors: [error instanceof Error ? error.message : String(error)],

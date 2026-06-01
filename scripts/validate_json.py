@@ -12,6 +12,7 @@ Outputs JSON to stdout with structure:
     "parsed": {...} or null
 }
 """
+
 import json
 import sys
 from dataclasses import asdict, is_dataclass
@@ -43,11 +44,7 @@ def main():
         karyotype = sys.stdin.read().strip()
 
     if not karyotype:
-        result = {
-            "valid": False,
-            "errors": ["No karyotype provided"],
-            "parsed": None
-        }
+        result = {"valid": False, "errors": ["No karyotype provided"], "parsed": None}
         print(json.dumps(result))
         sys.exit(2)
 
@@ -60,7 +57,7 @@ def main():
         result = {
             "valid": False,
             "errors": [f"Validation error: {str(e)}"],
-            "parsed": None
+            "parsed": None,
         }
         print(json.dumps(result))
         sys.exit(2)

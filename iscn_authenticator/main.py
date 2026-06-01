@@ -1,18 +1,20 @@
 # iscn_authenticator/main.py
 """ISCN Karyotype Validation API."""
+
 import re
-from iscn_authenticator.models import ValidationResult, KaryotypeAST
+from iscn_authenticator.models import ValidationResult
 from iscn_authenticator.parser import KaryotypeParser, ParseError
 from iscn_authenticator.engine import RuleEngine
 from iscn_authenticator.rules.chromosome import ALL_CHROMOSOME_RULES
 from iscn_authenticator.rules.abnormality import ALL_ABNORMALITY_RULES
 from iscn_authenticator.explain import explain
 
-# Initialize parser and engine
 _parser = KaryotypeParser()
 _engine = RuleEngine()
 _engine.add_rules(ALL_CHROMOSOME_RULES)
 _engine.add_abnormality_rules(ALL_ABNORMALITY_RULES)
+
+
 def validate_karyotype(karyotype: str) -> ValidationResult:
     """
     Validate an ISCN karyotype string.
@@ -26,11 +28,7 @@ def validate_karyotype(karyotype: str) -> ValidationResult:
     try:
         ast = _parser.parse(karyotype)
     except ParseError as e:
-        return ValidationResult(
-            valid=False,
-            errors=[str(e)],
-            parsed=None
-        )
+        return ValidationResult(valid=False, errors=[str(e)], parsed=None)
 
     result = _engine.validate(ast)
 
@@ -55,6 +53,7 @@ def is_valid_karyotype(karyotype: str) -> bool:
 
 # Legacy functions kept for compatibility with existing code
 # These can be removed in a future version
+
 
 def _validate_total_chromosome_number(number_part: str) -> bool:
     """Validates the total chromosome number part of the karyotype."""

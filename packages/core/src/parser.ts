@@ -164,10 +164,8 @@ export class KaryotypeParser {
 
     const parts = karyotype.split(",");
 
-    // Parse chromosome count
     const chromosomeCount = this.parseChromosomeCount(parts[0]);
 
-    // Parse sex chromosomes
     const sexChromosomes = this.parseSexChromosomes(parts[1]);
 
     // Parse abnormalities (if any)
@@ -225,7 +223,6 @@ export class KaryotypeParser {
       return countStr;
     }
 
-    // Handle numeric count
     if (!/^\d+$/.test(countStr)) {
       throw new ParseError(`Invalid chromosome count: '${countStr}' is not a number`);
     }

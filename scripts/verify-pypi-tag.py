@@ -24,7 +24,10 @@ TAG_RE = re.compile(r"^v(.+)-py$")
 def main() -> int:
     tag = os.environ.get("GITHUB_REF_NAME")
     if not tag:
-        print("verify-pypi-tag: GITHUB_REF_NAME is not set; refusing to publish.", file=sys.stderr)
+        print(
+            "verify-pypi-tag: GITHUB_REF_NAME is not set; refusing to publish.",
+            file=sys.stderr,
+        )
         return 1
 
     if tag.endswith("-py-client"):
