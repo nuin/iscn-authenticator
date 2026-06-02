@@ -11,24 +11,6 @@ on:
     branches: [master]
 
 jobs:
-  python-tests:
-    name: Python tests (${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run unittest suite
-        run: python -m unittest discover tests/ -v
-      - name: Run fixture-driven tests
-        run: python -m unittest tests.test_fixtures -v
-
   typescript-tests:
     name: TypeScript tests (Deno)
     runs-on: ubuntu-latest
@@ -44,6 +26,13 @@ jobs:
       - name: Type-check Deno app
         working-directory: deno
         run: deno task check
+      - name: Set up Node.js for fetch-fixtures
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Fetch shared fixtures from iscn-authenticator-py
+        working-directory: packages/core
+        run: node scripts/fetch-fixtures.mjs
       - name: Run fixture-driven tests
         working-directory: packages/core
         run: deno test --allow-read --unstable-sloppy-imports tests/
@@ -109,22 +98,3 @@ jobs:
       - name: Build web app
         working-directory: packages/web
         run: npm run build
-
-  python-install-smoke:
-    name: Python pip install smoke test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: pip install . in fresh venv and smoke test
-        run: |
-          python -m venv /tmp/smoke-venv
-          /tmp/smoke-venv/bin/pip install .
-          /tmp/smoke-venv/bin/python -c "
-          from iscn_authenticator import is_valid_karyotype
-          assert is_valid_karyotype('46,XX') is True, 'Expected True'
-          print('Smoke test passed: is_valid_karyotype(\"46,XX\") is True')
-          "
