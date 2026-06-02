@@ -1,6 +1,0 @@
-# Runtime dependencies for the FastAPI HTTP wrapper (api/server.py).
-# The core library (iscn_authenticator/) is stdlib-only — declared in
-# pyproject.toml. These packages are only needed when serving the HTTP API.
-fastapi>=0.110
-pydantic>=2.0
-uvicorn[standard]>=0.27
