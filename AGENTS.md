@@ -4,23 +4,24 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-ISCN Authenticator validates ISCN (International System for Human Cytogenomic Nomenclature, 2024) karyotype strings. It is a monorepo with parallel implementations that must be kept in sync, verified by a shared fixture corpus.
+ISCN Authenticator validates ISCN (International System for Human Cytogenomic Nomenclature, 2024) karyotype strings. This repository contains the TypeScript validator, service runtimes, and web app. The Python reference library is maintained separately in [iscn-authenticator-py](https://github.com/nuin/iscn-authenticator-py). The TypeScript fixture suite checks agreement with the corpus downloaded from a pinned Python release.
 
 ## Monorepo Layout
 
-Nothing is published. All components are consumed from source.
+Consume the TypeScript components from source. The FastAPI wrapper installs the external `iscn-authenticator` Python package; this repository no longer contains its implementation or library tests.
 
 | Path | What |
 |---|---|
-| `iscn_authenticator/` | Python reference library, zero runtime deps. Installable locally via `pip install .`. |
 | `packages/core/` | TypeScript port (`@iscn/core`), Deno + Node dual-runtime. Build with `npm run build` for Node; import `.ts` directly from Deno. |
-| `api/` | FastAPI HTTP wrapper around the Python library. |
+| `api/` | FastAPI HTTP wrapper around the external Python library; `pyproject.toml`, `uv.lock`, and wrapper tests. |
 | `deno/` | Deno Deploy API/admin runtime with lightweight static UI; imports core from `packages/core/src/`. |
 | `packages/web/` | SvelteKit / Cloudflare Pages app. Canonical hosted product/dashboard UI. |
-| `fixtures/validity.json` | Shared valid/invalid karyotype corpus driving parity tests. |
-| `tests/test_fixtures.py` | Python fixture-driven parity test. |
+| `packages/core/scripts/fetch-fixtures.mjs` | Downloads the shared corpus using the `iscn` pin in `packages/core/package.json`. |
+| `packages/core/tests/fixtures/validity.json` | Downloaded valid/invalid karyotype corpus. |
 | `packages/core/tests/fixtures.test.ts` | TypeScript fixture-driven parity test. |
-| `.github/workflows/ci.yml` | Python matrix + Deno type-check/test + Node/core build + web check/build smoke. |
+| `.github/workflows/ci.yml` | API wrapper tests, Deno type-check/tests, Node tests/build, browser bundle freshness, and web binding types/check/build/integration tests. |
+
+Use Node.js 24 LTS (`.nvmrc`) and Deno 2.9.7 to match CI. The Python API requires Python 3.11 or newer.
 
 **Dual-runtime TypeScript:** `packages/core/src/` uses `.js` import specifiers so `tsc` (Node build) emits matching filenames in `dist/`. Deno resolves `.js` specifiers back to the `.ts` source via `"unstable": ["sloppy-imports"]`, which is enabled in:
 - the root `deno.json` (Deno Deploy reads this file)
@@ -31,39 +32,45 @@ When adding a new file to `packages/core/src/`, write its intra-package imports 
 
 ## Commands
 
-**Python tests** (from project root):
-```bash
-python3 -m unittest discover tests                              # run all tests
-python3 -m unittest tests.test_parser                           # one test file
-python3 -m unittest tests.test_main.TestIsValidKaryotype.test_valid_karyotypes  # one test
-python3 -m unittest tests.test_fixtures                         # cross-impl fixture parity
-```
-
 **TypeScript tests** (from `packages/core/`):
 ```bash
-deno test --allow-read --unstable-sloppy-imports tests/        # fixture parity + unit tests
-npm ci && npm run build                                        # Node build (emits dist/)
+npm ci
+npm test                       # fetch pinned fixtures, Deno suite, Node suite
+npm run test:deno               # Deno .test.ts files; requires fetched fixtures
+npm run test:node               # Node .test.mjs files
+npm run build                  # Node build (emits dist/)
+npm run check:browser          # check embedded browser bundle without writing
+npm run build:browser          # regenerate embedded and local browser bundles
 ```
 
-**Python packaging smoke** (from project root, optional):
+`npm run fetch-fixtures` reads the pinned repository, tag, and path from `packages/core/package.json`. For local comparisons, `ISCN_FIXTURES_TAG_OVERRIDE` selects another release tag. Changes to shared validation semantics must be coordinated with the Python repository and reflected in the fixture pin.
+
+**FastAPI server and tests** (from project root, using uv):
 ```bash
-pip install hatchling && python3 -m hatchling build            # builds wheel + sdist into dist/
+uv sync --project api --locked
+uv run --project api --locked python -m uvicorn api.server:app --reload
+uv run --project api --locked python api/server.py    # reads $PORT, default 8000
+uv run --project api --locked --python 3.11 python -m unittest discover -s api/tests -v
 ```
 
-**FastAPI server:**
-```bash
-uvicorn api.server:app --reload     # dev
-python3 api/server.py                # prod-like (reads $PORT, default 8000)
-```
+`api/pyproject.toml` is the dependency source of truth. After changing it, run `uv lock --project api` and commit `api/uv.lock`. CI tests the HTTP wrapper on Python 3.11 and 3.14 using the lockfile.
+
+Python library tests and packaging commands run in the external Python repository.
 
 **SvelteKit web app** (from `packages/web/` after building core):
 ```bash
 cd packages/core && npm ci && npm run build
 cd ../web
 npm ci
+npm run types:cloudflare -- --check
 npm run check
 npm run build
+npm test
+npx playwright install chromium
+npm run test:browser
 ```
+
+The web toolchain uses SvelteKit 3, Vite 8, TypeScript 6, and Wrangler 4. After changing `packages/web/wrangler.toml` bindings, run `npm run types:cloudflare` from `packages/web/` and commit `src/worker-configuration.d.ts`. The generated file contains binding types; environment secrets are declared separately in `src/env.d.ts`. CI checks type freshness before type-checking and runs HTTP integration tests against the built Pages app and a temporary local D1 database after the build.
 
 **Deno (from `deno/` directory):**
 ```bash
@@ -80,7 +87,9 @@ Note: `deno/main.ts` is the **Deno Deploy** entrypoint — it embeds the HTML in
 
 Both entry points are thin wrappers around `buildHandler()` from `deno/lib/middleware.ts`. Only the static-HTML source differs — the auth / rate-limit / security-headers / logging surface is shared, so local dev and prod cannot drift.
 
-### Deno middleware pipeline (M1)
+After changing the core, run `npm run build:browser` from `packages/core/` and commit the updated embedded asset in `deno/main.ts`. The local `deno/static/iscn-core.js` file is generated and ignored. `npm run check:browser` rejects stale embedded code in CI; Deno tests also compare browser and source validation results.
+
+### Deno middleware pipeline
 
 Inside `buildHandler`:
 
@@ -89,7 +98,8 @@ Inside `buildHandler`:
 3. Route dispatch
    - `GET /` → static HTML (`staticHtml` string or `staticDir` from disk)
    - `GET /health` → 200 liveness probe (no auth)
-   - `GET|POST /validate` → **auth → rate-limit → body/input validation → validator**
+   - `GET|POST /validate` → authentication, token-bucket rate limiting, monthly quota, input validation, and validator
+   - Signup, session/dashboard, billing webhook, usage, key rotation, documentation, and explanation routes use their respective handlers
    - Anything else → 404
 4. `AppError` catch → typed error response via `errorToResponse()` (stack never exposed)
 5. Non-`AppError` catch → 500 `internal`; full error sent to `errorSink` (default `console.error`), keyed to `request_id`
@@ -98,53 +108,50 @@ Inside `buildHandler`:
 
 ### Deno KV schema
 
-- `keys:<sha256(plaintext)>` → `{ id, label, created_at, last_used_at, revoked_at }`
+- `keys:<sha256(plaintext)>` → `{ id, label, env, created_at, last_used_at, revoked_at, customer_id }`
 - `keys_index:<id>` → `<sha256(plaintext)>` (reverse lookup by id)
-- `rl:<key_id>:<minute_bucket>` → counter, TTL ≈ 120s (two windows so we can still read the previous one)
+- `key_customer:<id>` → owning customer id for quota lookup
+- `tb:<key_id>` → `{ tokens, updated_ms }` for token-bucket rate limiting
 
-Atomic increment via `kv.atomic().sum(...)`. Fixed-window limiter (60 req/min default); clients can burst to 2× the limit at window boundaries — acceptable for M1, swap to token-bucket post-M1 if abuse observed.
+The limiter in `deno/lib/token_bucket.ts` refills at 60 tokens/minute by default, with a default capacity of 120, and updates state using atomic compare-and-set. Customer-owned keys also have monthly quotas; internal keys without a customer bypass monthly quota enforcement. Customer, quota, session, and billing modules define their additional KV records.
 
 ### Admin CLI (deno/admin.ts)
 
-Key management is CLI-only; no self-serve UI in M1. Wrapped as `deno task keys:create <label>` / `keys:list` / `keys:revoke <id>`. Plaintext is shown once at create and stored only as SHA-256 hash. Revocation sets `revoked_at` — subsequent auth lookups reject.
+Operators manage keys through `deno task keys:create <label>` / `keys:list` / `keys:revoke <id>` and customers through the `customers:*` tasks. Customers can sign up and rotate keys through the service. Plaintext is shown once at create and stored only as a SHA-256 hash. Revocation sets `revoked_at` — subsequent auth lookups reject.
 
 ### Deno app tests
 
-- Unit tests per module: `deno/tests/auth_test.ts`, `ratelimit_test.ts`, `keys_test.ts`, `config_test.ts`, `errors_test.ts`, `logging_test.ts`
-- Full-pipeline integration tests: `deno/tests/integration_test.ts` (27 cases — happy paths, auth failure modes, rate-limit headers, CORS, body/input validation, security-header presence, error-body sanitization, uncaught-error masking via closed-KV trick)
+- Tests in `deno/tests/` cover auth, token buckets, keys, customers, quotas, sessions, signup, billing, logging, documentation, browser bundle parity, and CLI output.
+- Full-pipeline integration tests in `deno/tests/integration_test.ts` exercise happy paths, auth failures, rate-limit headers, CORS, input validation, security headers, and error-body sanitization.
 - Run the whole app suite with `deno task test` from `deno/`.
 
 ## Architecture
 
-### Validation pipeline (Python)
+### Validation pipeline (TypeScript)
 
-`validate_karyotype()` in `iscn_authenticator/main.py` is the single entry point. It wires together:
+`validateKaryotypeNative()` in `packages/core/src/validate.ts` is the validation entry point. It wires together:
 
-1. **`KaryotypeParser`** (`parser.py`) — string → `KaryotypeAST`. Raises `ParseError` on malformed syntax. Each abnormality type has its own regex + parse method; `_parse_abnormalities` dispatches by prefix. **Dispatch order matters**: `idic(` must be checked before `i(`, `dic(` before `der(`, `rob(` before `r(`, `ins(` before `i(`, `trp(` before `t(` — otherwise shorter prefixes shadow longer ones.
-2. **`RuleEngine`** (`engine.py`) — runs two rule sets against the AST:
+1. **`KaryotypeParser`** (`parser.ts`, with helpers in `abnormality-parser.ts` and `breakpoint-parser.ts`) — string → `KaryotypeAST`. Throws `ParseError` on malformed syntax. The validation entry point converts parse failures into `{ valid: false, errors, parsed: null }`. Abnormality dispatch order matters: check longer prefixes before shorter overlapping ones.
+2. **`RuleEngine`** (`engine.ts`) — runs two rule sets against the AST:
    - AST-level rules (`ALL_CHROMOSOME_RULES`) — run once per karyotype
    - Abnormality-level rules (`ALL_ABNORMALITY_RULES`) — run once per `Abnormality`
-3. **`ValidationResult`** (`models.py`) — `{ valid, errors, parsed }`.
+3. **`ValidationResult`** (`types.ts`) — `{ valid, errors, parsed }`.
 
-Adding a new rule: define a `validate(ast, target) -> list[str]` function, wrap in `Rule(...)`, and append to the list in `rules/chromosome.py` or `rules/abnormality.py`. Rules return strings (one per error); empty list means pass.
+Adding a new rule: implement a `Rule` with `validate(ast, target): string[]` and append it to `ALL_CHROMOSOME_RULES` or `ALL_ABNORMALITY_RULES` in `rules/chromosome.ts` or `rules/abnormality.ts`. Rules return one string per error; an empty array means pass.
 
-Adding a new abnormality type: add a regex constant + `_parse_X` method in `KaryotypeParser`, add a dispatch branch in `_parse_abnormalities` (mind prefix ordering above), and extend the relevant dataclass fields in `models.py` if needed.
+Adding a new abnormality type: update the abnormality parser and dispatch order, extend `types.ts` as needed, and add cases covering parsing and validation.
 
 ### Data model
 
-`KaryotypeAST` carries `chromosome_count` (int or `"45~48"` range string), `sex_chromosomes` (e.g., `"XX"`, `"XY"`, `"U"` for undisclosed), `abnormalities`, optional `cell_lines` (for mosaics, split on `/`), and `modifiers`. `Abnormality.raw` always preserves the original substring including uncertainty `?` and inheritance suffixes (`mat`/`pat`/`dn`), which are stripped into separate fields before regex matching.
-
-### Legacy functions
-
-`main.py` still exports `_validate_total_chromosome_number`, `_validate_sex_chromosomes`, `_validate_coherence`, `_validate_abnormalities`, and `_validate_deletion_content`. These are **legacy shims** kept for backward compatibility with older tests — new logic belongs in rules, not here.
+`KaryotypeAST` carries `chromosome_count` (number, `"45~48"` range string, or `null` for FISH-only notation), `sex_chromosomes`, `abnormalities`, nullable `cell_lines` (for mosaics, split on `/`), and nullable `modifiers`. `Abnormality.raw` preserves the original substring including uncertainty `?` and inheritance suffixes (`mat`/`pat`/`dn`), which are represented separately for validation.
 
 ### TypeScript port
 
-`packages/core/src/` mirrors the Python structure: `parser.ts`, `engine.ts`, `validate.ts`, `types.ts`, `rules/chromosome.ts`, `rules/abnormality.ts`. `validate.ts` exposes `validateKaryotypeNative`, re-exported from the package entry `packages/core/src/index.ts` (the public API surface of `@iscn/core`).
+`packages/core/src/index.ts` is the public entry point for validation, parser/engine types, explanation helpers, and ideogram data. Use `.js` extensions for intra-package imports so the emitted Node build and Deno's sloppy-import resolution both work.
 
-`deno/lib/validator.ts` is the **Deno-app-specific** native validator wrapper — it imports from `../../packages/core/src/`. It is not part of the published `@iscn/core` package.
+`deno/lib/validator.ts` is the **Deno-app-specific** native validator wrapper — it imports from `../../packages/core/src/`. It is not part of the `@iscn/core` package.
 
-When changing validation semantics, update **both** `iscn_authenticator/` and `packages/core/src/` — `fixtures/validity.json` and the two `test_fixtures` suites will catch parity drift in CI.
+When changing validation semantics, coordinate changes with [iscn-authenticator-py](https://github.com/nuin/iscn-authenticator-py), update the shared corpus there, and advance the fixture release pin here. This repository's CI runs the TypeScript fixture suite and Python HTTP wrapper tests; the Python library's own tests run in its repository.
 
 ## ISCN Reference
 

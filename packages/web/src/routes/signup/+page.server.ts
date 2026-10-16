@@ -1,6 +1,7 @@
+import { env } from 'cloudflare:workers';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import * as db from '$lib/server/db';
+import * as db from '#lib/server/db.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// If already logged in, redirect to dashboard
@@ -10,11 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, platform, cookies }) => {
-		if (!platform) {
-			return fail(500, { message: 'Platform not available' });
-		}
-
+	default: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const email = formData.get('email')?.toString().trim();
 
@@ -26,16 +23,16 @@ export const actions: Actions = {
 			return fail(400, { email, error: 'Invalid email address' });
 		}
 
-		const existing = await db.getUserByEmail(platform.env.DB, email);
+		const existing = await db.getUserByEmail(env.DB, email);
 		if (existing) {
 			return fail(400, { email, error: 'Email already registered' });
 		}
 
-		const user = await db.createUser(platform.env.DB, email);
+		const user = await db.createUser(env.DB, email);
 
-		const { record: keyRecord, plaintext } = await db.createKey(platform.env.DB, user.id, 'Initial key');
+		const { record: keyRecord, plaintext } = await db.createKey(env.DB, user.id, 'Initial key');
 
-		const session = await db.createSession(platform.env.DB, user.id);
+		const session = await db.createSession(env.DB, user.id);
 
 		// Set session cookie
 		cookies.set('iscn_session', session.id, {

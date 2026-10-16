@@ -29,9 +29,13 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:browser": "node scripts/build-browser.mjs",
+    "check:browser": "node scripts/build-browser.mjs --check",
     "prepublishOnly": "npm run build",
     "fetch-fixtures": "node scripts/fetch-fixtures.mjs",
-    "test": "npm run fetch-fixtures && deno test --allow-read tests/fixtures.test.ts"
+    "test": "npm run fetch-fixtures && npm run test:deno && npm run test:node",
+    "test:deno": "deno test --allow-read --unstable-sloppy-imports tests/*.test.ts",
+    "test:node": "node --test tests/*.test.mjs"
   },
   "iscn": {
     "fixturesRepo": "nuin/iscn-authenticator-py",
@@ -54,12 +58,13 @@
     "nomenclature"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "publishConfig": {
     "access": "public"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
   }
 }

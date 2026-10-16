@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """ISCN Karyotype Validation API Server.
 
 Usage:
@@ -7,19 +6,13 @@ Usage:
     python api/server.py
 """
 
-import sys
-from pathlib import Path
-from dataclasses import asdict, is_dataclass
 from contextlib import asynccontextmanager
+from dataclasses import asdict, is_dataclass
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from iscn_authenticator.main import validate_karyotype
+from pydantic import BaseModel
 
 
 def to_json_serializable(obj):
@@ -109,8 +102,9 @@ async def validate_get(karyotype: str):
 
 
 if __name__ == "__main__":
-    import uvicorn
     import os
 
-    port = int(os.environ.get("PORT", 8000))
+    import uvicorn
+
+    port = int(os.environ.get("PORT", "8000"))
     uvicorn.run(app, host="0.0.0.0", port=port)

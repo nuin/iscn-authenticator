@@ -18,6 +18,8 @@
  * storage.
  */
 
+import { loadServiceConfig } from "./service_config.ts";
+
 export interface AxiomSinkOptions {
   /** Axiom ingest token (aaxt-... / xaat-...). Required. */
   token: string;
@@ -56,15 +58,6 @@ export interface AxiomSink {
   stop: () => Promise<void>;
 }
 
-// Axiom's canonical ingest endpoint. Override per-call via
-// `AxiomSinkOptions.endpoint` (or `AXIOM_ENDPOINT` env var) for self-hosted
-// proxies, regional endpoints, or test doubles.
-const AXIOM_ENDPOINT_ENV = (typeof Deno !== "undefined" && Deno.env)
-  ? Deno.env.get("AXIOM_ENDPOINT")
-  : undefined;
-const DEFAULT_ENDPOINT = AXIOM_ENDPOINT_ENV && AXIOM_ENDPOINT_ENV.length > 0
-  ? AXIOM_ENDPOINT_ENV
-  : "https://api.axiom.co/v1/datasets";
 const DEFAULT_FLUSH_MS = 1000;
 const DEFAULT_MAX_BUFFER = 100;
 
@@ -92,7 +85,7 @@ export function createAxiomSink(opts: AxiomSinkOptions): AxiomSink {
 
   const flushMs = opts.flushMs ?? DEFAULT_FLUSH_MS;
   const maxBuffer = opts.maxBuffer ?? DEFAULT_MAX_BUFFER;
-  const endpointBase = opts.endpoint ?? DEFAULT_ENDPOINT;
+  const endpointBase = opts.endpoint ?? loadServiceConfig().axiomEndpoint;
   const url = `${endpointBase}/${encodeURIComponent(opts.dataset)}/ingest`;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const onError = opts.onError ?? ((err) => {

@@ -12,7 +12,7 @@ name: Deploy iscn-web to Cloudflare Pages
 #   wrangler pages project create iscn-web --production-branch=master
 #   wrangler d1 create iscn-db                       # paste id into wrangler.toml
 #   wrangler d1 execute iscn-db --file=packages/web/schema.sql
-#   wrangler kv:namespace create KV                  # paste id into wrangler.toml
+#   wrangler kv namespace create KV                  # paste id into wrangler.toml
 #   wrangler r2 bucket create iscn-batches
 #   wrangler pages secret put STRIPE_SECRET_KEY --project-name iscn-web
 #   wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name iscn-web
@@ -32,12 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version-file: .nvmrc
 
       # @iscn/core is referenced as `file:../core`; SvelteKit needs the
       # built dist/ on disk before vite resolves the import.
@@ -51,6 +51,10 @@ jobs:
         working-directory: packages/web
         run: npm ci --ignore-scripts
 
+      - name: Check generated Cloudflare binding types are current
+        working-directory: packages/web
+        run: npm run types:cloudflare -- --check
+
       - name: Type-check
         working-directory: packages/web
         run: npm run check
@@ -60,7 +64,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

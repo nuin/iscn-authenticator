@@ -14,7 +14,8 @@
 
 import { loadConfig } from "./lib/config.ts";
 import { buildHandler } from "./lib/middleware.ts";
-import { createAxiomSink } from "./lib/axiom.ts";
+import { createAxiomSink, tee } from "./lib/axiom.ts";
+import { stdoutLogSink } from "./lib/logging.ts";
 
 const PORT = parseInt(Deno.env.get("PORT") ?? "8000");
 
@@ -32,6 +33,7 @@ if (config.axiomApiToken && config.axiomDataset) {
     token: config.axiomApiToken,
     dataset: config.axiomDataset,
   });
+  logSink = tee(stdoutLogSink, axiom.log);
 }
 
 const handler = buildHandler({ kv, config, staticDir, openapiYaml, logSink });

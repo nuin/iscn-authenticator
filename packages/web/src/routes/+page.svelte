@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { validateKaryotypeNative, explain } from '@iscn/core';
 	import type { ValidationResult } from '@iscn/core';
-	import Ideogram from '$lib/components/Ideogram.svelte';
+	import Ideogram from '#lib/components/Ideogram.svelte';
 
 	let karyotype = $state('');
 	let result = $state<ValidationResult | null>(null);

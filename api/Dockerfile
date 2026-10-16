@@ -1,18 +1,23 @@
-FROM python:3.12-slim
+FROM python:3.14-slim AS dependencies
 
 WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
+COPY api/pyproject.toml api/uv.lock ./api/
+RUN uv sync --project api --locked --no-dev
 
-# Copy requirements first for caching
-COPY api/requirements.txt ./api/
-RUN pip install --no-cache-dir -r api/requirements.txt
+FROM python:3.14-slim
 
-# Copy application code
-COPY iscn_authenticator/ ./iscn_authenticator/
-COPY api/ ./api/
+WORKDIR /app
+ENV PATH="/app/api/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
+COPY --from=dependencies /app/api/.venv ./api/.venv
+COPY api/server.py ./api/server.py
 
-# Expose port
-ENV PORT=8000
+USER 10001:10001
 EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['PORT'] + '/health', timeout=2)"
 
-# Run the server
-CMD ["python", "-m", "uvicorn", "api.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "api/server.py"]

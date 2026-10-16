@@ -1,7 +1,8 @@
+import { env } from 'cloudflare:workers';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ locals, platform }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	// User session is verified in +layout.server.ts
 	
 	const now = new Date();
@@ -21,10 +22,10 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 };
 
 export const actions: Actions = {
-	logout: async ({ cookies, platform }) => {
+	logout: async ({ cookies }) => {
 		const sessionId = cookies.get('iscn_session');
-		if (sessionId && platform) {
-			await platform.env.DB.prepare('DELETE FROM session WHERE id = ?').bind(sessionId).run();
+		if (sessionId) {
+			await env.DB.prepare('DELETE FROM session WHERE id = ?').bind(sessionId).run();
 		}
 		cookies.delete('iscn_session', { path: '/' });
 		throw redirect(302, '/login');

@@ -10,7 +10,7 @@
  */
 
 import { validateKaryotypeNative } from "./lib/validator.ts";
-import type { Abnormality, ValidationResult } from "../packages/core/src/types.ts";
+import type { ValidationResult } from "../packages/core/src/types.ts";
 
 // ANSI color codes
 const colors = {
@@ -68,65 +68,10 @@ ${color("EXIT CODES:", colors.bold)}
   2  Error
 `);
 }
-
-function formatAbnormality(abn: Abnormality): string {
-  const parts: string[] = [];
-
-  switch (abn.type) {
-    case "+":
-      parts.push(`Gain of chromosome ${abn.chromosome}`);
-      break;
-    case "-":
-      parts.push(`Loss of chromosome ${abn.chromosome}`);
-      break;
-    case "del":
-      parts.push(`Deletion on chromosome ${abn.chromosome}`);
-      break;
-    case "dup":
-      parts.push(`Duplication on chromosome ${abn.chromosome}`);
-      break;
-    case "inv":
-      parts.push(`Inversion on chromosome ${abn.chromosome}`);
-      break;
-    case "t":
-      parts.push(`Translocation involving chromosomes ${abn.chromosome}`);
-      break;
-    case "i":
-      parts.push(`Isochromosome ${abn.chromosome}`);
-      break;
-    case "r":
-      parts.push(`Ring chromosome ${abn.chromosome}`);
-      break;
-    default:
-      parts.push(`${abn.type} on chromosome ${abn.chromosome}`);
-  }
-
-  if (abn.breakpoints.length > 0) {
-    const bps = abn.breakpoints
-      .map((bp) => {
-        let s = bp.arm + (bp.region ?? "") + (bp.band ?? "");
-        if (bp.subband) s += "." + bp.subband;
-        return s;
-      })
-      .join(", ");
-    parts.push(`at ${bps}`);
-  }
-
-  if (abn.inheritance) {
-    const inhMap: Record<string, string> = {
-      mat: "maternal",
-      pat: "paternal",
-      dn: "de novo",
-    };
-    parts.push(`(${inhMap[abn.inheritance] ?? abn.inheritance})`);
-  }
-
-  return parts.join(" ");
-}
-
 function printHumanReadable(karyotype: string, result: ValidationResult, verbose: boolean): void {
-
+  console.log(color(`Karyotype: ${karyotype}`, colors.bold));
   if (result.valid) {
+    console.log(color("  VALID", colors.bold, colors.green));
   } else {
     console.error(color("  INVALID", colors.bold, colors.red));
   }
@@ -139,17 +84,31 @@ function printHumanReadable(karyotype: string, result: ValidationResult, verbose
 
   if (verbose && result.parsed) {
     const parsed = result.parsed;
-
+    console.log(`Chromosome count: ${parsed.chromosome_count ?? "not specified"}`);
+    console.log(`Sex chromosomes: ${parsed.sex_chromosomes || "not specified"}`);
     if (parsed.abnormalities.length > 0) {
+      console.log("Abnormalities:");
       for (const abn of parsed.abnormalities) {
+        console.log(`  - ${abn.raw}`);
       }
     } else {
+      console.log("Abnormalities: none");
     }
-
     if (parsed.cell_lines && parsed.cell_lines.length > 0) {
+      console.log(`Cell lines: ${parsed.cell_lines.length}`);
+      for (const line of parsed.cell_lines) {
+        const notation = [
+          line.chromosome_count,
+          line.sex_chromosomes,
+          ...line.abnormalities.map((abnormality) => abnormality.raw),
+        ].join(",");
+        console.log(`  - ${notation}[${line.count}]${line.is_donor ? " (donor)" : ""}`);
+      }
+    }
+    if (parsed.modifiers && Object.keys(parsed.modifiers).length > 0) {
+      console.log(`Modifiers: ${JSON.stringify(parsed.modifiers)}`);
     }
   }
-
 }
 
 async function main(): Promise<void> {

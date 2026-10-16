@@ -10,33 +10,53 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
 jobs:
+  api-tests:
+    name: Python API tests (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v10
+        with:
+          working-directory: api
+          python-version: ${{ matrix.python-version }}
+      - name: Test API wrapper with locked dependencies
+        run: uv run --project api --locked --python ${{ matrix.python-version }} python -W error -m unittest discover -s api/tests -v
+
   typescript-tests:
     name: TypeScript tests (Deno)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.9.7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
       - name: Type-check @iscn/core
         working-directory: packages/core
         run: deno check --unstable-sloppy-imports src/index.ts
       - name: Type-check Deno app
         working-directory: deno
         run: deno task check
-      - name: Set up Node.js for fetch-fixtures
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
       - name: Fetch shared fixtures from iscn-authenticator-py
         working-directory: packages/core
-        run: node scripts/fetch-fixtures.mjs
-      - name: Run fixture-driven tests
+        run: npm run fetch-fixtures
+      - name: Run core fixture, parser, and explanation tests
         working-directory: packages/core
-        run: deno test --allow-read --unstable-sloppy-imports tests/
-      - name: Run Deno app tests (auth, ratelimit, keys, integration)
+        run: npm run test:deno
+      - name: Run Deno app tests
         working-directory: deno
         env:
           SESSION_SECRET: ci_test_session_secret_32_bytes_min_length_ok
@@ -47,20 +67,26 @@ jobs:
         run: deno task test
 
   node-build-smoke:
-    name: Node build smoke test
+    name: Node tests, build, and browser bundle freshness
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version-file: .nvmrc
       - name: Install dependencies
         working-directory: packages/core
         run: npm ci --ignore-scripts
       - name: Build @iscn/core
         working-directory: packages/core
         run: npm run build
+      - name: Run Node tests
+        working-directory: packages/core
+        run: npm run test:node
+      - name: Check embedded browser bundle is current
+        working-directory: packages/core
+        run: npm run check:browser
       - name: Smoke test built package
         working-directory: packages/core
         run: |
@@ -75,14 +101,14 @@ jobs:
           "
 
   web-build:
-    name: Web app check and build
+    name: Web app types, build, and integration tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version-file: .nvmrc
       - name: Install core dependencies
         working-directory: packages/core
         run: npm ci --ignore-scripts
@@ -92,9 +118,21 @@ jobs:
       - name: Install web dependencies
         working-directory: packages/web
         run: npm ci --ignore-scripts
+      - name: Check generated Cloudflare binding types are current
+        working-directory: packages/web
+        run: npm run types:cloudflare -- --check
       - name: Type-check web app
         working-directory: packages/web
         run: npm run check
       - name: Build web app
         working-directory: packages/web
         run: npm run build
+      - name: Run web integration tests
+        working-directory: packages/web
+        run: npm test
+      - name: Install Chromium for browser tests
+        working-directory: packages/web
+        run: npx playwright install --with-deps chromium
+      - name: Run web browser tests
+        working-directory: packages/web
+        run: npm run test:browser

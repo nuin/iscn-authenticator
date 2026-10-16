@@ -12,23 +12,21 @@ Validates ISCN 2024 (International System for Human Cytogenomic Nomenclature) ka
 
 ## Packages
 
-This repository is a monorepo containing parallel implementations of the same validation logic, driven by a [shared fixture corpus](fixtures/validity.json) to guarantee behavioural parity. Nothing here is published — consume from source.
+This repository contains the TypeScript validator, API runtimes, and web app. The Python reference library and shared fixture corpus live in [iscn-authenticator-py](https://github.com/nuin/iscn-authenticator-py). TypeScript tests download the corpus at the tag pinned in [`packages/core/package.json`](packages/core/package.json) and check agreement with its expected results. Consume the TypeScript packages from source.
 
 | Component | Location | Runtime | Purpose |
 |---|---|---|---|
-| `iscn_authenticator` | [`iscn_authenticator/`](iscn_authenticator/) | Python ≥3.10 | Reference implementation, zero runtime deps. |
-| `@iscn/core` | [`packages/core/`](packages/core/) | Node ≥18 / Deno | TypeScript port, zero runtime deps. |
-| ISCN API | [`api/`](api/) | Python (FastAPI) | HTTP wrapper around the Python library. |
-| Deno API/admin runtime | [`deno/`](deno/) | Deno Deploy | Key-gated HTTP API, admin CLI, middleware, and lightweight static UI; imports core from `packages/core/src/`. |
-| Web app | [`packages/web/`](packages/web/) | SvelteKit / Cloudflare Pages | Canonical dashboard and hosted product UI; imports `@iscn/core` from source. |
+| Python reference library | [External repository](https://github.com/nuin/iscn-authenticator-py) | Python | Maintained separately; available as `iscn-authenticator` on PyPI. |
+| `@iscn/core` | [`packages/core/`](packages/core/) | Node ≥24 / Deno 2 | TypeScript port, zero runtime deps. |
+| ISCN API | [`api/`](api/) | Python ≥3.11 (FastAPI) | HTTP wrapper around the installed Python library. |
+| Deno API/admin runtime | [`deno/`](deno/) | Deno 2 / Deno Deploy | Key-gated HTTP API, admin CLI, middleware, and lightweight static UI; imports core from `packages/core/src/`. |
+| Web app | [`packages/web/`](packages/web/) | SvelteKit / Cloudflare Pages | Canonical dashboard and hosted product UI; consumes the local `@iscn/core` package. |
 
 ## Use
 
-**Python (from source):**
+**Python library:**
 ```bash
-git clone https://github.com/nuin/iscn-authenticator
-cd iscn-authenticator
-pip install .                     # or: pip install -e .
+python3 -m pip install 'iscn-authenticator>=0.2.0,<0.3.0'
 ```
 ```python
 from iscn_authenticator import is_valid_karyotype, validate_karyotype
@@ -39,9 +37,8 @@ validate_karyotype("47,XY,+21").errors   # []
 
 **TypeScript (Node, from source):**
 ```bash
-cd packages/core
-npm ci
-npm run build                     # emits dist/
+npm --prefix packages/core ci
+npm --prefix packages/core run build       # emits packages/core/dist/
 ```
 ```typescript
 import { isValidKaryotypeNative, validateKaryotypeNative } from "./packages/core/dist/index.js";
@@ -58,24 +55,37 @@ import { isValidKaryotypeNative } from "./packages/core/src/index.ts";
 
 ## Development
 
-**Python tests:**
+Use Node.js 24 LTS (`nvm install && nvm use` reads [`.nvmrc`](.nvmrc)) and Deno 2.9.7 to match CI.
+
+**Python API wrapper:**
+
+Use uv to install the dependencies pinned in `api/uv.lock` and run the wrapper from the repository root:
+
 ```bash
-python3 -m unittest discover tests
-python3 -m unittest tests.test_fixtures    # cross-implementation fixtures
+uv sync --project api --locked
+uv run --project api --locked python -m uvicorn api.server:app --reload
 ```
 
-**TypeScript tests (Deno):**
-```bash
-cd packages/core
-deno test --allow-read --unstable-sloppy-imports tests/
-```
+Run the wrapper tests with `uv run --project api --locked --python 3.11 python -m unittest discover -s api/tests -v`. CI runs the same suite on Python 3.11 and 3.14. Edit dependencies in `api/pyproject.toml` and regenerate `api/uv.lock` with `uv lock --project api` when upgrading them.
 
-**TypeScript build (Node):**
+Python library development and its tests belong in [iscn-authenticator-py](https://github.com/nuin/iscn-authenticator-py).
+
+**TypeScript tests (Deno and Node):**
 ```bash
 cd packages/core
 npm ci
-npm run build
+npm test                               # fetch pinned fixtures, then run both suites
+npm run check:browser                  # fail if the embedded browser bundle is stale
 ```
+
+**TypeScript and browser builds:**
+```bash
+cd packages/core
+npm run build                         # Node package in dist/
+npm run build:browser                 # embedded Deploy asset and local static file
+```
+
+After changing the core, commit the updated embedded bundle in `deno/main.ts` with the source changes. The local `deno/static/iscn-core.js` file is generated and ignored.
 
 **Deno web app (local dev):**
 ```bash
@@ -90,19 +100,28 @@ deno task test
 ```
 
 **SvelteKit web app:**
+
+The web app uses SvelteKit 3, Vite 8, TypeScript 6, and Wrangler 4 on Node 24. Build the local core package before checking or building the web app:
+
 ```bash
 cd packages/core && npm ci && npm run build
 cd ../web
 npm ci
+npm run types:cloudflare -- --check
 npm run check
 npm run build
+npm test
+npx playwright install chromium
+npm run test:browser
 ```
+
+After changing Cloudflare bindings in `packages/web/wrangler.toml`, run `npm run types:cloudflare` from `packages/web/` and commit `src/worker-configuration.d.ts`. The `--check` command verifies that the generated binding types are current. `npm test` runs HTTP integration tests against the built Pages app and a temporary local D1 database.
 
 ## Ownership Notes
 
 - `packages/web/` is the canonical hosted product/dashboard UI.
 - `deno/` owns the API surface, auth/rate-limit/security middleware, admin CLI, and Deno Deploy runtime. Its static HTML is intentionally lightweight and should not become a second full product UI.
-- Deno lockfiles are local/regenerated. Commit npm `package-lock.json` files; do not commit generated build outputs.
+- Deno lockfiles are local/regenerated. Commit npm `package-lock.json` files, the embedded browser bundle in `deno/main.ts`, and generated Cloudflare binding types in `packages/web/src/worker-configuration.d.ts`; other generated build outputs are ignored.
 
 ## Deno HTTP API
 
@@ -220,13 +239,13 @@ See the [Operator Guide](docs/admin.md#configuration-environment-variables) for 
 
 ## Architecture
 
-`validate_karyotype()` is the single entry point in both implementations. The pipeline is:
+The TypeScript entry point is `validateKaryotypeNative()` in `packages/core/src/validate.ts`; the external Python library exposes `validate_karyotype()`. The TypeScript pipeline is:
 
-1. **Parser** — string → `KaryotypeAST`. Raises on malformed syntax.
+1. **Parser** — string → `KaryotypeAST`. The parser throws on malformed syntax; the validation entry point converts that to an invalid result with `parsed: null`.
 2. **Rule engine** — runs AST-level rules (chromosome count, sex chromosomes) + per-abnormality rules.
 3. **Result** — `{ valid, errors, parsed }`.
 
-See [CLAUDE.md](CLAUDE.md) for deeper architecture notes, and [`iscn_2024.txt`](iscn_2024.txt) for the authoritative nomenclature spec.
+See [AGENTS.md](AGENTS.md) for repository architecture and development guidance, and [`iscn_2024.txt`](iscn_2024.txt) for the authoritative nomenclature spec.
 
 ## License
 

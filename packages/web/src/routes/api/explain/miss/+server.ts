@@ -1,10 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
-	const { signature } = await request.json();
+export const POST: RequestHandler = async ({ request }) => {
+	const body: unknown = await request.json();
+	const signature = body && typeof body === 'object' && 'signature' in body
+		? body.signature
+		: undefined;
 
-	if (!signature) {
+	if (typeof signature !== 'string' || !signature) {
 		return json({ error: 'missing signature' }, { status: 400 });
 	}
 

@@ -1,6 +1,7 @@
+import { env } from 'cloudflare:workers';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { verifyWebhookSignature } from '$lib/server/stripe';
+import { verifyWebhookSignature } from '#lib/server/stripe.js';
 
 interface StripeEvent {
 	id: string;
@@ -20,12 +21,8 @@ interface StripeEvent {
  *   - customer.subscription.deleted → user.plan = 'free', clear plan_expires_at
  *   - invoice.payment_failed       → user.plan = 'past_due'
  */
-export const POST: RequestHandler = async ({ request, platform }) => {
-	if (!platform) {
-		return json({ error: 'Platform not available' }, { status: 500 });
-	}
-
-	const secret = platform.env.STRIPE_WEBHOOK_SECRET;
+export const POST: RequestHandler = async ({ request }) => {
+	const secret = env.STRIPE_WEBHOOK_SECRET;
 	if (!secret) {
 		console.error('STRIPE_WEBHOOK_SECRET not configured');
 		return json({ error: 'Webhook secret not configured' }, { status: 500 });
@@ -43,7 +40,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ error: 'Invalid signature' }, { status: 400 });
 	}
 
-	const db = platform.env.DB;
+	const db = env.DB;
 
 	// Idempotency check: if we've seen this event id before, ack and return.
 	const existing = await db

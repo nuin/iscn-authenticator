@@ -3,463 +3,253 @@
  * Port of iscn_authenticator/rules/abnormality.py to TypeScript.
  */
 
-import type { KaryotypeAST, Abnormality, Rule } from "../types.js";
+import type { Abnormality, Rule } from "../types.js";
+import {
+  abnormalityRule,
+  breakpointArms,
+  breakpointCount,
+  chromosomeBreakpointCount,
+} from "./abnormality-checks.js";
 
 // Valid autosome numbers (1-22) and sex chromosomes (X, Y)
 const VALID_CHROMOSOMES = new Set([
-  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-  "21", "22", "X", "Y",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
+  "13",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "21",
+  "22",
+  "X",
+  "Y",
 ]);
 
-function validateNumericalChromosome(_ast: KaryotypeAST, abn: Abnormality): string[] {
+function validateNumericalChromosome(abn: Abnormality): string[] {
   if (abn.type !== "+" && abn.type !== "-") {
     return [];
   }
   if (!VALID_CHROMOSOMES.has(abn.chromosome)) {
-    return [`Invalid chromosome '${abn.chromosome}' in ${abn.raw}. Must be 1-22, X, or Y`];
+    return [
+      `Invalid chromosome '${abn.chromosome}' in ${abn.raw}. Must be 1-22, X, or Y`,
+    ];
   }
   return [];
 }
 
-function validateBreakpointArm(_ast: KaryotypeAST, abn: Abnormality): string[] {
+function validateBreakpointArm(abn: Abnormality): string[] {
   if (abn.type === "+" || abn.type === "-" || abn.type === "unknown") {
     return [];
   }
   const errors: string[] = [];
   for (const bp of abn.breakpoints) {
     if (bp.arm !== "p" && bp.arm !== "q") {
-      errors.push(`Invalid breakpoint arm '${bp.arm}' in ${abn.raw}. Must be 'p' or 'q'`);
+      errors.push(
+        `Invalid breakpoint arm '${bp.arm}' in ${abn.raw}. Must be 'p' or 'q'`,
+      );
     }
   }
   return errors;
 }
 
-function validateInversionTwoBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "inv") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 2) {
-    return [`Inversion requires two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const numericalChromosomeValidRule: Rule = abnormalityRule(
+  "ABN_NUM_CHR_VALID",
+  "Numerical abnormality chromosome must be 1-22, X, or Y",
+  validateNumericalChromosome,
+);
 
-function validateTranslocationBreakpointCount(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "t") return [];
-  const chromosomes = abn.chromosome.split(";");
-  const chrCount = chromosomes.length;
-  const bpCount = abn.breakpoints.length;
-  if (chrCount !== bpCount) {
-    return [`Translocation has ${chrCount} chromosomes but ${bpCount} breakpoints in ${abn.raw}`];
-  }
-  return [];
-}
+export const breakpointArmValidRule: Rule = abnormalityRule(
+  "ABN_BP_ARM_VALID",
+  "Breakpoint arm must be 'p' or 'q'",
+  validateBreakpointArm,
+);
 
-/**
- * Shared check for `del` / `dup` style abnormalities: one or two breakpoints
- * with both breakpoints on the same arm when two are present. The two
- * message variants preserve the historically-asserted wording.
- */
-function validateOneOrTwoSameArmBreakpoints(
-  abn: Abnormality,
-  countLabel: string,
-  sameArmLabel: string,
-): string[] {
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1 && bpCount !== 2) {
-    return [`${countLabel} requires one or two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  if (bpCount === 2) {
-    const arm1 = abn.breakpoints[0].arm;
-    const arm2 = abn.breakpoints[1].arm;
-    if (arm1 !== arm2) {
-      return [`${sameArmLabel} breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
-    }
-  }
-  return [];
-}
+export const inversionTwoBreakpointsRule: Rule = abnormalityRule(
+  "ABN_INV_TWO_BP",
+  "Inversion must have exactly two breakpoints",
+  breakpointCount("inv", [2], "Inversion requires two breakpoints"),
+);
 
-function validateDeletionBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "del") return [];
-  return validateOneOrTwoSameArmBreakpoints(abn, "Deletion", "Interstitial deletion");
-}
+export const translocationBreakpointCountRule: Rule = abnormalityRule(
+  "ABN_TRANS_BP_COUNT",
+  "Translocation breakpoint count must match chromosome count",
+  chromosomeBreakpointCount("t", "Translocation"),
+);
 
-function validateDuplicationBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "dup") return [];
-  return validateOneOrTwoSameArmBreakpoints(abn, "Duplication", "Duplication");
-}
+export const deletionBreakpointRule: Rule = abnormalityRule(
+  "ABN_DEL_BP",
+  "Deletion must have 1-2 breakpoints, interstitial requires same arm",
+  breakpointArms(
+    "del",
+    [1, 2],
+    "Deletion requires one or two breakpoints",
+    "Interstitial deletion",
+    true,
+  ),
+);
 
-function validateRingChromosomeBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "r") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 2) {
-    return [`Ring chromosome requires two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  const arm1 = abn.breakpoints[0].arm;
-  const arm2 = abn.breakpoints[1].arm;
-  if (arm1 === arm2) {
-    return [`Ring chromosome breakpoints must be on different arms, found ${arm1} and ${arm2} in ${abn.raw}`];
-  }
-  return [];
-}
+export const duplicationBreakpointRule: Rule = abnormalityRule(
+  "ABN_DUP_BP",
+  "Duplication must have 1-2 breakpoints, interstitial requires same arm",
+  breakpointArms(
+    "dup",
+    [1, 2],
+    "Duplication requires one or two breakpoints",
+    "Duplication",
+    true,
+  ),
+);
 
-function validateIsochromosomeBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "i") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Isochromosome requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const ringChromosomeBreakpointRule: Rule = abnormalityRule(
+  "ABN_RING_BP",
+  "Ring chromosome must have 2 breakpoints on different arms",
+  breakpointArms(
+    "r",
+    [2],
+    "Ring chromosome requires two breakpoints",
+    "Ring chromosome",
+    false,
+  ),
+);
 
-function validateTriplicationBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "trp") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 2) {
-    return [`Triplication requires two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  const arm1 = abn.breakpoints[0].arm;
-  const arm2 = abn.breakpoints[1].arm;
-  if (arm1 !== arm2) {
-    return [`Triplication breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
-  }
-  return [];
-}
+export const isochromosomeBreakpointRule: Rule = abnormalityRule(
+  "ABN_ISO_BP",
+  "Isochromosome must have exactly 1 breakpoint",
+  breakpointCount("i", [1], "Isochromosome requires one breakpoint"),
+);
 
-function validateQuadruplicationBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "qdp") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 2) {
-    return [`Quadruplication requires two breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  const arm1 = abn.breakpoints[0].arm;
-  const arm2 = abn.breakpoints[1].arm;
-  if (arm1 !== arm2) {
-    return [`Quadruplication breakpoints must be on same arm, found ${arm1} and ${arm2} in ${abn.raw}`];
-  }
-  return [];
-}
+export const triplicationBreakpointRule: Rule = abnormalityRule(
+  "ABN_TRP_BP",
+  "Triplication must have 2 breakpoints on same arm",
+  breakpointArms(
+    "trp",
+    [2],
+    "Triplication requires two breakpoints",
+    "Triplication",
+    true,
+  ),
+);
 
-function validateDicentricBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "dic") return [];
-  const chromosomes = abn.chromosome.split(";");
-  const chrCount = chromosomes.length;
-  const bpCount = abn.breakpoints.length;
-  if (chrCount !== bpCount) {
-    return [`Dicentric has ${chrCount} chromosomes but ${bpCount} breakpoints in ${abn.raw}`];
-  }
-  return [];
-}
+export const quadruplicationBreakpointRule: Rule = abnormalityRule(
+  "ABN_QDP_BP",
+  "Quadruplication must have 2 breakpoints on same arm",
+  breakpointArms(
+    "qdp",
+    [2],
+    "Quadruplication requires two breakpoints",
+    "Quadruplication",
+    true,
+  ),
+);
 
-function validateIsodicentricBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "idic") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Isodicentric requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const dicentricBreakpointRule: Rule = abnormalityRule(
+  "ABN_DIC_BP",
+  "Dicentric breakpoint count must match chromosome count",
+  chromosomeBreakpointCount("dic", "Dicentric"),
+);
 
-function validateRobertsonianBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "rob") return [];
-  const chromosomes = abn.chromosome.split(";");
-  const chrCount = chromosomes.length;
-  const bpCount = abn.breakpoints.length;
-  if (chrCount !== bpCount) {
-    return [`Robertsonian translocation has ${chrCount} chromosomes but ${bpCount} breakpoints in ${abn.raw}`];
-  }
-  return [];
-}
+export const isodicentricBreakpointRule: Rule = abnormalityRule(
+  "ABN_IDIC_BP",
+  "Isodicentric must have exactly 1 breakpoint",
+  breakpointCount("idic", [1], "Isodicentric requires one breakpoint"),
+);
 
-function validateAddBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "add") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Add requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const robertsonianBreakpointRule: Rule = abnormalityRule(
+  "ABN_ROB_BP",
+  "Robertsonian translocation breakpoint count must match chromosome count",
+  chromosomeBreakpointCount("rob", "Robertsonian translocation"),
+);
 
-function validateFraBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "fra") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Fragile site requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const addBreakpointRule: Rule = abnormalityRule(
+  "ABN_ADD_BP",
+  "Add (additional material) must have exactly 1 breakpoint",
+  breakpointCount("add", [1], "Add requires one breakpoint"),
+);
 
-function validateInsBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "ins") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 3) {
-    return [`Insertion requires three breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const fraBreakpointRule: Rule = abnormalityRule(
+  "ABN_FRA_BP",
+  "Fragile site must have exactly 1 breakpoint",
+  breakpointCount("fra", [1], "Fragile site requires one breakpoint"),
+);
 
-function validateDminBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "dmin") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 0) {
-    return [`Double minutes should have no breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const insBreakpointRule: Rule = abnormalityRule(
+  "ABN_INS_BP",
+  "Insertion must have exactly 3 breakpoints",
+  breakpointCount("ins", [3], "Insertion requires three breakpoints"),
+);
 
-function validateHsrBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "hsr") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount > 1) {
-    return [`HSR should have zero or one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const dminBreakpointRule: Rule = abnormalityRule(
+  "ABN_DMIN_BP",
+  "Double minutes must have no breakpoints",
+  breakpointCount("dmin", [0], "Double minutes should have no breakpoints"),
+);
 
-function validateMarBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "mar") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 0) {
-    return [`Marker chromosome should have no breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const hsrBreakpointRule: Rule = abnormalityRule(
+  "ABN_HSR_BP",
+  "HSR must have 0 or 1 breakpoint",
+  breakpointCount("hsr", [0, 1], "HSR should have zero or one breakpoint"),
+);
 
-function validatePseudodicentricBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "psu dic") return [];
-  const chromosomes = abn.chromosome.split(";");
-  const chrCount = chromosomes.length;
-  const bpCount = abn.breakpoints.length;
-  if (chrCount !== bpCount) {
-    return [`Pseudodicentric has ${chrCount} chromosomes but ${bpCount} breakpoints in ${abn.raw}`];
-  }
-  return [];
-}
+export const marBreakpointRule: Rule = abnormalityRule(
+  "ABN_MAR_BP",
+  "Marker chromosome must have no breakpoints",
+  breakpointCount("mar", [0], "Marker chromosome should have no breakpoints"),
+);
 
-function validateAcentricBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "ace") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1 && bpCount !== 2) {
-    return [`Acentric fragment requires 1-2 breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const pseudodicentricBreakpointRule: Rule = abnormalityRule(
+  "ABN_PSU_DIC_BP",
+  "Pseudodicentric breakpoint count must match chromosome count",
+  chromosomeBreakpointCount("psu dic", "Pseudodicentric"),
+);
 
-function validateTelomericAssociationBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "tas") return [];
-  const chromosomes = abn.chromosome.split(";");
-  const chrCount = chromosomes.length;
-  const bpCount = abn.breakpoints.length;
-  if (chrCount !== bpCount) {
-    return [`Telomeric association has ${chrCount} chromosomes but ${bpCount} breakpoints in ${abn.raw}`];
-  }
-  return [];
-}
+export const acentricBreakpointRule: Rule = abnormalityRule(
+  "ABN_ACE_BP",
+  "Acentric fragment must have 1-2 breakpoints",
+  breakpointCount("ace", [1, 2], "Acentric fragment requires 1-2 breakpoints"),
+);
 
-function validateFissionBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "fis") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Fission requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const telomericAssociationBreakpointRule: Rule = abnormalityRule(
+  "ABN_TAS_BP",
+  "Telomeric association breakpoint count must match chromosome count",
+  chromosomeBreakpointCount("tas", "Telomeric association"),
+);
 
-function validateNeocentromereBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "neo") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 1) {
-    return [`Neocentromere requires one breakpoint, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const fissionBreakpointRule: Rule = abnormalityRule(
+  "ABN_FIS_BP",
+  "Fission must have exactly 1 breakpoint",
+  breakpointCount("fis", [1], "Fission requires one breakpoint"),
+);
 
-function validateIncompleteBreakpoints(_ast: KaryotypeAST, abn: Abnormality): string[] {
-  if (abn.type !== "inc") return [];
-  const bpCount = abn.breakpoints.length;
-  if (bpCount !== 0) {
-    return [`Incomplete karyotype marker should have no breakpoints, found ${bpCount} in ${abn.raw}`];
-  }
-  return [];
-}
+export const neocentromereBreakpointRule: Rule = abnormalityRule(
+  "ABN_NEO_BP",
+  "Neocentromere must have exactly 1 breakpoint",
+  breakpointCount("neo", [1], "Neocentromere requires one breakpoint"),
+);
 
-// Rule instances
-export const numericalChromosomeValidRule: Rule = {
-  id: "ABN_NUM_CHR_VALID",
-  category: "abnormality",
-  description: "Numerical abnormality chromosome must be 1-22, X, or Y",
-  validate: (ast, target) => validateNumericalChromosome(ast, target as Abnormality),
-};
+export const incompleteBreakpointRule: Rule = abnormalityRule(
+  "ABN_INC_BP",
+  "Incomplete karyotype marker must have no breakpoints",
+  breakpointCount(
+    "inc",
+    [0],
+    "Incomplete karyotype marker should have no breakpoints",
+  ),
+);
 
-export const breakpointArmValidRule: Rule = {
-  id: "ABN_BP_ARM_VALID",
-  category: "abnormality",
-  description: "Breakpoint arm must be 'p' or 'q'",
-  validate: (ast, target) => validateBreakpointArm(ast, target as Abnormality),
-};
-
-export const inversionTwoBreakpointsRule: Rule = {
-  id: "ABN_INV_TWO_BP",
-  category: "abnormality",
-  description: "Inversion must have exactly two breakpoints",
-  validate: (ast, target) => validateInversionTwoBreakpoints(ast, target as Abnormality),
-};
-
-export const translocationBreakpointCountRule: Rule = {
-  id: "ABN_TRANS_BP_COUNT",
-  category: "abnormality",
-  description: "Translocation breakpoint count must match chromosome count",
-  validate: (ast, target) => validateTranslocationBreakpointCount(ast, target as Abnormality),
-};
-
-export const deletionBreakpointRule: Rule = {
-  id: "ABN_DEL_BP",
-  category: "abnormality",
-  description: "Deletion must have 1-2 breakpoints, interstitial requires same arm",
-  validate: (ast, target) => validateDeletionBreakpoints(ast, target as Abnormality),
-};
-
-export const duplicationBreakpointRule: Rule = {
-  id: "ABN_DUP_BP",
-  category: "abnormality",
-  description: "Duplication must have 1-2 breakpoints, interstitial requires same arm",
-  validate: (ast, target) => validateDuplicationBreakpoints(ast, target as Abnormality),
-};
-
-export const ringChromosomeBreakpointRule: Rule = {
-  id: "ABN_RING_BP",
-  category: "abnormality",
-  description: "Ring chromosome must have 2 breakpoints on different arms",
-  validate: (ast, target) => validateRingChromosomeBreakpoints(ast, target as Abnormality),
-};
-
-export const isochromosomeBreakpointRule: Rule = {
-  id: "ABN_ISO_BP",
-  category: "abnormality",
-  description: "Isochromosome must have exactly 1 breakpoint",
-  validate: (ast, target) => validateIsochromosomeBreakpoints(ast, target as Abnormality),
-};
-
-export const triplicationBreakpointRule: Rule = {
-  id: "ABN_TRP_BP",
-  category: "abnormality",
-  description: "Triplication must have 2 breakpoints on same arm",
-  validate: (ast, target) => validateTriplicationBreakpoints(ast, target as Abnormality),
-};
-
-export const quadruplicationBreakpointRule: Rule = {
-  id: "ABN_QDP_BP",
-  category: "abnormality",
-  description: "Quadruplication must have 2 breakpoints on same arm",
-  validate: (ast, target) => validateQuadruplicationBreakpoints(ast, target as Abnormality),
-};
-
-export const dicentricBreakpointRule: Rule = {
-  id: "ABN_DIC_BP",
-  category: "abnormality",
-  description: "Dicentric breakpoint count must match chromosome count",
-  validate: (ast, target) => validateDicentricBreakpoints(ast, target as Abnormality),
-};
-
-export const isodicentricBreakpointRule: Rule = {
-  id: "ABN_IDIC_BP",
-  category: "abnormality",
-  description: "Isodicentric must have exactly 1 breakpoint",
-  validate: (ast, target) => validateIsodicentricBreakpoints(ast, target as Abnormality),
-};
-
-export const robertsonianBreakpointRule: Rule = {
-  id: "ABN_ROB_BP",
-  category: "abnormality",
-  description: "Robertsonian translocation breakpoint count must match chromosome count",
-  validate: (ast, target) => validateRobertsonianBreakpoints(ast, target as Abnormality),
-};
-
-export const addBreakpointRule: Rule = {
-  id: "ABN_ADD_BP",
-  category: "abnormality",
-  description: "Add (additional material) must have exactly 1 breakpoint",
-  validate: (ast, target) => validateAddBreakpoints(ast, target as Abnormality),
-};
-
-export const fraBreakpointRule: Rule = {
-  id: "ABN_FRA_BP",
-  category: "abnormality",
-  description: "Fragile site must have exactly 1 breakpoint",
-  validate: (ast, target) => validateFraBreakpoints(ast, target as Abnormality),
-};
-
-export const insBreakpointRule: Rule = {
-  id: "ABN_INS_BP",
-  category: "abnormality",
-  description: "Insertion must have exactly 3 breakpoints",
-  validate: (ast, target) => validateInsBreakpoints(ast, target as Abnormality),
-};
-
-export const dminBreakpointRule: Rule = {
-  id: "ABN_DMIN_BP",
-  category: "abnormality",
-  description: "Double minutes must have no breakpoints",
-  validate: (ast, target) => validateDminBreakpoints(ast, target as Abnormality),
-};
-
-export const hsrBreakpointRule: Rule = {
-  id: "ABN_HSR_BP",
-  category: "abnormality",
-  description: "HSR must have 0 or 1 breakpoint",
-  validate: (ast, target) => validateHsrBreakpoints(ast, target as Abnormality),
-};
-
-export const marBreakpointRule: Rule = {
-  id: "ABN_MAR_BP",
-  category: "abnormality",
-  description: "Marker chromosome must have no breakpoints",
-  validate: (ast, target) => validateMarBreakpoints(ast, target as Abnormality),
-};
-
-export const pseudodicentricBreakpointRule: Rule = {
-  id: "ABN_PSU_DIC_BP",
-  category: "abnormality",
-  description: "Pseudodicentric breakpoint count must match chromosome count",
-  validate: (ast, target) => validatePseudodicentricBreakpoints(ast, target as Abnormality),
-};
-
-export const acentricBreakpointRule: Rule = {
-  id: "ABN_ACE_BP",
-  category: "abnormality",
-  description: "Acentric fragment must have 1-2 breakpoints",
-  validate: (ast, target) => validateAcentricBreakpoints(ast, target as Abnormality),
-};
-
-export const telomericAssociationBreakpointRule: Rule = {
-  id: "ABN_TAS_BP",
-  category: "abnormality",
-  description: "Telomeric association breakpoint count must match chromosome count",
-  validate: (ast, target) => validateTelomericAssociationBreakpoints(ast, target as Abnormality),
-};
-
-export const fissionBreakpointRule: Rule = {
-  id: "ABN_FIS_BP",
-  category: "abnormality",
-  description: "Fission must have exactly 1 breakpoint",
-  validate: (ast, target) => validateFissionBreakpoints(ast, target as Abnormality),
-};
-
-export const neocentromereBreakpointRule: Rule = {
-  id: "ABN_NEO_BP",
-  category: "abnormality",
-  description: "Neocentromere must have exactly 1 breakpoint",
-  validate: (ast, target) => validateNeocentromereBreakpoints(ast, target as Abnormality),
-};
-
-export const incompleteBreakpointRule: Rule = {
-  id: "ABN_INC_BP",
-  category: "abnormality",
-  description: "Incomplete karyotype marker must have no breakpoints",
-  validate: (ast, target) => validateIncompleteBreakpoints(ast, target as Abnormality),
-};
-
-// Export all rules
 export const ALL_ABNORMALITY_RULES: Rule[] = [
   numericalChromosomeValidRule,
   breakpointArmValidRule,

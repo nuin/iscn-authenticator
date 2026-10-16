@@ -1,6 +1,7 @@
+import { env } from 'cloudflare:workers';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import * as db from '$lib/server/db';
+import * as db from '#lib/server/db.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.session) {
@@ -9,11 +10,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, platform, cookies }) => {
-		if (!platform) {
-			return fail(500, { message: 'Platform not available' });
-		}
-
+	default: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const apiKey = formData.get('api_key')?.toString().trim();
 
@@ -21,14 +18,14 @@ export const actions: Actions = {
 			return fail(400, { error: 'Please provide an API key.' });
 		}
 
-		const keyRecord = await db.validateKey(platform.env.DB, apiKey);
+		const keyRecord = await db.validateKey(env.DB, apiKey);
 		if (!keyRecord || !keyRecord.user_id) {
 			return fail(401, {
 				error: 'This key is not valid for dashboard access (it may be revoked or internal).'
 			});
 		}
 
-		const session = await db.createSession(platform.env.DB, keyRecord.user_id);
+		const session = await db.createSession(env.DB, keyRecord.user_id);
 
 		cookies.set('iscn_session', session.id, {
 			path: '/',

@@ -33,7 +33,8 @@
 			<h2>Create an account</h2>
 			<p class="muted">Free tier — 1,000 requests per month. No credit card required.</p>
 
-			<form method="POST" use:enhance>
+			<!-- Refreshing session data would redirect before the new key can be copied. -->
+			<form method="POST" use:enhance={() => ({ update }) => update({ refreshAll: false })}>
 				{#if form?.error}
 					<p class="error">{form.error}</p>
 				{/if}

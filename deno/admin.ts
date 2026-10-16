@@ -25,7 +25,6 @@ import { loadConfig } from "./lib/config.ts";
 import { createKey, type KeyEnvironment, listKeys, revokeKey } from "./lib/keys.ts";
 import {
   createCustomer,
-  type CustomerTier,
   listCustomers,
   lookupCustomerById,
   updateCustomerTier,
@@ -101,11 +100,22 @@ async function cmdKeysCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
   }
 
   const { record, plaintext } = await createKey(kv, label, { env, customerId });
+  console.log(`Created key ${record.id} (${record.label}, ${record.env})`);
+  if (record.customer_id !== null) console.log(`Customer: ${record.customer_id}`);
+  console.log(`API key (shown only once): ${plaintext}`);
+}
+
+function printTable(header: string[], rows: string[][]): void {
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
+  const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
+  console.log(fmt(header));
+  for (const row of rows) console.log(fmt(row));
 }
 
 async function cmdKeysList(kv: Deno.Kv): Promise<void> {
   const keys = await listKeys(kv);
   if (keys.length === 0) {
+    console.log("No API keys found.");
     return;
   }
   const header = ["id", "label", "env", "customer", "created", "last_used", "revoked"];
@@ -118,8 +128,7 @@ async function cmdKeysList(kv: Deno.Kv): Promise<void> {
     k.last_used_at ?? "-",
     k.revoked_at ?? "-",
   ]);
-  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
-  const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
+  printTable(header, rows);
 }
 
 async function cmdKeysRevoke(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -127,6 +136,7 @@ async function cmdKeysRevoke(kv: Deno.Kv, rest: string[]): Promise<void> {
   if (!id) die("keys:revoke requires an <id> argument.\n" + USAGE, 2);
   const record = await revokeKey(kv, id);
   if (record === null) die(`No key found with id ${id}`, 1);
+  console.log(`Revoked key ${record.id} (${record.label})`);
 }
 
 async function cmdCustomersCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -136,16 +146,18 @@ async function cmdCustomersCreate(kv: Deno.Kv, rest: string[]): Promise<void> {
   try {
     record = await createCustomer(kv, email);
   } catch (err) {
-    die(`customers:create failed: ${(err as Error).message}`, 1);
+    die(`customers:create failed: ${err instanceof Error ? err.message : String(err)}`, 1);
   }
   if (record === null) {
     die(`Email already taken: ${email}`, 1);
   }
+  console.log(`Created customer ${record.id} (${record.email}, ${record.tier})`);
 }
 
 async function cmdCustomersList(kv: Deno.Kv): Promise<void> {
   const customers = await listCustomers(kv);
   if (customers.length === 0) {
+    console.log("No customers found.");
     return;
   }
   const header = ["id", "email", "tier", "status", "stripe", "created"];
@@ -157,8 +169,7 @@ async function cmdCustomersList(kv: Deno.Kv): Promise<void> {
     c.stripe_customer_id ?? "-",
     c.created_at,
   ]);
-  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
-  const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i])).join("  ");
+  printTable(header, rows);
 }
 
 async function cmdCustomersTier(kv: Deno.Kv, rest: string[]): Promise<void> {
@@ -169,13 +180,15 @@ async function cmdCustomersTier(kv: Deno.Kv, rest: string[]): Promise<void> {
   if (tier !== "free" && tier !== "pro") {
     die(`Invalid tier: ${tier}. Expected free or pro.`, 2);
   }
-  const updated = await updateCustomerTier(kv, id, tier as CustomerTier);
+  const updated = await updateCustomerTier(kv, id, tier);
   if (updated === null) die(`No customer with id ${id}`, 1);
+  console.log(`Updated customer ${updated.id} (${updated.email}) to tier ${updated.tier}`);
 }
 
 if (import.meta.main) {
   const { cmd, rest } = parseArgs(Deno.args);
   if (cmd === "help") {
+    console.log(USAGE);
     Deno.exit(0);
   }
   const cfg = loadConfig();

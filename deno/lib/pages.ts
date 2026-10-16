@@ -2,15 +2,10 @@
  * Static and semi-dynamic marketing/compliance pages.
  */
 
-const CONTENT_TYPE_HTML = "text/html; charset=utf-8";
+import { loadServiceConfig } from "./service_config.ts";
 
-// Scalar API-reference bundle. Pinned to `@1` major so updates land via
-// rebuild rather than at runtime. Override via `SCALAR_CDN_URL` for
-// air-gapped deployments or to pin a more specific version.
-const SCALAR_CDN_URL_DEFAULT = "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1";
-const SCALAR_CDN_URL = (typeof Deno !== "undefined" && Deno.env)
-  ? (Deno.env.get("SCALAR_CDN_URL") || SCALAR_CDN_URL_DEFAULT)
-  : SCALAR_CDN_URL_DEFAULT;
+const CONTENT_TYPE_HTML = "text/html; charset=utf-8";
+const { scalarCdnUrl: SCALAR_CDN_URL } = loadServiceConfig();
 
 export async function handlePricingPage(): Promise<Response> {
   const html = renderSimplePage(

@@ -31,6 +31,10 @@ export function requestId(): string {
   return crypto.randomUUID();
 }
 
+export function stdoutLogSink(line: string): void {
+  console.log(line);
+}
+
 /**
  * Emit a completed-request log line as JSON to stdout.
  *
@@ -38,7 +42,7 @@ export function requestId(): string {
  */
 export function logRequest(
   entry: RequestLog,
-  sink: (line: string) => void = (line) => console.log(line),
+  sink: (line: string) => void = stdoutLogSink,
 ): void {
   sink(JSON.stringify(entry));
 }
