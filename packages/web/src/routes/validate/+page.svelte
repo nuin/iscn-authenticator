@@ -16,7 +16,7 @@
 		{ name: 'Chromosome gain', value: '47,XY,+21' },
 		{ name: 'Deletion', value: '46,XX,del(5)(q13q33)' },
 		{ name: 'Translocation', value: '46,XX,t(9;22)(q34;q11.2)' },
-		{ name: 'Multiple cell lines', value: '46,XX[10]/47,XX,+21[5]' }
+		{ name: 'Multiple cell lines', value: '47,XX,+21[5]/46,XX[10]' }
 	];
 
 	$effect(() => {

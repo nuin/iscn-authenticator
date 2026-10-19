@@ -73,6 +73,25 @@ test('mobile validation moves keyboard focus to the completed result', async ({ 
   await expect(page.getByRole('heading', { name: 'Review required', exact: true })).toBeInViewport();
 });
 
+test('the chromosome preview has one visible constriction at the p/q junction', async ({ page }) => {
+  await open(page, '/');
+  const crossSection = await page.locator('.chromosome-view clipPath').evaluate((clip) => {
+    const shape = clip.firstElementChild;
+    const box = shape.getBBox();
+    const junction = box.y + box.height * 48_800_000 / 181_538_259;
+    return [0.05, 0.5, 0.95].map((fraction) =>
+      shape.isPointInFill(new DOMPoint(box.x + box.width * fraction, junction)));
+  });
+  expect(crossSection).toEqual([false, true, false]);
+  await expect(page.getByText('Centromere', { exact: true })).toBeVisible();
+});
+
+test('the mosaic example lists the abnormal cell line before the normal cell line', async ({ page }) => {
+  await open(page, '/validate');
+  await page.getByRole('button', { name: /Multiple cell lines/ }).click();
+  await expect(page.getByLabel('ISCN notation', { exact: true })).toHaveValue('47,XX,+21[5]/46,XX[10]');
+});
+
 test('example library opens a complete structural example', async ({ page }) => {
   await open(page, '/explain');
   await page.getByRole('searchbox', { name: 'Find an example' }).fill('translocation');
@@ -93,7 +112,7 @@ test('lab evaluation guide exposes a downloadable starter kit', async ({ page })
   expect(download.suggestedFilename()).toBe('iscn-evaluation-inputs.txt');
   const inputs = (await readFile(await download.path(), 'utf8')).trimEnd().split('\n');
   expect(inputs).toHaveLength(10);
-  expect(inputs).toContain('46,XX[10]/46,Y[5]');
+  expect(inputs).toContain('47,XX,+21[10]/47,XX,+99[5]');
 });
 
 test('account key copy states and batch exports preserve the review', async ({ page }) => {
@@ -119,6 +138,7 @@ test('account key copy states and batch exports preserve the review', async ({ p
   await page.getByRole('button', { name: 'Check batch' }).click();
   await expect(page.getByRole('alert')).toContainText('Enter at least one karyotype');
   await page.getByRole('button', { name: 'Load example batch' }).click();
+  await expect(page.getByLabel('ISCN notation, one entry per line')).toHaveValue(/47,XX,\+21\[5\]\/46,XX\[10\]/);
   await page.getByRole('button', { name: 'Check batch' }).click();
   await expect(page.getByRole('heading', { name: '4 entries checked' })).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });

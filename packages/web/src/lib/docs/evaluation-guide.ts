@@ -33,7 +33,7 @@ export const evaluationGuide: Guide = {
 					`${entry.id}: ${entry.notation}`, `${entry.status} / ${entry.valid}`, entry.purpose
 				])
 			},
-			paragraphs: ['Inspect issues and coverage notes, not only the core valid field. E08 deliberately includes a second cell line that would fail checks in isolation; the current engine checks only the first cell line. E09 shows that accepted assay suffixes do not establish complete assay syntax.', 'If an observed result differs, retain the input, raw result, coverage notes, and software revision. Investigate the difference before treating it as accepted behavior.'],
+			paragraphs: ['Inspect issues and coverage notes, not only the core valid field. E08 deliberately uses the invalid chromosome number 99 in its second cell line; this would fail in isolation, but the current engine checks only the first cell line. E09 shows that accepted assay suffixes do not establish complete assay syntax.', 'If an observed result differs, retain the input, raw result, coverage notes, and software revision. Investigate the difference before treating it as accepted behavior.'],
 			links: [{ label: 'Understand result fields', href: '/docs/reading-results' }, { label: 'Review known limitations', href: '/docs/coverage' }]
 		},
 		{

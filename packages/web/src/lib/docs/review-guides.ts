@@ -92,12 +92,18 @@ export const reviewGuides: Guide[] = [
 					headings: ['Notation', 'Current behavior'],
 					rows: [
 						['Unknown abnormalities', 'Unrecognized text can be retained as type unknown and still return valid: true.'],
-						['Mosaics and multiple cell lines', 'Cell lines are parsed, but rule evaluation uses the first cell line. Later cell lines are not fully checked.'],
+						['Mosaics and multiple cell lines', 'Cell lines are parsed, but rule evaluation uses the first cell line. Later cell lines and cell-line ordering are not fully checked.'],
 						['FISH, array, and OGM modifiers', 'Accepted nuc ish, arr, and ogm content is retained as modifier text. Assay-specific content is not fully validated.'],
 						['Chromosome count ranges', 'Ranges such as 45~48 are retained as strings; numeric bound and coherence checks are skipped.'],
 						['Biological or clinical meaning', 'The validator does not establish a finding’s clinical significance or compare it with patient or specimen information.']
 					]
 				}
+			},
+			{
+				id: 'cell-line-order',
+				title: 'Review the cell-line order',
+				paragraphs: ['For the mosaic example below, the abnormal cell line is listed first and the normal cell line last, even though more normal cells were counted. ISCN 2024 section 4.5.3 describes cell-line ordering and the separate donor-line convention for stem-cell transplantation. The workspace does not enforce these ordering rules.'],
+				code: { label: 'Abnormal cell line followed by normal cell line', value: '47,XX,+21[5]/46,XX[10]' }
 			},
 			{
 				id: 'evaluate-locally',

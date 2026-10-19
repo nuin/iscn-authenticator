@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { getChromosomeBands, mapBandToRange } from '@iscn/core';
+	import { chromosomeGeometry } from '#lib/ideogram.ts';
+	import ChromosomeGlyph from './ChromosomeGlyph.svelte';
 	const bands = getChromosomeBands('5');
 	const length = bands.at(-1)?.end ?? 1;
 	const start = mapBandToRange('5', 'q13');
 	const end = mapBandToRange('5', 'q33');
+	const centromere = chromosomeGeometry(bands, 34, 264)?.centromere;
 	const highlightY = start ? 28 + start.start / length * 264 : 160;
 	const highlightHeight = start && end ? (end.end - start.start) / length * 264 : 65;
 	const shades: Record<string, string> = { gneg: '#e3f0f3', gpos25: '#9ebcc6', gpos50: '#648e9c', gpos75: '#366a7b', gpos100: '#124b60', acen: '#97c3cc', gvar: '#9ebcc6', stalk: '#9ebcc6' };
@@ -13,18 +16,19 @@
 	<div class="preview-top"><span>Inside the workspace</span><span class="example-label">Example</span></div>
 	<div class="preview-body">
 		<div class="chromosome-view">
-			<svg viewBox="0 0 180 330" role="img" aria-label="Illustrative chromosome 5 banding with the q13 to q33 region highlighted">
-				<defs><clipPath id="preview-chromosome"><rect x="70" y="28" width="34" height="264" rx="17" /></clipPath></defs>
-				<g clip-path="url(#preview-chromosome)">
-					{#each bands as band}<rect x="70" y={28 + band.start / length * 264} width="34" height={Math.max(.5, (band.end - band.start) / length * 264)} fill={shades[band.stain] ?? '#9ebcc6'} />{/each}
-				</g>
-				<rect x="70" y="28" width="34" height="264" rx="17" fill="none" stroke="#accbd3" />
+			<svg viewBox="0 0 180 330" role="img" aria-label="Reference chromosome 5 with a centromere between the p and q arms and q13 to q33 highlighted">
+				<g transform="translate(70, 28)"><ChromosomeGlyph {bands} width={34} height={264} shades={shades} stroke="#668f9d" /></g>
 				<rect x="65" y={highlightY} width="44" height={highlightHeight} fill="#47c5ca" fill-opacity=".18" stroke="#41a6b7" />
 				<path d={`M115 ${highlightY}h12v${highlightHeight}h-12`} fill="none" stroke="#41a6b7" stroke-width="1.5" />
 				<text x="86" y="15" text-anchor="middle">5</text><text x="48" y="75">p</text><text x="48" y="240">q</text>
 				<text x="137" y={highlightY + 4}>q13</text><text x="137" y={highlightY + highlightHeight}>q33</text>
+				{#if centromere}
+					<path d={`M${70 + 34 * .38} ${28 + centromere.junction} H20`} fill="none" stroke="#76568f" />
+					<text class="centromere-label" x="18" y={21 + centromere.junction}>cen</text>
+				{/if}
 			</svg>
-			<span>Illustrative band view</span>
+			<span class="centromere-key"><i></i>Centromere</span>
+			<span>Reference bands · constriction enlarged</span>
 		</div>
 		<div class="preview-detail">
 			<div class="check-status"><span aria-hidden="true">✓</span> Checks passed</div>
@@ -44,7 +48,10 @@
 	.chromosome-view { background: #eaf3f7; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 1.25rem .5rem .8rem; border-right: 1px solid #d8e3ec; }
 	.chromosome-view svg { height: 285px; width: 100%; }
 	.chromosome-view text { font-family: var(--font-mono); font-size: 11px; fill: #42677a; }
+	.chromosome-view .centromere-label { font-size: 9px; fill: #64417f; }
 	.chromosome-view span { font-size: .58rem; color: #526779; }
+	.chromosome-view .centromere-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .7rem; color: #64417f; margin-bottom: .4rem; }
+	.centromere-key i { width: .6rem; height: .6rem; background: #76568f; clip-path: polygon(0 0, 100% 0, 65% 50%, 100% 100%, 0 100%, 35% 50%); }
 	.preview-detail { padding: 1.8rem 1.5rem; }
 	.check-status { display: inline-flex; align-items: center; gap: .4rem; color: #206751; font-size: .68rem; background: #eaf6ef; border-radius: 4px; padding: .3rem .5rem; }
 	h2 { font-size: 1.7rem; margin: 1.1rem 0 .8rem; letter-spacing: -.035em; }

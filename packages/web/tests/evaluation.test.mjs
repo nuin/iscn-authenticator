@@ -11,8 +11,8 @@ test('published evaluation expectations match current checks, including known in
     assert.equal(review.status, entry.status, entry.id);
     assert.equal(review.result.valid, entry.valid, entry.id);
   }
-  assert.equal(reviewKaryotype('46,Y').status, 'Issues found');
-  assert.equal(reviewKaryotype('46,XX[10]/46,Y[5]').status, 'Review required');
+	assert.equal(reviewKaryotype('47,XX,+99').status, 'Issues found');
+	assert.equal(reviewKaryotype('47,XX,+21[10]/47,XX,+99[5]').status, 'Review required');
 });
 
 test('starter downloads preserve input order and leave observation fields blank', () => {
@@ -21,5 +21,5 @@ test('starter downloads preserve input order and leave observation fields blank'
   assert.equal(rows.length, 11);
   assert.match(rows[0], /"Observed UI status","Observed core valid","Reviewer notes"$/);
   assert.match(rows[1], /^"E01","46,XX","Checks passed","true","","",""$/);
-  assert.match(rows[8], /^"E08","46,XX\[10\]\/46,Y\[5\]","Review required","true","","",""$/);
+  assert.match(rows[8], /^"E08","47,XX,\+21\[10\]\/47,XX,\+99\[5\]","Review required","true","","",""$/);
 });

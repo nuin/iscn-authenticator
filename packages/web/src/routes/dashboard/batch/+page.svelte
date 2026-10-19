@@ -34,7 +34,7 @@
 	}
 
 	function loadExample() {
-		input = '46,XX\n47,XY,+21\n46,XX,del(5)(p13q33)\n46,XX[10]/47,XX,+21[5]';
+		input = '46,XX\n47,XY,+21\n46,XX,del(5)(p13q33)\n47,XX,+21[5]/46,XX[10]';
 		resetResults();
 	}
 

@@ -17,7 +17,7 @@ export const evaluationCases: EvaluationCase[] = [
 	{ id: 'E05', notation: '46,XX,del(5)(p13q33)', status: 'Issues found', valid: false, purpose: 'Deletion breakpoints on different arms.' },
 	{ id: 'E06', notation: '46,XX,unknown', status: 'Review required', valid: true, purpose: 'Unrecognized abnormality retained without a dedicated rule.' },
 	{ id: 'E07', notation: '45~48,XX', status: 'Review required', valid: true, purpose: 'Count range retained without numeric bound checks.' },
-	{ id: 'E08', notation: '46,XX[10]/46,Y[5]', status: 'Review required', valid: true, purpose: 'The second cell line is not evaluated by validation rules.' },
+	{ id: 'E08', notation: '47,XX,+21[10]/47,XX,+99[5]', status: 'Review required', valid: true, purpose: 'Deliberately invalid chromosome 99 in the unchecked second cell line.' },
 	{ id: 'E09', notation: '46,XX.arr', status: 'Review required', valid: true, purpose: 'An assay suffix does not receive a complete content check.' },
 	{ id: 'E10', notation: '46,XX,inc', status: 'Review required', valid: true, purpose: 'Incomplete notation needs manual review.' }
 ];

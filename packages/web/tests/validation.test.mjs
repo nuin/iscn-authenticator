@@ -1,13 +1,31 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mapBandToRange, validateKaryotypeNative } from '@iscn/core';
-import { breakpointRanges } from '../src/lib/ideogram.ts';
+import { getChromosomeBands, mapBandToRange, validateKaryotypeNative } from '@iscn/core';
+import { breakpointRanges, chromosomeGeometry } from '../src/lib/ideogram.ts';
 import {
   reviewKaryotype,
   reviewBatch,
   batchCSV,
   spreadsheetCell,
 } from '../src/lib/validation.ts';
+
+test('centromeres retain the reference p/q junction for metacentric and acrocentric chromosomes', () => {
+  for (const [chromosome, junction] of [['1', 123_400_000], ['5', 48_800_000], ['13', 17_700_000], ['21', 12_000_000], ['Y', 10_400_000]]) {
+    const bands = getChromosomeBands(chromosome);
+    const height = bands.at(-1).end / 248_956_422 * 132;
+    const geometry = chromosomeGeometry(bands, 12, height);
+    assert.equal(geometry.centromere.junction, junction * geometry.scale);
+    assert.ok(geometry.centromere.start < geometry.centromere.junction);
+    assert.ok(geometry.centromere.end > geometry.centromere.junction);
+    assert.ok(geometry.centromere.start > 0 && geometry.centromere.end < height);
+  }
+});
+
+test('missing centromere annotations do not fabricate a central constriction', () => {
+  const bands = getChromosomeBands('5').filter((band) => band.stain !== 'acen');
+  assert.equal(chromosomeGeometry(bands, 34, 264).centromere, null);
+  assert.equal(chromosomeGeometry([], 34, 264), null);
+});
 
 test('chromosome overview retains repeated chromosome positions and both insertion donor breakpoints', () => {
   const translocation = validateKaryotypeNative('46,XX,t(1;1)(p36;q21)').parsed.abnormalities[0];
