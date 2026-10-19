@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import Ideogram from '#lib/components/Ideogram.svelte';
 	import ValidationResult from '#lib/components/ValidationResult.svelte';
@@ -9,6 +10,7 @@
 	let submitted = $state('');
 	let review = $state<ValidationReview | null>(null);
 	let inputError = $state('');
+	let resultRegion: HTMLDivElement | undefined;
 	const reference: KaryotypeAST = { chromosome_count: 46, sex_chromosomes: 'XX', abnormalities: [], cell_lines: null, modifiers: null };
 	const examples = [
 		{ name: 'Chromosome gain', value: '47,XY,+21' },
@@ -23,7 +25,7 @@
 		inputError = '';
 	});
 
-	function runCheck() {
+	async function runCheck() {
 		if (!input.trim()) {
 			inputError = 'Enter a karyotype or choose an example below.';
 			review = null;
@@ -32,6 +34,9 @@
 		inputError = '';
 		submitted = input.trim();
 		review = reviewKaryotype(submitted);
+		await tick();
+		resultRegion?.focus({ preventScroll: true });
+		resultRegion?.scrollIntoView({ block: 'start' });
 	}
 
 	function editInput() {
@@ -83,7 +88,7 @@
 				<a href="/dashboard/batch">Review a batch <span aria-hidden="true">→</span></a>
 			</nav>
 		</div>
-		<div class="result-column">
+		<div class="result-column" bind:this={resultRegion} role="region" aria-label="Validation output" tabindex="-1">
 			<div class="sr-only" role="status">{review ? `${review.status}. ${review.result.errors.length} issues. ${review.coverage.length} coverage notes.` : ''}</div>
 			{#if review}
 				{#key review}<ValidationResult {review} input={submitted} />{/key}
@@ -109,6 +114,7 @@
 	.page-heading > p:last-child { max-width: 590px; color: var(--color-text-muted); font-size: 1rem; line-height: 1.7; }
 	.workspace { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(0, 1.35fr); gap: 2rem; align-items: start; }
 	.entry-column, .result-column { min-width: 0; }
+	.result-column { scroll-margin-top: 1rem; }
 	.entry-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.5rem; }
 	.entry-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
 	.entry-heading h2 { font-size: 1.05rem; margin: 0; }

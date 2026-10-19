@@ -63,6 +63,16 @@ test('mobile navigation and guide search remain usable', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('mobile validation moves keyboard focus to the completed result', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await open(page, '/validate');
+  await page.getByLabel('ISCN notation', { exact: true }).fill('46,XX,unknown');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  const output = page.getByRole('region', { name: 'Validation output' });
+  await expect(output).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Review required', exact: true })).toBeInViewport();
+});
+
 test('example library opens a complete structural example', async ({ page }) => {
   await open(page, '/explain');
   await page.getByRole('searchbox', { name: 'Find an example' }).fill('translocation');
@@ -71,6 +81,19 @@ test('example library opens a complete structural example', async ({ page }) => 
   await expect(page.getByLabel('ISCN notation', { exact: true })).toHaveValue('46,XX,t(9;22)(q34;q11.2)');
   await page.getByRole('button', { name: 'Check karyotype' }).click();
   await expect(page.getByRole('heading', { name: 'Checks passed', exact: true })).toBeVisible();
+});
+
+test('lab evaluation guide exposes a downloadable starter kit', async ({ page }) => {
+  await open(page, '/docs');
+  await page.getByRole('link', { name: 'Use the starter inputs and review worksheet.' }).click();
+  await expect(page.getByRole('heading', { name: 'Evaluate the workspace for your lab', exact: true })).toBeVisible();
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download starter inputs (.txt)' }).click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe('iscn-evaluation-inputs.txt');
+  const inputs = (await readFile(await download.path(), 'utf8')).trimEnd().split('\n');
+  expect(inputs).toHaveLength(10);
+  expect(inputs).toContain('46,XX[10]/46,Y[5]');
 });
 
 test('account key copy states and batch exports preserve the review', async ({ page }) => {
@@ -98,6 +121,11 @@ test('account key copy states and batch exports preserve the review', async ({ p
   await page.getByRole('button', { name: 'Load example batch' }).click();
   await page.getByRole('button', { name: 'Check batch' }).click();
   await expect(page.getByRole('heading', { name: '4 entries checked' })).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  const details = await page.locator('td.row-details').nth(2).boundingBox();
+  expect(details.x).toBeGreaterThanOrEqual(0);
+  expect(details.x + details.width).toBeLessThanOrEqual(375);
+  await expect(page.getByRole('heading', { name: '4 entries checked' })).toBeFocused();
   await page.getByLabel('Show', { exact: true }).selectOption('Issues found');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   const downloadEvent = page.waitForEvent('download');

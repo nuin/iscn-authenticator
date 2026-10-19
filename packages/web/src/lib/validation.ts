@@ -1,5 +1,7 @@
 import { validateKaryotypeNative } from '@iscn/core';
 import type { KaryotypeAST, ValidationResult } from '@iscn/core';
+import { spreadsheetCell } from './csv.ts';
+export { spreadsheetCell } from './csv.ts';
 
 export type ReviewStatus = 'Checks passed' | 'Issues found' | 'Review required';
 
@@ -66,11 +68,6 @@ export function reviewBatch(input: string): { rows: BatchRow[]; error: string | 
 		rows: lines.map((line) => ({ ...line, ...reviewKaryotype(line.karyotype) })),
 		error: null,
 	};
-}
-
-export function spreadsheetCell(value: string): string {
-	const safe = /^[\s\u0000-\u001f]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value) ? `'${value}` : value;
-	return `"${safe.replaceAll('"', '""')}"`;
 }
 
 export function batchCSV(rows: BatchRow[]): string {

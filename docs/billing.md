@@ -36,6 +36,80 @@ payment failures, and event replay before enabling sales. Portal capabilities,
 cancellation timing, taxes, and retry settings must be reviewed in the actual
 Stripe configuration; this repository does not establish those policies.
 
+### Pages webhook behavior
+
+Configure the Stripe event destination at `/api/webhooks/stripe` for these events:
+
+- `checkout.session.completed` and `checkout.session.async_payment_succeeded`
+- `invoice.paid`, `invoice.payment_succeeded`, and `invoice.payment_failed`
+- `customer.subscription.created`, `customer.subscription.updated`,
+  `customer.subscription.deleted`, `customer.subscription.paused`, and
+  `customer.subscription.resumed`
+
+Checkout must use subscription mode and have `payment_status` equal to `paid` or
+`no_payment_required` before it can associate the account with a Stripe customer.
+An unpaid completion leaves the account unchanged; a later asynchronous success
+can activate it. This follows Stripe's distinction between checkout completion
+and delayed payment success. See [Checkout fulfillment](https://docs.stripe.com/checkout/fulfillment).
+
+Each applicable event retrieves current subscriptions for its Stripe customer.
+Only subscriptions with the configured `STRIPE_PRICE_ID_PRO` and
+`metadata.customer_id` matching the local account contribute to that account's
+plan. Checkout creates this metadata on the subscription. Existing subscriptions
+without the matching metadata/price need operator reconciliation before they can
+affect access. An event about an unrelated subscription leaves the account alone.
+An existing Stripe customer association cannot be replaced by another customer.
+
+An applicable active or trialing subscription sets `pro`; otherwise an applicable
+past-due subscription sets `past_due`; otherwise the account returns to `free`.
+This permits payment recovery without trusting an old invoice snapshot. A canceled
+subscription cannot reactivate access, and cancellation of an old subscription
+does not remove access supplied by another active matching subscription. A
+scheduled cancellation remains active until Stripe changes the subscription's
+status. The webhook clears the local trial expiry when applying Stripe state.
+
+The account mutation and processed-event marker share one
+[D1 batch transaction](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
+A repeated event ID cannot repeat the account mutation, including concurrent
+deliveries. A failed transaction rolls both changes back. Invalid signatures,
+JSON, or relevant object shapes return `400`; missing billing settings return
+`503`; processing failures return a generic `500` and leave the event available
+for retry. Logs include the event ID, without event payloads or provider/database
+error details. Valid events that require no action are acknowledged and recorded.
+
+### Remaining billing launch checks
+
+This is not a guarantee of ordering across distinct events. Stripe does not
+guarantee delivery order, and event timestamps cannot establish it. Fetching
+current subscription state limits stale-event effects, but overlapping Stripe
+reads and D1 writes can still finish in the wrong order. Before relying on this
+as a commercial entitlement system, add serialized per-customer reconciliation
+and durable subscription identity/state, with periodic repair against Stripe.
+See [Stripe event delivery behavior](https://docs.stripe.com/webhooks#event-ordering).
+
+The current lookup requests at most 100 subscriptions, including canceled ones.
+It fails for retry if Stripe reports more subscriptions or truncated subscription
+items, so it never decides access from a partial list. Such accounts need operator
+attention and pagination support; retries alone cannot fix this limit. The
+provider request times out after ten seconds. Keep the configured price stable
+until a migration supports previous prices. If a lifecycle event arrives before
+Checkout has associated its customer, it remains retryable rather than being
+discarded. Investigate events that continue failing in Stripe's delivery log.
+
+The automated Pages webhook suite uses signed synthetic events and the actual
+account schema in transactional SQLite. It covers rollback, concurrent replay,
+unpaid and asynchronous checkout, ownership mismatches, payment recovery,
+cancellation, unrelated subscriptions, invalid payloads, and provider failures.
+Run it with Node 24 from `packages/web`:
+
+```bash
+node --test tests/billing-webhook.test.mjs
+```
+
+These tests do not replace a Stripe test-mode purchase/portal/cancellation run
+against the deployed event destination. No live payment was made to establish
+the automated test results.
+
 Account deletion, support response times, price-change notice, refunds, and
 commercial terms require owner decisions. Do not infer commitments from the
 unreviewed legal templates. See [launch readiness](launch-readiness.md).

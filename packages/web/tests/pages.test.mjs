@@ -22,7 +22,7 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
 
   await t.test('product documentation and example links resolve', async () => {
     for (const path of ['/validate', '/docs', '/docs/getting-started', '/docs/coverage',
-      '/docs/integration', '/explain', '/explain/del(5)(p15)', '/about', '/privacy', '/terms']) {
+      '/docs/integration', '/docs/lab-evaluation', '/explain', '/explain/del(5)(p15)', '/about', '/privacy', '/terms']) {
       const response = await request(path);
       assert.equal(response.status, 200, path);
     }
@@ -34,6 +34,18 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
     const html = await pricing.text();
     assert.match(html, /Paid checkout is not available yet/);
     assert.doesNotMatch(html, /100,000 API requests|\$29/);
+  });
+
+  await t.test('public evaluation downloads provide notation and a blank review worksheet', async () => {
+    const inputs = await request('/evaluation/inputs.txt');
+    assert.equal(inputs.status, 200);
+    assert.match(inputs.headers.get('content-disposition'), /attachment; filename="iscn-evaluation-inputs.txt"/);
+    assert.equal((await inputs.text()).trimEnd().split('\n').length, 10);
+    const worksheet = await request('/evaluation/worksheet.csv');
+    assert.equal(worksheet.status, 200);
+    assert.match(worksheet.headers.get('content-type'), /text\/csv/);
+    assert.match(await worksheet.text(), /"Observed UI status","Observed core valid","Reviewer notes"/);
+    assert.equal((await request('/evaluation/missing.txt')).status, 404);
   });
 
   await t.test('signup creates a key and secure session', async () => {

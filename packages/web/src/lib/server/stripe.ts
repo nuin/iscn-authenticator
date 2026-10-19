@@ -1,19 +1,44 @@
-/**
- * Minimal Stripe client for Cloudflare Workers.
- *
- * Cloudflare Pages/Workers don't run the official `stripe` Node SDK well
- * (Node-builtin shims, large bundle). We only need three calls and webhook
- * signature verification, so we go straight to the REST API with `fetch`
- * and use Web Crypto for HMAC.
- *
- * Exposed surface:
- *   - createCheckoutSession()          POST /v1/checkout/sessions
- *   - createBillingPortalSession()     POST /v1/billing_portal/sessions
- *   - verifyWebhookSignature()         constant-time HMAC-SHA256 check on
- *                                      `Stripe-Signature` header
- */
+import { accountMetadata, stripeId, stripeObject } from '#lib/server/stripe-events.js';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
+
+export interface CurrentSubscription {
+  id: string;
+  userId: string | undefined;
+  status: string;
+  prices: string[];
+}
+
+function parseSubscription(value: unknown, customerId: string): CurrentSubscription {
+  const subscription = stripeObject(value);
+  const status = subscription.status;
+  if (subscription.object !== 'subscription' || stripeId(subscription.customer, 'cus_') !== customerId ||
+      typeof status !== 'string' || !['active', 'trialing', 'past_due', 'unpaid', 'canceled',
+        'incomplete', 'incomplete_expired', 'paused'].includes(status)) {
+    throw new Error('Invalid current subscription');
+  }
+  const items = stripeObject(subscription.items);
+  if (!Array.isArray(items.data) || items.has_more !== false) {
+    throw new Error('Incomplete subscription items');
+  }
+  return {
+    id: stripeId(subscription.id, 'sub_'), userId: accountMetadata(subscription.metadata), status,
+    prices: items.data.map((item) => stripeId(stripeObject(item).price, 'price_')),
+  };
+}
+
+export async function listCurrentSubscriptions(secretKey: string, customerId: string): Promise<CurrentSubscription[]> {
+  const query = new URLSearchParams({ customer: customerId, status: 'all', limit: '100' });
+  const response = await fetch(`${STRIPE_API}/subscriptions?${query}`, {
+    headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error('Stripe subscription lookup failed');
+  const list = stripeObject(await response.json());
+  if (list.object !== 'list' || !Array.isArray(list.data) || list.has_more !== false) {
+    throw new Error('Incomplete subscription list');
+  }
+  return list.data.map((value) => parseSubscription(value, customerId));
+}
 
 interface StripeError {
   type: string;

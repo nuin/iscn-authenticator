@@ -40,7 +40,7 @@
 	</section>
 
 	<div class="pricing-notes">
-		<section><h2>Integrating with a laboratory workflow?</h2><p>This website provides browser validation. The TypeScript library, self-hosted Deno API, and Python wrapper are separate integration options. Website account keys do not grant access to a hosted validation API.</p><a href="/docs/integration">Read the integration guide <span aria-hidden="true">→</span></a></section>
+		<section><h2>Integrating with a laboratory workflow?</h2><p>This website provides browser validation. The TypeScript library, self-hosted Deno API, and Python wrapper are separate integration options. Website account keys do not grant access to a hosted validation API.</p><a href="/docs/lab-evaluation">Start a laboratory evaluation</a><p><a href="/docs/integration">Read the integration guide</a></p></section>
 		<section><h2>Know what a result means.</h2><p>Validation checks implemented notation rules. It is not complete ISCN certification, and review by a qualified professional remains essential. Browser results are not saved to your account.</p><a href="/docs/coverage">Read coverage and limitations <span aria-hidden="true">→</span></a></section>
 	</div>
 </div>

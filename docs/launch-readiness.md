@@ -20,6 +20,11 @@ these limits visible; a passing result is not certification or report approval.
 
 ## Owner decisions and evidence
 
+The owner supplied **Bioinformat** as the seller/business name on 2026-10-19.
+It is identified in the website footer, About page and service description.
+The support email, subscription price, legal entity details and jurisdiction
+remain open. This name alone does not enable paid checkout.
+
 | Decision or evidence | Accountable role | Completion criterion |
 |---|---|---|
 | Commercial packaging and price | Product owner | Written price, included features, eligibility, and exclusions match implemented behavior |

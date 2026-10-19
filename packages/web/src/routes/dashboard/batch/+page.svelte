@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { batchCSV, downloadValidationFile, reviewBatch, type BatchRow, type ReviewStatus } from '#lib/validation.ts';
 
 	let input = $state('');
 	let results = $state<BatchRow[]>([]);
 	let inputError = $state('');
 	let filter = $state<ReviewStatus | 'All results'>('All results');
+	let resultHeading = $state<HTMLHeadingElement>();
 	const filters = ['All results', 'Checks passed', 'Issues found', 'Review required'] as const;
 	const lineCount = $derived(input.split(/\r?\n/).filter((line) => line.trim()).length);
 	const visibleRows = $derived(filter === 'All results' ? results : results.filter((row) => row.status === filter));
@@ -14,11 +16,16 @@
 		review: results.filter((row) => row.status === 'Review required').length
 	});
 
-	function runBatch() {
+	async function runBatch() {
 		const batch = reviewBatch(input);
 		results = batch.rows;
 		inputError = batch.error ?? '';
 		filter = 'All results';
+		if (results.length) {
+			await tick();
+			resultHeading?.focus({ preventScroll: true });
+			resultHeading?.scrollIntoView({ block: 'start' });
+		}
 	}
 
 	function resetResults() {
@@ -70,7 +77,7 @@
 {#if results.length}
 	<section class="batch-results" aria-labelledby="batch-results-heading">
 		<div class="results-heading">
-			<div><p class="section-label">Review results</p><h2 id="batch-results-heading">{results.length} entries checked</h2></div>
+			<div><p class="section-label">Review results</p><h2 id="batch-results-heading" bind:this={resultHeading} tabindex="-1">{results.length} entries checked</h2></div>
 			<div class="export-actions">
 				<button type="button" class="button secondary" onclick={() => downloadValidationFile(batchCSV(results), 'iscn-batch-results.csv', 'text/csv;charset=utf-8')}>Download CSV</button>
 				<button type="button" class="button secondary" onclick={exportJSON}>Download JSON</button>
@@ -139,6 +146,7 @@
 	.batch-notice strong { color: var(--color-text); }
 	.results-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 2.5rem; }
 	.results-heading h2 { font-size: 1.4rem; margin: .5rem 0 1rem; letter-spacing: -.025em; }
+	#batch-results-heading { scroll-margin-top: 1rem; }
 	.summary-counts { display: flex; gap: 1rem 2rem; flex-wrap: wrap; padding: 1.3rem 0; border-bottom: 1px solid var(--color-border); font-size: .78rem; }
 	.summary-counts strong { font: 1.25rem var(--font-mono); margin-right: .4rem; }
 	.passed { color: #26704f; } .issues { color: #a93535; } .review { color: #855b0b; }
@@ -169,4 +177,16 @@
 	.batch-empty p { font-size: .85rem; color: var(--color-text-muted); }
 	.result-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 	@media (max-width: 540px) { .batch-entry { padding: 1rem; } .filter-bar span { width: 100%; margin-left: 0; } }
+	@media (max-width: 680px) {
+		table { min-width: 0; }
+		thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+		tbody { display: block; }
+		tr { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .6rem; padding: 1rem; border-bottom: 1px solid var(--color-border); background: white; }
+		tr:last-child { border-bottom: 0; }
+		td { display: block; padding: 0; border: 0; }
+		.line-number { grid-column: 1; grid-row: 1 / span 3; }
+		.line-number::before { content: 'Line'; display: block; font: .65rem 'Public Sans', sans-serif; margin-bottom: .4rem; }
+		td:not(.line-number) { grid-column: 2; }
+		.row-details { padding-top: .4rem; }
+	}
 </style>

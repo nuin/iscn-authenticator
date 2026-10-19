@@ -41,7 +41,7 @@
 <main id="main-content" tabindex="-1">{@render children()}</main>
 <footer class="site-footer">
 	<div class="page-shell footer-content">
-		<div class="footer-brand"><a href="/" class="brand-link" aria-label="ISCN Authenticator home"><Brand /></a><p>Clearer notation.<br />More informed review.</p></div>
+		<div class="footer-brand"><a href="/" class="brand-link" aria-label="ISCN Authenticator home"><Brand /></a><p>A notation workspace by Bioinformat.<br />Clearer notation. More informed review.</p></div>
 		<div><h2>Workspace</h2><a href="/validate">Single karyotype</a><a href="/dashboard/batch">Batch review</a><a href="/explain">Example library</a></div>
 		<div><h2>Resources</h2><a href="/docs/getting-started">Getting started</a><a href="/docs/coverage">Coverage and limitations</a><a href="/docs/integration">Integration guide</a></div>
 		<div><h2>About</h2><a href="/about">The project</a><a href="/privacy">Data and privacy</a><a href="/terms">Terms of use</a></div>

@@ -19,6 +19,8 @@
 	<a class="button" href="/docs/getting-started">Start here</a>
 </div>
 
+<p class="evaluation-link">Planning a laboratory evaluation? <a href="/docs/lab-evaluation">Use the starter inputs and review worksheet.</a></p>
+
 {#each groups as group}
 	<section aria-label={group}>
 		<h2>{group}</h2>
@@ -46,6 +48,7 @@
 	.start-guide h2 { margin: 0; font-size: 1.15rem; }
 	.start-guide p { margin: 0.4rem 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
 	.start-guide .button { flex-shrink: 0; }
+	.evaluation-link { font-size: .9rem; color: var(--color-text-muted); margin-top: -1.5rem; }
 	section { margin: 2.5rem 0; }
 	section > h2 { margin-bottom: 1rem; font-size: 1rem; font-weight: 600; color: var(--color-text-muted); }
 	.guide-list { border-top: 1px solid var(--color-border); }
