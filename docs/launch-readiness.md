@@ -13,8 +13,8 @@ validation usage, saved validation history, or team roles. Deno is a separate
 self-hosted runtime with its own keys and quotas. Checkout remains unavailable
 unless the required Stripe configuration is present.
 
-Core checks have known gaps: unknown abnormalities may pass, mosaic rules use the
-first cell line, accepted assay modifiers are retained without full checking, and
+Core checks have known gaps: unknown abnormalities may pass, ordering multiple
+abnormal clones needs context, accepted assay modifiers are retained without full checking, and
 count ranges skip numeric bounds and coherence checks. The interface must keep
 these limits visible; a passing result is not certification or report approval.
 

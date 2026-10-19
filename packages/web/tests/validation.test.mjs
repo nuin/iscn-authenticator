@@ -44,7 +44,7 @@ test('review labels distinguish implemented checks from partial coverage without
     ['46,XX,unrecognized', 'Review required'],
     ['46,XX,der(9)t(9;22)(q34;q11.2)', 'Review required'],
     ['45~48,XX', 'Review required'],
-    ['46,XX/47,XY,+99', 'Review required'],
+    ['47,XX,+21[5]/46,XX[10]', 'Checks passed'],
     ['46,XX.ish invalid assay text', 'Review required'],
     ['46,XX.arr', 'Review required'],
     ['nuc ish (D21S259x3)', 'Review required'],
@@ -67,8 +67,26 @@ test('issues take precedence while incomplete coverage remains visible', () => {
 });
 
 test('coverage includes unsupported abnormalities in later cell lines', () => {
-  const review = reviewKaryotype('46,XX[10]/46,XX,unknown[5]');
-  assert.deepEqual(review.coverage.map((note) => note.code).sort(), ['mosaic', 'unsupported']);
+  const review = reviewKaryotype('47,XX,+21[10]/46,XX,unknown[5]');
+  assert.ok(review.coverage.some((note) => note.code === 'unsupported'));
+});
+
+test('mosaic review checks every line and identifies the failing line in exports', () => {
+  const rows = reviewBatch('47,XX,+21[5]/46,XX[10]\n47,XX,+21[10]/47,XX,+99[5]').rows;
+  assert.equal(rows[0].status, 'Checks passed');
+  assert.deepEqual(rows[0].coverage, []);
+  assert.equal(rows[1].status, 'Issues found');
+  assert.match(batchCSV(rows), /Cell line 2: Invalid chromosome '99'/);
+});
+
+test('review notes remain specific to unresolved clone ordering and donor identity', () => {
+  const clones = reviewKaryotype('47,XX,+8[5]/47,XX,+21[10]/46,XX[20]');
+  assert.equal(clones.status, 'Review required');
+  assert.ok(clones.coverage.some((note) => note.code === 'cell-line-order'));
+  const transplant = reviewKaryotype('46,XX[5]//47,XY,+21[15]');
+  assert.equal(transplant.result.valid, true);
+  assert.ok(transplant.coverage.some((note) => note.code === 'donor'));
+  assert.equal(reviewKaryotype('chi 46,XY[25]/46,XX[10]').status, 'Checks passed');
 });
 
 test('batch keeps malformed entries and their original source line numbers', () => {

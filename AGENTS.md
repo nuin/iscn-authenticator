@@ -133,8 +133,9 @@ Operators manage keys through `deno task keys:create <label>` / `keys:list` / `k
 
 1. **`KaryotypeParser`** (`parser.ts`, with helpers in `abnormality-parser.ts` and `breakpoint-parser.ts`) — string → `KaryotypeAST`. Throws `ParseError` on malformed syntax. The validation entry point converts parse failures into `{ valid: false, errors, parsed: null }`. Abnormality dispatch order matters: check longer prefixes before shorter overlapping ones.
 2. **`RuleEngine`** (`engine.ts`) — runs two rule sets against the AST:
-   - AST-level rules (`ALL_CHROMOSOME_RULES`) — run once per karyotype
-   - Abnormality-level rules (`ALL_ABNORMALITY_RULES`) — run once per `Abnormality`
+   - Chromosome rules (`ALL_CHROMOSOME_RULES`) — run for each cell line, or once for single-line input
+   - Abnormality rules (`ALL_ABNORMALITY_RULES`) — run for each abnormality in every cell line
+   - Whole-karyotype rules (`ALL_CELL_LINE_RULES`, registered with `addKaryotypeRules`) — check cell counts and ordering across the original cell lines, preserving recipient/donor groups
 3. **`ValidationResult`** (`types.ts`) — `{ valid, errors, parsed }`.
 
 Adding a new rule: implement a `Rule` with `validate(ast, target): string[]` and append it to `ALL_CHROMOSOME_RULES` or `ALL_ABNORMALITY_RULES` in `rules/chromosome.ts` or `rules/abnormality.ts`. Rules return one string per error; an empty array means pass.

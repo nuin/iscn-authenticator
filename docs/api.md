@@ -132,10 +132,16 @@ This is the **core result** for `46,XX`, before Deno adds explanation fields:
 | `explanation` | Deno enrichment with `summary`, `detail`, `citation`, `refs`, and `confidence` |
 
 `valid: true` is not proof of complete ISCN conformity. Unknown abnormalities can
-pass; mosaic rules use the first cell line only; accepted assay modifiers are
+pass; ordering multiple abnormal clones still needs context; accepted assay modifiers are
 retained without full checks; chromosome count ranges skip numeric bounds and
 coherence checks. Keep the [coverage guide](https://iscn-web.pages.dev/docs/coverage)
 with any integration acceptance criteria.
+
+Each cell line receives the chromosome and abnormality rules. Errors begin with
+`Cell line N:` for multiple-line input. Metaphase counts must be positive integers
+in brackets. Normal lines must follow abnormal lines within each recipient or
+donor group; `//` preserves that boundary. Among normal XX/XY lines, size comes
+first, with XX before XY when counts are equal. The original AST order is retained.
 
 ### Node request example
 

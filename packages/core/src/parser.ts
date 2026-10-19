@@ -61,10 +61,9 @@ export class KaryotypeParser {
       karyotype = karyotype.slice(0, -cpMatch[0].length);
     }
 
-    // Check for chimera notation (chi prefix)
-    let isChimera = false;
-    if (karyotype.startsWith("chi ")) {
-      isChimera = true;
+    const isChimera = karyotype.startsWith("chi ");
+    const isMosaic = karyotype.startsWith("mos ");
+    if (isChimera || isMosaic) {
       karyotype = karyotype.slice(4);
     }
 
@@ -78,7 +77,7 @@ export class KaryotypeParser {
 
     // Add modifiers
     if (
-      fishData || arrData || ogmData || compositeCount !== null || isChimera
+      fishData || arrData || ogmData || compositeCount !== null || isChimera || isMosaic
     ) {
       ast.modifiers = ast.modifiers || {};
       if (fishData) {
@@ -96,6 +95,9 @@ export class KaryotypeParser {
       if (isChimera) {
         ast.modifiers.chimera = true;
       }
+      if (isMosaic) {
+        ast.modifiers.mosaic = true;
+      }
     }
 
     return ast;
@@ -110,9 +112,15 @@ export class KaryotypeParser {
     // Extract cell count if present (e.g., "46,XX[10]")
     if (extractCount) {
       const countMatch = karyotype.match(CELL_LINE_COUNT_PATTERN);
+      if (!countMatch && (karyotype.includes("[") || karyotype.includes("]"))) {
+        throw new ParseError("Cell count must be a positive safe integer in square brackets");
+      }
       if (countMatch) {
         karyotype = countMatch[1];
-        count = parseInt(countMatch[2], 10);
+        count = Number(countMatch[2]);
+        if (!Number.isSafeInteger(count)) {
+          throw new ParseError("Cell count must be a positive safe integer in square brackets");
+        }
       }
     }
 
@@ -149,25 +157,33 @@ export class KaryotypeParser {
   }
 
   private parseMosaic(karyotype: string): KaryotypeAST {
-    const cellLineStrs = karyotype.split("/");
-    const cellLines: CellLine[] = [];
-
-    for (const lineStr of cellLineStrs) {
-      const result = this.parseSingleKaryotype(lineStr.trim(), true) as {
-        ast: KaryotypeAST;
-        count: number;
-      };
-      const cellLine: CellLine = {
-        chromosome_count: result.ast.chromosome_count as number,
-        sex_chromosomes: result.ast.sex_chromosomes,
-        abnormalities: result.ast.abnormalities,
-        count: result.count,
-        is_donor: false,
-      };
-      cellLines.push(cellLine);
+    const groups = karyotype.split("//");
+    if (groups.length > 2 || karyotype.includes("///")) {
+      throw new ParseError("Use one double slash to separate recipient and donor cell lines");
     }
-
-    // Use the first cell line as the main karyotype info
+    const cellLines: CellLine[] = [];
+    for (const [groupIndex, group] of groups.entries()) {
+      if (!group.trim() && groups.length === 2) continue;
+      for (const lineStr of group.split("/")) {
+        try {
+          const { ast, count } = this.parseSingleKaryotype(lineStr.trim(), true) as {
+            ast: KaryotypeAST;
+            count: number;
+          };
+          cellLines.push({
+            chromosome_count: ast.chromosome_count as number | string,
+            sex_chromosomes: ast.sex_chromosomes,
+            abnormalities: ast.abnormalities,
+            count,
+            is_donor: groupIndex === 1,
+          });
+        } catch (error) {
+          if (!(error instanceof ParseError)) throw error;
+          throw new ParseError(`Cell line ${cellLines.length + 1}: ${error.message}`);
+        }
+      }
+    }
+    if (!cellLines.length) throw new ParseError("At least one cell line is required");
     const first = cellLines[0];
     return {
       chromosome_count: first.chromosome_count,

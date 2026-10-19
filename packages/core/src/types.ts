@@ -41,7 +41,7 @@ export interface Modifiers {
 
 /** Represents a cell line in mosaic/chimera notation. */
 export interface CellLine {
-  chromosome_count: number;
+  chromosome_count: number | string;
   sex_chromosomes: string;
   abnormalities: Abnormality[];
   count: number;

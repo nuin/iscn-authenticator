@@ -17,7 +17,8 @@ complete ISCN 2024 conformity, clinical significance, or approval to release a r
 Known limits affect otherwise passing results:
 
 - Unrecognized abnormalities can be retained as `type: "unknown"` and pass.
-- Mosaic cell lines are parsed, but rule evaluation uses the first cell line.
+- Every cell line receives the implemented rules. Ordering multiple abnormal
+  clones and confirming donor identity still require context and manual review.
 - Accepted `nuc ish`, `arr`, and `ogm` modifiers are retained as text without full
   assay-specific validation.
 - Chromosome count ranges bypass numeric bounds and coherence checks.

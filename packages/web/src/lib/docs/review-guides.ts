@@ -61,7 +61,7 @@ export const reviewGuides: Guide[] = [
 			{
 				id: 'parsed-notation',
 				title: 'Inspect the parsed notation',
-				items: ['chromosome_count can be a number, a range string such as 45~48, or null for supported FISH-only input.', 'cell_lines is an array for parsed mosaic notation, otherwise null. Rules currently evaluate the first cell line only.', 'modifiers is an object when modifiers are present, otherwise null. It is not an array.', 'Each abnormality preserves its source text in raw and may include breakpoints, inheritance, uncertainty, and copy count.'],
+				items: ['chromosome_count can be a number, a range string such as 45~48, or null for supported FISH-only input.', 'cell_lines is an array for parsed mosaic notation, otherwise null. Every cell line receives the implemented rules; errors identify its one-based position. The original order is preserved, and is_donor identifies lines after a transplant double slash.', 'modifiers is an object when modifiers are present, otherwise null. It is not an array.', 'Each abnormality preserves its source text in raw and may include breakpoints, inheritance, uncertainty, and copy count.'],
 				paragraphs: ['A parsed field shows what the parser extracted; it does not mean that every part of that field was validated.']
 			},
 			{
@@ -92,7 +92,7 @@ export const reviewGuides: Guide[] = [
 					headings: ['Notation', 'Current behavior'],
 					rows: [
 						['Unknown abnormalities', 'Unrecognized text can be retained as type unknown and still return valid: true.'],
-						['Mosaics and multiple cell lines', 'Cell lines are parsed, but rule evaluation uses the first cell line. Later cell lines and cell-line ordering are not fully checked.'],
+						['Mosaics and multiple cell lines', 'Every cell line receives the implemented checks. Counts and normal-last ordering are checked. Ordering multiple abnormal clones, resolving clone shorthand and confirming donor identity still need manual review.'],
 						['FISH, array, and OGM modifiers', 'Accepted nuc ish, arr, and ogm content is retained as modifier text. Assay-specific content is not fully validated.'],
 						['Chromosome count ranges', 'Ranges such as 45~48 are retained as strings; numeric bound and coherence checks are skipped.'],
 						['Biological or clinical meaning', 'The validator does not establish a finding’s clinical significance or compare it with patient or specimen information.']
@@ -102,7 +102,7 @@ export const reviewGuides: Guide[] = [
 			{
 				id: 'cell-line-order',
 				title: 'Review the cell-line order',
-				paragraphs: ['For the mosaic example below, the abnormal cell line is listed first and the normal cell line last, even though more normal cells were counted. ISCN 2024 section 4.5.3 describes cell-line ordering and the separate donor-line convention for stem-cell transplantation. The workspace does not enforce these ordering rules.'],
+				paragraphs: ['The example below passes the implemented checks: both cell lines are evaluated, their bracketed metaphase counts are positive, and the normal cell line is last even though more normal cells were counted. Optional mos and chi prefixes are supported.', 'Under ISCN 2024 section 4.5.3, normal cell lines follow abnormal lines. The workspace checks this within each recipient or donor group; a double slash preserves the transplant boundary. Normal XX/XY lines are ordered by decreasing count, with XX first for equal counts.', 'When a group contains multiple abnormal cell lines, their ordering still needs review: clone relationships, constitutional versus acquired findings, and tie-break rules require more context. The tool does not infer those relationships or verify donor identity.'],
 				code: { label: 'Abnormal cell line followed by normal cell line', value: '47,XX,+21[5]/46,XX[10]' }
 			},
 			{

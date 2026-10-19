@@ -73,6 +73,13 @@ When shared validation semantics change, coordinate the Python implementation an
 shared corpus, release that corpus, and advance the fixture pin in
 `packages/core/package.json`. Python library publication belongs in its own repository.
 
+The cell-line validation update uses Python commit
+`5aebd35cbb701c485539f2b4169a884bd5435700` and the shared corpus tag
+`fixtures-cell-lines-20261019`. The API wrapper pins that Git revision through
+`tool.uv.sources` and `api/uv.lock` so it receives the same fixes before a PyPI
+release. Use the documented `uv --locked` commands; a plain pip install of the
+older PyPI release does not include them. This fixture tag does not publish to PyPI.
+
 ## Cloudflare Pages
 
 The existing project is `iscn-web`, with production at

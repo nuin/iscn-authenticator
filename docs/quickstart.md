@@ -36,8 +36,9 @@ The core result for `46,XX` is:
 ```
 
 `valid: true` means the implemented rules found no errors. It does not establish
-complete ISCN conformity. Unknown abnormalities can pass; mosaic rules evaluate
-only the first cell line; accepted assay modifiers are retained without full
+complete ISCN conformity. Every cell line receives the implemented rules, with
+line-numbered errors. Ordering multiple abnormal clones still requires review.
+Unknown abnormalities can pass; accepted assay modifiers are retained without full
 checks; count ranges bypass numeric bounds and coherence checks.
 
 `valid: false` includes detected issues in `errors`. A parsing failure has

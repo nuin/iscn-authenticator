@@ -22,6 +22,10 @@ Deno.test("embedded browser bundle loads and preserves validation results", asyn
       "46,XX,t(9;22)(q34;q11.2)",
       "46,XX,?del(5)(q13q33)matx2",
       "47,XY,+21[8]/46,XY[12]",
+      "47,XX,+21[5]/47,XX,+99[10]",
+      "46,XX[10]/47,XX,+21[5]",
+      "mos 45,X[5]/46,XX[10]",
+      "46,XX[5]//47,XY,+21[15]",
       "46,XX,inv(9)(p11)",
     ]
   ) {

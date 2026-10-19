@@ -10,11 +10,13 @@ import { KaryotypeParser, ParseError } from "./parser.js";
 import { RuleEngine } from "./engine.js";
 import { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
 import { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
+import { ALL_CELL_LINE_RULES } from "./rules/cell-lines.js";
 
 const parser = new KaryotypeParser();
 const engine = new RuleEngine();
 engine.addRules(ALL_CHROMOSOME_RULES);
 engine.addAbnormalityRules(ALL_ABNORMALITY_RULES);
+engine.addKaryotypeRules(ALL_CELL_LINE_RULES);
 
 /**
  * Validate an ISCN karyotype string using pure TypeScript.

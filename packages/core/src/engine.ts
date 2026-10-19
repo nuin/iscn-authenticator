@@ -8,6 +8,7 @@ import type { KaryotypeAST, ValidationResult, Rule } from "./types.js";
 export class RuleEngine {
   private rules: Rule[] = [];
   private abnormalityRules: Rule[] = [];
+  private karyotypeRules: Rule[] = [];
 
   addRule(rule: Rule): void {
     this.rules.push(rule);
@@ -25,16 +26,30 @@ export class RuleEngine {
     this.abnormalityRules.push(...rules);
   }
 
-  validate(ast: KaryotypeAST): ValidationResult {
-    const allErrors: string[] = [];
+  addKaryotypeRules(rules: Rule[]): void {
+    this.karyotypeRules.push(...rules);
+  }
 
-    // Apply AST-level rules
+  validate(ast: KaryotypeAST): ValidationResult {
+    const errors = this.karyotypeRules.flatMap((rule) => rule.validate(ast, ast));
+    if (ast.cell_lines?.length) {
+      ast.cell_lines.forEach((line, index) => {
+        const context: KaryotypeAST = { ...ast, ...line, cell_lines: null };
+        errors.push(...this.validateLine(context).map((error) => `Cell line ${index + 1}: ${error}`));
+      });
+    } else {
+      errors.push(...this.validateLine(ast));
+    }
+    return { valid: errors.length === 0, errors, parsed: ast };
+  }
+
+  private validateLine(ast: KaryotypeAST): string[] {
+    const allErrors: string[] = [];
     for (const rule of this.rules) {
       const errors = rule.validate(ast, ast);
       allErrors.push(...errors);
     }
 
-    // Apply abnormality rules to each abnormality
     for (const abnormality of ast.abnormalities) {
       for (const rule of this.abnormalityRules) {
         const errors = rule.validate(ast, abnormality);
@@ -42,10 +57,6 @@ export class RuleEngine {
       }
     }
 
-    return {
-      valid: allErrors.length === 0,
-      errors: allErrors,
-      parsed: ast,
-    };
+    return allErrors;
   }
 }

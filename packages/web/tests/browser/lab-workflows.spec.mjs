@@ -90,6 +90,17 @@ test('the mosaic example lists the abnormal cell line before the normal cell lin
   await open(page, '/validate');
   await page.getByRole('button', { name: /Multiple cell lines/ }).click();
   await expect(page.getByLabel('ISCN notation', { exact: true })).toHaveValue('47,XX,+21[5]/46,XX[10]');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Checks passed', exact: true })).toBeVisible();
+  await expect(page.getByText('Coverage needs attention', { exact: true })).toHaveCount(0);
+  await page.getByLabel('ISCN notation', { exact: true }).fill('47,XX,+21[5]/47,XX,+99[10]');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Issues found', exact: true })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: /Cell line 2: Invalid chromosome '99'/ })).toBeVisible();
+  await page.getByLabel('ISCN notation', { exact: true }).fill('46,XX[10]/47,XX,+21[5]');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Issues found', exact: true })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: /normal cell line must be listed last/ })).toBeVisible();
 });
 
 test('example library opens a complete structural example', async ({ page }) => {
@@ -153,7 +164,8 @@ test('account key copy states and batch exports preserve the review', async ({ p
   const download = await downloadEvent;
   const rows = JSON.parse(await readFile(await download.path(), 'utf8'));
   expect(rows).toHaveLength(4);
-  expect(rows[3].status).toBe('Review required');
+  expect(rows[3].status).toBe('Checks passed');
+  expect(rows[3].coverage).toEqual([]);
   await page.getByLabel('ISCN notation, one entry per line').fill(Array(501).fill('46,XX').join('\n'));
   await page.getByRole('button', { name: 'Check batch' }).click();
   await expect(page.getByRole('alert')).toContainText('501 entries');

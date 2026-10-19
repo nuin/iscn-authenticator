@@ -66,10 +66,10 @@
 					</ul>
 				{:else}<p>No abnormalities are listed in the primary parsed karyotype.</p>{/if}
 				{#if ast.cell_lines?.length}
-					<h4>Cell lines</h4>
+					<h4>Cell lines — all checked</h4>
 					<ol class="cell-lines">
 						{#each ast.cell_lines as line}
-							<li><code>{line.chromosome_count},{line.sex_chromosomes}{line.abnormalities.length ? ',' + line.abnormalities.map((item) => item.raw).join(',') : ''}</code><span>{line.count ? `${line.count} cells` : 'Cell count not specified'}</span></li>
+							<li><code>{line.chromosome_count},{line.sex_chromosomes}{line.abnormalities.length ? ',' + line.abnormalities.map((item) => item.raw).join(',') : ''}</code><span>{line.count ? `${line.count} cells` : 'Cell count not specified'}{line.is_donor ? ' · Donor group' : ''}</span></li>
 						{/each}
 					</ol>
 				{/if}

@@ -222,11 +222,12 @@ wheels = [
 [[package]]
 name = "iscn-authenticator"
 version = "0.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/82/4f/c874937d5ac58e66b33824b97398e6316bf98c9e46eb37c2c30a7924241b/iscn_authenticator-0.2.1.tar.gz", hash = "sha256:604c2a8182fc1b32787cc19e68db352a9eea8f29f6a762c9d13df2aca7952142", size = 27043, upload-time = "2026-06-02T03:21:10.261Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/de/f7c23d5d36eb4ec7356d3c58f31143c14824e965992ebf315effc4b9cf00/iscn_authenticator-0.2.1-py3-none-any.whl", hash = "sha256:9a09039427dbce4c3f6319913a3627814b80778c1c085e155d43ae4f20372473", size = 19434, upload-time = "2026-06-02T03:21:08.901Z" },
-]
+source = { url = "https://github.com/nuin/iscn-authenticator-py/archive/5aebd35cbb701c485539f2b4169a884bd5435700.tar.gz" }
+sdist = { hash = "sha256:be329115125f30601960bd30b8ebed5a46a3a5225be7d38bd353a3a125a51c49" }
+
+[package.metadata]
+requires-dist = [{ name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.100" }]
+provides-extras = ["test"]
 
 [[package]]
 name = "iscn-validator-api"
@@ -247,7 +248,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.143.3,<0.144.0" },
-    { name = "iscn-authenticator", specifier = ">=0.2.1,<0.3.0" },
+    { name = "iscn-authenticator", url = "https://github.com/nuin/iscn-authenticator-py/archive/5aebd35cbb701c485539f2b4169a884bd5435700.tar.gz" },
     { name = "pydantic", specifier = ">=2.14.1,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0,<0.55.0" },
 ]

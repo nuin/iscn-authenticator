@@ -132,6 +132,16 @@ class ValidationApiTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(response.json(), {"detail": "No karyotype provided"})
 
+    def test_later_cell_line_errors_are_returned_by_both_methods(self):
+        for method in ("GET", "POST"):
+            with self.subTest(method=method):
+                response = self.validate(method, "47,XX,+21[5]/47,XX,+99[10]")
+                self.assertEqual(response.status_code, 200)
+                result = response.json()
+                self.assertFalse(result["valid"])
+                self.assertIn("Cell line 2: Invalid chromosome '99'", "\n".join(result["errors"]))
+                self.assertEqual(len(result["parsed"]["cell_lines"]), 2)
+
     def test_missing_karyotypes_identify_the_required_field(self):
         for method, location in (("GET", "query"), ("POST", "body")):
             with self.subTest(method=method):

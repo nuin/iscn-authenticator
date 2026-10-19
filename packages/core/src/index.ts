@@ -41,3 +41,4 @@ export type { Band, ChromosomeBands } from "./ideogram.js";
 // Rule sets (consumers building custom rule stacks)
 export { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
 export { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
+export { ALL_CELL_LINE_RULES, needsCellLineOrderReview } from "./rules/cell-lines.js";

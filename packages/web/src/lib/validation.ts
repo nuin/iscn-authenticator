@@ -1,4 +1,4 @@
-import { validateKaryotypeNative } from '@iscn/core';
+import { needsCellLineOrderReview, validateKaryotypeNative } from '@iscn/core';
 import type { KaryotypeAST, ValidationResult } from '@iscn/core';
 import { spreadsheetCell } from './csv.ts';
 export { spreadsheetCell } from './csv.ts';
@@ -37,8 +37,11 @@ function coverageNotes(ast: KaryotypeAST | null, input: string): CoverageNote[] 
 	if (unchecked.length) {
 		notes.push({ code: 'unsupported', message: `These entries are not checked by a dedicated rule: ${unchecked.join('; ')}. Review them against the reference.` });
 	}
-	if (ast.cell_lines?.length) {
-		notes.push({ code: 'mosaic', message: 'Cell lines are parsed, but validation rules run only on the first cell line. Review every cell line and their relationship.' });
+	if (needsCellLineOrderReview(ast)) {
+		notes.push({ code: 'cell-line-order', message: 'Every cell line was checked. Ordering multiple abnormal cell lines still needs review against specimen context, clone relationships and ISCN tie-break rules.' });
+	}
+	if (ast.cell_lines?.length && input.includes('//')) {
+		notes.push({ code: 'donor', message: 'Recipient and donor groups were checked separately. Confirm donor identity and transplant context against the source records.' });
 	}
 	if (typeof ast.chromosome_count === 'string' || ast.cell_lines?.some((line) => typeof line.chromosome_count === 'string')) {
 		notes.push({ code: 'range', message: 'Chromosome-count ranges are retained as text. Their bounds and count coherence are not checked.' });
@@ -46,8 +49,8 @@ function coverageNotes(ast: KaryotypeAST | null, input: string): CoverageNote[] 
 	if (/\.ish\s|\.arr|\.ogm|^nuc ish\s/.test(input.trim())) {
 		notes.push({ code: 'assay', message: 'FISH, array and optical genome mapping extensions are retained as text; their assay syntax and content are not checked.' });
 	}
-	if (ast.modifiers?.composite !== undefined || ast.modifiers?.chimera || ast.modifiers?.incomplete || abnormalities.some((item) => item.type === 'inc')) {
-		notes.push({ code: 'modifier', message: 'Composite, chimeric or incomplete notation needs manual review. The modifier does not receive a full consistency check.' });
+	if (ast.modifiers?.composite !== undefined || ast.modifiers?.incomplete || abnormalities.some((item) => item.type === 'inc')) {
+		notes.push({ code: 'modifier', message: 'Composite or incomplete notation needs manual review. The modifier does not receive a full consistency check.' });
 	}
 	return notes;
 }
