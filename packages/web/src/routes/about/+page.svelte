@@ -1,53 +1,8 @@
-<h2>Authoritative Validation</h2>
-<p>
-	The ISCN Authenticator is built against the <strong>International System for Human Cytogenomic Nomenclature (2024)</strong> specification.
-</p>
-<p>
-	Our engine implements the formal grammar and rules defined in the latest consensus document,
-	ensuring that your karyotypes adhere to international reporting standards.
-</p>
-
-<h3>How it works</h3>
-<ol>
-	<li>
-		<strong>Parser:</strong> A recursive-descent parser converts ISCN strings into a structured Abstract
-		Syntax Tree (AST).
-	</li>
-	<li>
-		<strong>Rule Engine:</strong> Over 50 validation rules check for numerical consistency, sex chromosome
-		coherence, and structural abnormality syntax.
-	</li>
-	<li>
-		<strong>Explain Module:</strong> A curated clinical library provides spec-cited interpretations for
-		common abnormalities.
-	</li>
-</ol>
-
-<div class="note">
-	<p>
-		This tool is intended for research and educational use. Always consult with a certified
-		clinical cytogeneticist for diagnostic reporting.
-	</p>
+<svelte:head><title>About the project · ISCN Authenticator</title><meta name="description" content="An inspectable karyotype notation tool for laboratory teams, built around implemented checks, structured results and clear coverage limits." /></svelte:head>
+<div class="page-shell text-page">
+	<header class="page-heading"><p class="section-label">About the project</p><h1>Give notation<br />the attention it deserves.</h1><p>ISCN Authenticator brings a repeatable first pass to karyotype review, with tools for scientists and the teams building laboratory workflows.</p></header>
+	<section><h2>A tool you can inspect</h2><p>The TypeScript engine parses a karyotype into chromosome count, sex chromosome notation, abnormalities and other recognized fields. A rule engine then applies the implemented syntax and consistency checks. The workspace makes both the structured result and its limitations visible.</p><p>The source is available for evaluation. The separately maintained Python reference library and a shared fixture corpus help check agreement between implementations.</p><a href="https://github.com/nuin/iscn-authenticator" class="button secondary">Explore the source</a></section>
+	<section><h2>Built around a laboratory review</h2><p>Use a single-string workspace for an individual check, or review a batch and download its results. The browser tools do not automatically upload your notation or save a validation history. Account services support access keys and sessions.</p></section>
+	<section><h2>Clear about the scope</h2><p>ISCN Authenticator is informed by ISCN 2024 notation. It does not implement every rule in the nomenclature, certify compliance, or replace professional review. Some inputs can be parsed without their content being fully checked.</p><p><a href="/docs/coverage">Coverage and limitations</a> explains the distinctions before you evaluate the tool for a workflow.</p></section>
+	<section><h2>Evaluate with your own examples</h2><p>Start with known, de-identified examples representative of your work. Compare the output with your review process and examine unsupported cases. The <a href="/docs/integration">integration guide</a> covers source libraries and the separate self-hosted API.</p><a href="/validate" class="button">Open the validator</a></section>
 </div>
-
-<style>
-	h3 {
-		margin-top: 2rem;
-	}
-
-	ol {
-		padding-left: 1.5rem;
-	}
-
-	li {
-		margin-bottom: 1rem;
-	}
-
-	.note {
-		margin-top: 3rem;
-		padding: 1.5rem;
-		background: #eef6ff;
-		border-left: 4px solid var(--color-primary);
-		border-radius: 4px;
-	}
-</style>

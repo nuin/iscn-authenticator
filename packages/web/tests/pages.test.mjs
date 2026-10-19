@@ -14,10 +14,26 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
   await t.test('public pages and authentication redirect', async () => {
     const home = await request('/');
     assert.equal(home.status, 200);
-    assert.match(await home.text(), /ISCN Karyotype Validator/);
+    assert.match(await home.text(), /Every karyotype/);
     const dashboard = await request('/dashboard');
     assert.equal(dashboard.status, 302);
     assert.equal(dashboard.headers.get('location'), '/login');
+  });
+
+  await t.test('product documentation and example links resolve', async () => {
+    for (const path of ['/validate', '/docs', '/docs/getting-started', '/docs/coverage',
+      '/docs/integration', '/explain', '/explain/del(5)(p15)', '/about', '/privacy', '/terms']) {
+      const response = await request(path);
+      assert.equal(response.status, 200, path);
+    }
+    assert.equal((await request('/docs/not-a-guide')).status, 404);
+    const legacy = await request('/?karyotype=46%2CXX');
+    assert.equal(legacy.status, 302);
+    assert.equal(legacy.headers.get('location'), '/validate?karyotype=46%2CXX');
+    const pricing = await request('/pricing');
+    const html = await pricing.text();
+    assert.match(html, /Paid checkout is not available yet/);
+    assert.doesNotMatch(html, /100,000 API requests|\$29/);
   });
 
   await t.test('signup creates a key and secure session', async () => {
@@ -51,7 +67,7 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
   await t.test('billing reports missing configuration', async () => {
     const response = await post('/dashboard/billing?/upgrade');
     assert.equal(response.status, 503);
-    assert.match(await response.text(), /Billing is not configured/);
+    assert.match(await response.text(), /Paid checkout is not available/);
   });
 
   await t.test('logout invalidates the session and API-key login works', async () => {

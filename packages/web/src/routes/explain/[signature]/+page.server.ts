@@ -1,4 +1,5 @@
 import { getCuratedSignatures } from '@iscn/core';
+import { notationExamples } from '#lib/examples.js';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -12,6 +13,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		signature,
-		entry
+		entry,
+		example: notationExamples[signature]
 	};
 };

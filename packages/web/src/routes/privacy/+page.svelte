@@ -1,52 +1,9 @@
-<h2>Privacy Policy</h2>
-<p class="muted">Last updated: 2026-04-24</p>
-
-<section>
-	<h3>What we collect</h3>
-	<ul>
-		<li><strong>Account data:</strong> Your email address and plan metadata.</li>
-		<li><strong>Authentication data:</strong> API keys (stored as SHA-256 hashes).</li>
-		<li><strong>Request metadata:</strong> Timestamps, response status, and IP addresses.</li>
-	</ul>
-	<p>We do <strong>not</strong> log karyotype payloads in our persistent logs.</p>
-</section>
-
-<section>
-	<h3>How we use your data</h3>
-	<p>
-		Data is used solely to provide the validation service, authenticate requests, prevent abuse, and
-		manage billing via Stripe.
-	</p>
-</section>
-
-<section>
-	<h3>Data Retention</h3>
-	<p>
-		Account data is kept until the account is deleted. Request metadata is retained for 12 months.
-	</p>
-</section>
-
-<style>
-	section {
-		margin-bottom: 2rem;
-	}
-
-	h3 {
-		margin-bottom: 0.5rem;
-		font-size: 1.1rem;
-	}
-
-	.muted {
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
-		margin-bottom: 2rem;
-	}
-
-	ul {
-		padding-left: 1.5rem;
-	}
-
-	li {
-		margin-bottom: 0.5rem;
-	}
-</style>
+<svelte:head><title>Data and privacy · ISCN Authenticator</title><meta name="description" content="How browser validation, account information, sessions, and optional billing data are handled by the ISCN Authenticator website." /></svelte:head>
+<div class="page-shell text-page">
+	<header class="page-heading"><p class="section-label">Data and privacy</p><h1>Know where<br />your information goes.</h1><p>This page describes the hosted website. A separately operated API has its own deployment and data-handling configuration.</p></header>
+	<section><h2>Notation entered in the workspace</h2><p>Single and batch validation run in your browser. Typing, pasting and checking notation does not automatically send that input or its normalized signature to a validation server. The tools do not save your inputs or results to an account history or browser storage.</p><p>CSV and JSON exports are downloaded only when you request them. You control the resulting files and where they are shared. Example links can contain notation in the URL; URLs are included in requests to the website.</p></section>
+	<section><h2>Account information</h2><p>Creating an account sends your email address to the website and stores it with an account identifier, creation date and plan information. Account keys are shown once; their SHA-256 hashes are stored for authentication. Key labels, identifiers, creation and last-use times, and revocation state are also stored.</p><p>Signing in creates a session record and a Secure, HttpOnly, SameSite=Lax cookie. The session is valid for up to 30 days. Signing out deletes that session and clears its cookie.</p></section>
+	<section><h2>Hosting and billing</h2><p>Cloudflare hosts the website and its account database. Requests necessarily reach the hosting infrastructure, including their URL and network metadata. This application does not specify a fixed hosting-log retention period.</p><p>When paid checkout is available, Stripe handles payment entry. Account email and billing identifiers are used to create and manage checkout or portal sessions. Karyotype inputs are not included in these billing requests.</p></section>
+	<section><h2>Using the tools responsibly</h2><p>Enter notation only. Do not include patient names, accession numbers or other identifying information. The browser workspace is not a patient-record system.</p><p>The current website does not provide a self-service account deletion or key-recovery flow. Preserve an active account key securely and review the <a href="/docs/accounts-and-keys">account guide</a> before revoking keys.</p></section>
+	<section><h2>Further information</h2><p>The <a href="/docs/data-handling">data-handling guide</a> explains the differences between the browser tools, account requests and a self-hosted API. Source code and product issue reporting are available in the <a href="https://github.com/nuin/iscn-authenticator">project repository</a>. Do not include account keys, private addresses or patient information in public issues.</p></section>
+</div>

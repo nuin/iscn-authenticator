@@ -1,59 +1,48 @@
-# Compliance templates — ISCN Authenticator
+# Compliance and qualification templates
 
-> **LEGAL REVIEW REQUIRED.** The documents in this directory are starting
-> points, not contracts. No file here is fit to sign until a qualified
-> attorney has reviewed and edited it for the jurisdiction, counter-party,
-> and workload in question. Anyone who signs an unreviewed template owns
-> the downstream risk personally.
+These files are **unreviewed drafting aids**. They are not executed agreements,
+completed qualification records, certification evidence, or a statement that
+ISCN Authenticator meets a regulatory framework. Their existence does not make
+the product suitable for a particular laboratory workflow.
 
-## Why these exist
+The templates predate the current split between the hosted Cloudflare Pages app
+and the optional Deno service. Claims about quotas, log retention, infrastructure,
+billing, support, and data handling must be checked against the actual deployment.
+Do not publish or sign a template without the relevant legal and operational review.
 
-ISCN Authenticator is a SaaS that validates karyotype strings against the
-ISCN 2024 grammar. The service itself does not, in normal use, process
-Protected Health Information (PHI) — karyotype nomenclature is a
-structural description of chromosomal state, not a direct identifier.
+## Contents
 
-However:
+| File | Drafting purpose |
+|---|---|
+| [baa_template.md](baa_template.md) | Business Associate Agreement discussion draft |
+| [iq_template.md](iq_template.md) | Installation qualification record structure |
+| [oq_template.md](oq_template.md) | Operational qualification test structure |
+| [pq_template.md](pq_template.md) | Performance qualification record structure |
+| [soc2_evidence_outline.md](soc2_evidence_outline.md) | Suggested evidence organization; not an audit report |
+| [privacy_policy_template.md](privacy_policy_template.md) | Privacy notice discussion draft |
+| [terms_template.md](terms_template.md) | Service terms discussion draft |
 
-- Customers **may** transmit karyotypes alongside PHI through adjacent
-  systems. Some of those customers will ask us to sign a Business
-  Associate Agreement (BAA) before integrating.
-- Life-sciences-adjacent buyers (clinical labs, pharma, biotech) often
-  require qualification evidence (IQ / OQ / PQ) and a SOC2 story before
-  they will procure.
-- Several prospective customers ask for a privacy policy and SaaS terms
-  tailored to the product before they will sign.
+## Establish the actual scope first
 
-These templates give a starting position for all of the above, written
-specifically around what ISCN Authenticator actually does (no karyotype
-content in logs, structured error codes, customer-owned API keys, Stripe
-billing, Axiom log retention).
+- Browser validation runs locally. Account and billing actions contact services.
+- Deno and Python HTTP integrations send input to the deployed service.
+- Data classification depends on what is supplied and the surrounding workflow.
+  Do not assume that removing a direct identifier settles that classification.
+- A configured log sink does not, by itself, establish retention, contractual
+  obligations, or compliance. Record the actual configuration and agreements.
+- Test results demonstrate only the checks and environments exercised. The
+  validator has known coverage gaps, described in the [coverage guide](https://iscn-web.pages.dev/docs/coverage).
 
-## Files
+## Use and maintain a template
 
-| File | Purpose |
-|------|---------|
-| `baa_template.md` | HIPAA Business Associate Agreement (HHS model-based). |
-| `iq_template.md` | Installation Qualification checklist — env vars, KV, webhooks, logs. |
-| `oq_template.md` | Operational Qualification test matrix — auth, rate limit, quota, error shapes. |
-| `pq_template.md` | Performance Qualification — SLOs, uptime, retention evidence. |
-| `soc2_evidence_outline.md` | Mapping of SOC2 Trust Services Criteria to repo artifacts. |
-| `privacy_policy_template.md` | Public privacy notice. |
-| `terms_template.md` | SaaS terms of service. |
+1. Copy the selected template into the organization's controlled drafting system.
+2. Replace placeholders and remove claims that do not apply to the deployment.
+3. Link each retained operational claim to current evidence and an accountable owner.
+4. Obtain the required legal, security, quality, and operational review.
+5. Store reviewed or executed records in the appropriate controlled record system,
+   not in this public source repository.
 
-## How to use
-
-1. Copy the template to a working document outside the repository.
-2. Replace every `<FILL-IN>` marker with the correct text for the deal.
-3. Send to legal counsel for review.
-4. Do **not** check the signed version back into this repository —
-   signed agreements should live in the customer-relationship system
-   (Salesforce, HubSpot, or equivalent), not in source control.
-
-## Maintenance
-
-When the product changes in a way that touches any compliance claim
-(new data flow, new processor, new log destination, new auth mechanism,
-change of hosting region), update the affected templates in the same
-pull request. Reviewers should block merges that introduce a compliance
-mismatch.
+Reassess the documents after changes to hosting, processors, data flows, retention,
+authentication, billing, or product scope. The [launch-readiness checklist](../launch-readiness.md)
+tracks unresolved product and operational decisions without treating these drafts
+as completed evidence.

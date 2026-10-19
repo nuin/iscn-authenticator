@@ -1,8 +1,8 @@
-import curatedData from '@iscn/core/data/explains/curated.json' with { type: 'json' };
+import { notationExamples } from '#lib/examples.js';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	return {
-		signatures: Object.keys(curatedData.signatures)
+		examples: Object.entries(notationExamples).map(([signature, entry]) => ({ signature, ...entry }))
 	};
 };

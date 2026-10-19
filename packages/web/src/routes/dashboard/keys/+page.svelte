@@ -1,150 +1,88 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import KeyReveal from '#lib/components/account/KeyReveal.svelte';
 	import type { ActionData, PageData } from './$types';
-
 	let { data, form }: { data: PageData; form: ActionData } = $props();
-
-	function formatDate(ts: number | null) {
-		if (!ts) return 'Never';
-		return new Date(ts * 1000).toLocaleString();
-	}
+	const dateFormat = new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+	const formatDate = (timestamp: number) => dateFormat.format(new Date(timestamp * 1000));
 </script>
 
-<div class="keys-container">
-	<header class="section-header">
-		<h2>API Keys</h2>
-		<form method="POST" action="?/create" use:enhance>
-			<button type="submit" class="btn btn-primary">Create New Key</button>
-		</form>
-	</header>
+<svelte:head><title>Account keys · ISCN Authenticator</title></svelte:head>
 
-	{#if form?.success && form.plaintext}
-		<div class="plaintext-reveal">
-			<strong>Save this key — it will only be shown once.</strong>
-			<code>{form.plaintext}</code>
-		</div>
-	{/if}
+<header class="page-heading">
+	<p class="section-label">Account access</p>
+	<h1>Account keys</h1>
+	<p>Manage the credentials that sign you in to this workspace.</p>
+</header>
 
-	<div class="keys-table-container">
-		<table>
-			<thead>
-				<tr>
-					<th>Label</th>
-					<th>ID</th>
-					<th>Created</th>
-					<th>Last Used</th>
-					<th>Action</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each data.keys as key}
-					<tr class:revoked={key.revoked_at}>
-						<td>{key.label}</td>
-						<td class="mono">{key.id.substring(0, 8)}...</td>
-						<td>{formatDate(key.created_at)}</td>
-						<td>{formatDate(key.last_used_at)}</td>
-						<td>
-							{#if key.revoked_at}
-								<span class="revoked-tag">Revoked {formatDate(key.revoked_at)}</span>
-							{:else}
-								<form method="POST" action="?/revoke" use:enhance>
-									<input type="hidden" name="key_id" value={key.id} />
-									<button type="submit" class="btn btn-danger">Revoke</button>
-								</form>
-							{/if}
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+<div class="notice key-scope">
+	<strong>For this website</strong>
+	<p>These keys provide access to your account. They do not authenticate a separate Deno API deployment. <a href="/docs/integration">Read the integration guide</a>.</p>
 </div>
 
+{#if form?.message}<p class="notice form-error" role="alert">{form.message}</p>{/if}
+{#if form?.success && form.plaintext}
+	{#key form.plaintext}<KeyReveal plaintext={form.plaintext} />{/key}
+{:else if form?.success}
+	<p class="notice" role="status">Key revoked. It can no longer be used to sign in.</p>
+{/if}
+
+<div class="section-heading">
+	<h2>Your keys <span>{data.keys.length}</span></h2>
+	<form method="POST" action="?/create" use:enhance>
+		<button type="submit" class="button">Create new key</button>
+	</form>
+</div>
+
+<div class="key-list">
+	{#each data.keys as key (key.id)}
+		<article class="panel key-record" class:revoked={key.revoked_at !== null}>
+			<div class="key-heading"><h3>{key.label}</h3><span class="key-status">{key.revoked_at !== null ? 'Revoked' : 'Active'}</span></div>
+			<p class="key-id"><span>Key ID</span><code>{key.id}</code></p>
+			<dl>
+				<div><dt>Created</dt><dd>{formatDate(key.created_at)}</dd></div>
+				<div><dt>Last sign-in</dt><dd>{key.last_used_at === null ? 'Not used yet' : formatDate(key.last_used_at)}</dd></div>
+				{#if key.revoked_at !== null}<div><dt>Revoked</dt><dd>{formatDate(key.revoked_at)}</dd></div>{/if}
+			</dl>
+			{#if key.revoked_at === null}
+				<form method="POST" action="?/revoke" use:enhance>
+					<input type="hidden" name="key_id" value={key.id} />
+					<button type="submit" class="button quiet revoke" aria-label={`Revoke ${key.label} (${key.id})`}>Revoke key</button>
+				</form>
+			{/if}
+		</article>
+	{:else}
+		<div class="panel empty-state"><h3>No account keys</h3><p>Create a key and save it before logging out so you can return to your workspace.</p></div>
+	{/each}
+</div>
+
+<p class="key-footnote">Dates are shown in UTC. Revoking a key blocks future sign-ins with that key; existing sessions remain active. Keep at least one active key saved securely. <a href="/docs/accounts-and-keys">Learn more about account access</a>.</p>
+
 <style>
-	.section-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 2rem;
-	}
-
-	h2 {
-		margin: 0;
-	}
-
-	.btn {
-		padding: 0.5rem 1rem;
-		border-radius: 4px;
-		font-weight: 500;
-		cursor: pointer;
-		border: none;
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.btn-danger {
-		background: #dc3545;
-		color: white;
-	}
-
-	.plaintext-reveal {
-		background: #d1e7dd;
-		border: 1px solid #198754;
-		border-radius: 8px;
-		padding: 1.5rem;
-		margin-bottom: 2rem;
-	}
-
-	.plaintext-reveal strong {
-		display: block;
-		margin-bottom: 0.5rem;
-		color: #0f5132;
-	}
-
-	.plaintext-reveal code {
-		display: block;
-		background: white;
-		padding: 0.75rem;
-		border-radius: 4px;
-		word-break: break-all;
-		font-family: var(--font-mono);
-	}
-
-	table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	th,
-	td {
-		text-align: left;
-		padding: 1rem;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	th {
-		color: var(--color-text-muted);
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.mono {
-		font-family: var(--font-mono);
-		font-size: 0.85rem;
-	}
-
-	.revoked td {
-		color: var(--color-text-muted);
-		background: rgba(0, 0, 0, 0.02);
-	}
-
-	.revoked-tag {
-		font-size: 0.75rem;
-		color: #dc3545;
-		font-weight: 500;
-	}
+	.key-scope { margin-bottom: 2rem; }
+	.key-scope strong { font-size: 0.85rem; }
+	.key-scope p { margin: 0.5rem 0 0; font-size: 0.85rem; line-height: 1.7; }
+	.section-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; align-items: center; margin-block: 2rem 1rem; }
+	.section-heading h2 { font-size: 1.1rem; margin: 0; }
+	.section-heading h2 span { color: var(--color-text-muted); font-family: var(--font-mono); margin-left: 0.6rem; font-size: 0.85rem; font-weight: 400; }
+	.key-list { display: grid; gap: 1rem; }
+	.key-record { padding: 1.5rem; position: relative; }
+	.key-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+	.key-heading h3 { margin: 0; font-size: 1rem; }
+	.key-status { font-size: 0.7rem; border: 1px solid #bbdee6; color: var(--color-primary); background: #edf7f9; padding: 0.3rem 0.6rem; border-radius: 4px; }
+	.key-id { display: flex; flex-wrap: wrap; gap: 0.6rem; color: var(--color-text-muted); font-size: 0.75rem; margin-block: 1rem 1.25rem; }
+	.key-id code { overflow-wrap: anywhere; font-family: var(--font-mono); }
+	dl { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin: 0; padding-right: 7rem; }
+	dt { font-size: 0.7rem; color: var(--color-text-muted); }
+	dd { margin: 0.4rem 0 0; font-size: 0.8rem; }
+	.key-record form { position: absolute; right: 1.5rem; bottom: 1.25rem; }
+	.revoke { color: #983535; font-size: 0.8rem; }
+	.revoked { background: transparent; }
+	.revoked .key-status { background: transparent; border-color: var(--color-border); color: var(--color-text-muted); }
+	.key-footnote { font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.75; margin-top: 1.5rem; }
+	.empty-state { padding: 2rem; text-align: center; }
+	.empty-state h3 { font-size: 1rem; }
+	.empty-state p { font-size: 0.9rem; color: var(--color-text-muted); }
+	.form-error { color: #983535; }
+	@media (max-width: 500px) { dl { padding-right: 0; } .key-record form { position: static; margin-top: 1.25rem; } }
 </style>

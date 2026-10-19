@@ -1,24 +1,20 @@
 import { env } from 'cloudflare:workers';
 import { redirect, fail, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { checkoutAvailable } from '#lib/server/billing-availability.js';
 import {
 	createBillingPortalSession,
 	createCheckoutSession,
 } from '#lib/server/stripe.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	// Session verified in +layout.server.ts
 	if (!locals.user) throw redirect(302, '/login');
-	return {};
+	return {
+		checkoutAvailable: checkoutAvailable(env),
+		portalAvailable: Boolean(env.STRIPE_SECRET_KEY?.trim() && locals.user.stripe_customer_id)
+	};
 };
 
-/**
- * Resolve the Pro pricing → checkout flow and the Billing Portal flow.
- *
- * Both actions require the platform's Stripe env vars; if they're missing
- * (e.g. local dev without secrets configured) we return a `fail(503)` with
- * an actionable message instead of throwing.
- */
 export const actions: Actions = {
 	upgrade: async ({ locals, url }) => {
 		if (!locals.user) throw redirect(302, '/login');
@@ -26,10 +22,10 @@ export const actions: Actions = {
 		const secretKey = env.STRIPE_SECRET_KEY;
 		const priceId = env.STRIPE_PRICE_ID_PRO;
 		const baseUrl = env.PUBLIC_BASE_URL ?? url.origin;
-		if (!secretKey || !priceId) {
+		if (!secretKey || !priceId || !checkoutAvailable(env)) {
 			return fail(503, {
 				message:
-					'Billing is not configured: STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PRO must be set.',
+					'Paid checkout is not available at the moment. Your browser workspace remains available.',
 			});
 		}
 
@@ -58,14 +54,14 @@ export const actions: Actions = {
 
 		const secretKey = env.STRIPE_SECRET_KEY;
 		const baseUrl = env.PUBLIC_BASE_URL ?? url.origin;
-		if (!secretKey) {
+		if (!secretKey?.trim()) {
 			return fail(503, {
-				message: 'Billing is not configured: STRIPE_SECRET_KEY must be set.',
+				message: 'The billing portal is not available at the moment. Please try again later.',
 			});
 		}
 		if (!locals.user.stripe_customer_id) {
 			return fail(400, {
-				message: 'No Stripe customer on file yet. Upgrade to Pro first.',
+				message: 'This account does not have a billing profile yet.',
 			});
 		}
 

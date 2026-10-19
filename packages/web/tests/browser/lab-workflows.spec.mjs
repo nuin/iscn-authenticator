@@ -1,0 +1,113 @@
+import { readFile } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+import { startPages } from '../helpers/pages.mjs';
+
+let origin;
+let cleanup;
+test.beforeAll(async () => {
+  ({ origin } = await startPages({ after(fn) { cleanup = fn; } }));
+});
+test.afterAll(async () => { await cleanup?.(); });
+
+async function open(page, path) {
+  await page.goto(`${origin}${path}`);
+  await expect(page.locator('#svelte-announcer')).toBeAttached();
+}
+
+test('browser review distinguishes coverage and keeps entered notation local', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await open(page, '/validate?karyotype=46%2CXX');
+  const input = page.getByLabel('ISCN notation', { exact: true });
+  await expect(input).toHaveValue('46,XX');
+  const requests = [];
+  page.on('request', (request) => requests.push({ url: request.url(), body: request.postData() }));
+  await input.fill('47,XY,+21');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Checks passed', exact: true })).toBeVisible();
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download JSON', exact: true }).click();
+  const download = await downloadEvent;
+  const raw = JSON.parse(await readFile(await download.path(), 'utf8'));
+  expect(raw.valid).toBe(true);
+  expect(raw.parsed.chromosome_count).toBe(47);
+  expect(raw).not.toHaveProperty('coverage');
+  await input.fill('not-a-karyotype');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Issues found', exact: true })).toBeVisible();
+  await input.fill('46,XX,unrecognized');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Review required', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Coverage limitations')).toContainText('not checked by a dedicated rule');
+  expect(requests.filter((request) => request.body)).toEqual([]);
+  expect(requests.some((request) => /explain\/miss|unrecognized|not-a-karyotype|47%2CXY/i.test(request.url))).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('mobile navigation and guide search remain usable', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  const navigation = page.getByRole('navigation', { name: 'Mobile navigation' });
+  await navigation.getByRole('link', { name: 'Documentation', exact: true }).click();
+  await expect(page).toHaveURL(`${origin}/docs`);
+  await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+  const search = page.getByRole('searchbox', { name: 'Search guides' });
+  await search.fill('zzzzzz');
+  await expect(page.getByText('No guides match.', { exact: false })).toBeVisible();
+  await search.fill('mosaic');
+  const guides = page.getByRole('navigation', { name: 'Documentation guides' });
+  await guides.getByRole('link', { name: 'Coverage and limitations' }).click();
+  await expect(page).toHaveURL(`${origin}/docs/coverage`);
+  await expect(page.getByRole('heading', { name: 'Coverage and limitations', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('example library opens a complete structural example', async ({ page }) => {
+  await open(page, '/explain');
+  await page.getByRole('searchbox', { name: 'Find an example' }).fill('translocation');
+  await page.getByRole('link', { name: /A translocation between 9 and 22/ }).click();
+  await page.getByRole('link', { name: 'Open in the validator' }).click();
+  await expect(page.getByLabel('ISCN notation', { exact: true })).toHaveValue('46,XX,t(9;22)(q34;q11.2)');
+  await page.getByRole('button', { name: 'Check karyotype' }).click();
+  await expect(page.getByRole('heading', { name: 'Checks passed', exact: true })).toBeVisible();
+});
+
+test('account key copy states and batch exports preserve the review', async ({ page }) => {
+  await open(page, '/signup');
+  await page.getByLabel('Email').fill('lab-workflow@example.test');
+  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Account created' })).toBeVisible();
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+    configurable: true, value: { writeText: async () => { throw new Error('Unavailable'); } }
+  }));
+  await page.getByRole('button', { name: 'Copy account key' }).click();
+  await expect(page.getByText('Copy was unavailable.', { exact: false })).toBeVisible();
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+    configurable: true, value: { writeText: async () => {} }
+  }));
+  await page.getByRole('button', { name: 'Copy account key' }).click();
+  await expect(page.getByText('Account key copied.', { exact: false })).toBeVisible();
+  await expect(page).toHaveURL(`${origin}/signup`);
+  await page.getByRole('link', { name: 'Continue to dashboard' }).click();
+  await expect(page.locator('header.site-header').getByRole('link', { name: 'Workspace', exact: true })).toBeVisible();
+  await expect(page.locator('header.site-header').getByRole('link', { name: 'Log in', exact: true })).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('link', { name: 'Batch review' }).click();
+  await page.getByRole('button', { name: 'Check batch' }).click();
+  await expect(page.getByRole('alert')).toContainText('Enter at least one karyotype');
+  await page.getByRole('button', { name: 'Load example batch' }).click();
+  await page.getByRole('button', { name: 'Check batch' }).click();
+  await expect(page.getByRole('heading', { name: '4 entries checked' })).toBeVisible();
+  await page.getByLabel('Show', { exact: true }).selectOption('Issues found');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download JSON', exact: true }).click();
+  const download = await downloadEvent;
+  const rows = JSON.parse(await readFile(await download.path(), 'utf8'));
+  expect(rows).toHaveLength(4);
+  expect(rows[3].status).toBe('Review required');
+  await page.getByLabel('ISCN notation, one entry per line').fill(Array(501).fill('46,XX').join('\n'));
+  await page.getByRole('button', { name: 'Check batch' }).click();
+  await expect(page.getByRole('alert')).toContainText('501 entries');
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+});

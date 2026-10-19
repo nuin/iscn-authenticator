@@ -1,23 +1,17 @@
 import { env } from 'cloudflare:workers';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import type { ApiKey } from '#lib/server/db.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	// User session is verified in +layout.server.ts
-	
-	const now = new Date();
-	const month = now.getUTCFullYear().toString() + (now.getUTCMonth() + 1).toString().padStart(2, '0');
-
-	const used = 0;
-	const limit = locals.user!.plan === 'pro' ? 100000 : 1000;
+	if (!locals.user) throw redirect(302, '/login');
+	const keys = await env.DB.prepare('SELECT id, revoked_at FROM api_key WHERE user_id = ?')
+		.bind(locals.user.id)
+		.all<Pick<ApiKey, 'id' | 'revoked_at'>>();
 
 	return {
-		usage: {
-			used,
-			limit,
-			remaining: Math.max(0, limit - used),
-			month
-		}
+		keys: keys.results,
+		activeKeyCount: keys.results.filter((key) => key.revoked_at === null).length
 	};
 };
 

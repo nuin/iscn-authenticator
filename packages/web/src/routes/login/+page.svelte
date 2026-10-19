@@ -1,114 +1,38 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import AccountAccess from '#lib/components/account/AccountAccess.svelte';
 	import type { ActionData } from './$types';
-
 	let { form }: { form: ActionData } = $props();
 </script>
 
-<div class="login-container">
-	<div class="form-panel">
-		<h2>Log in</h2>
-		<p class="muted">Enter any of your active API keys to access your dashboard.</p>
+<svelte:head><title>Log in · ISCN Authenticator</title></svelte:head>
 
-		<form method="POST" use:enhance>
-			{#if form?.error}
-				<p class="error">{form.error}</p>
-			{/if}
-
-			<div class="input-group">
-				<label for="api_key">API Key</label>
-				<input
-					type="password"
-					id="api_key"
-					name="api_key"
-					placeholder="iscn_live_..."
-					autocomplete="current-password"
-					spellcheck="false"
-					required
-				/>
-			</div>
-
-			<button type="submit" class="btn btn-primary">Log in</button>
-		</form>
-
-		<p class="signup-prompt">Don't have an account? <a href="/signup">Sign up</a>.</p>
-	</div>
-</div>
+<AccountAccess>
+	<p class="section-label">Your account</p>
+	<h1>Welcome back</h1>
+	<p class="muted">Use an active account key to open your workspace.</p>
+	<form method="POST" use:enhance>
+		{#if form?.error}<p class="notice form-error" role="alert">{form.error}</p>{/if}
+		<div class="field">
+			<label for="api_key">Account key</label>
+			<input type="password" id="api_key" name="api_key" placeholder="iscn_live_…" autocomplete="current-password" spellcheck="false" aria-describedby="key-help" required />
+		</div>
+		<p id="key-help" class="key-note">Enter the key saved when you created your account, or another active key from this website. Deno API keys use a separate account system.</p>
+		<button type="submit" class="button">Log in</button>
+	</form>
+	<p class="account-switch">New to ISCN Authenticator? <a href="/signup">Create an account</a>.</p>
+	<a class="public-link" href="/validate">Review one karyotype without an account <span aria-hidden="true">→</span></a>
+</AccountAccess>
 
 <style>
-	.login-container {
-		max-width: 480px;
-		margin: 2rem auto;
-	}
-
-	.form-panel {
-		background: white;
-		padding: 2.5rem;
-		border-radius: var(--radius);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-	}
-
-	h2 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-	}
-
-	.muted {
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.input-group {
-		margin-bottom: 1.5rem;
-	}
-
-	.input-group label {
-		display: block;
-		margin-bottom: 0.5rem;
-		font-weight: 500;
-		font-size: 0.9rem;
-	}
-
-	input[type='password'] {
-		width: 100%;
-		padding: 0.75rem;
-		border: 2px solid var(--color-border);
-		border-radius: 8px;
-		font-size: 1rem;
-		box-sizing: border-box;
-	}
-
-	.btn {
-		width: 100%;
-		padding: 0.75rem;
-		border-radius: 8px;
-		border: none;
-		font-weight: 600;
-		cursor: pointer;
-		text-align: center;
-		text-decoration: none;
-		display: block;
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.error {
-		background: #f8d7da;
-		color: #842029;
-		padding: 0.75rem;
-		border-radius: 4px;
-		margin-bottom: 1.5rem;
-		font-size: 0.9rem;
-	}
-
-	.signup-prompt {
-		margin-top: 1.5rem;
-		text-align: center;
-		font-size: 0.9rem;
-		color: var(--color-text-muted);
-	}
+	h1 { font-size: clamp(1.75rem, 3vw, 2.25rem); letter-spacing: -0.035em; margin: 0.75rem 0 1rem; }
+	p { line-height: 1.65; }
+	form { margin-top: 2rem; }
+	.field { display: grid; gap: 0.5rem; }
+	input { width: 100%; min-width: 0; padding: 0.8rem 0.9rem; background: white; border: 1px solid var(--color-border); border-radius: 6px; font: inherit; font-family: var(--font-mono); }
+	.key-note { color: var(--color-text-muted); font-size: 0.85rem; margin-block: 1.25rem; }
+	form > .button { width: 100%; }
+	.account-switch { margin-top: 1.75rem; font-size: 0.9rem; }
+	.public-link { display: block; padding-top: 1.5rem; border-top: 1px solid var(--color-border); font-size: 0.85rem; }
+	.form-error { color: #983535; margin-bottom: 1.25rem; }
 </style>

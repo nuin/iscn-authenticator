@@ -1,206 +1,93 @@
 <script lang="ts">
-	import { getChromosomeBands, mapBandToRange } from '@iscn/core';
+	import { getChromosomeBands } from '@iscn/core';
 	import type { KaryotypeAST } from '@iscn/core';
+	import { breakpointRanges } from '#lib/ideogram.ts';
 
 	let { ast }: { ast: KaryotypeAST } = $props();
-
-	const chromosomes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y'];
-
-	const STAIN_COLORS: Record<string, string> = {
-		gneg: '#ffffff',
-		gpos25: '#d9d9d9',
-		gpos50: '#999999',
-		gpos75: '#666666',
-		gpos100: '#000000',
-		acen: '#888888', // centromere (grey, not red)
-		gvar: '#cccccc',
-		stalk: '#777777'
+	const chromosomes = [...Array.from({ length: 22 }, (_, index) => String(index + 1)), 'X', 'Y'];
+	const referenceLength = Math.max(...chromosomes.flatMap((chromosome) => getChromosomeBands(chromosome).map((band) => band.end)));
+	const bandScale = 132 / referenceLength;
+	const stains: Record<string, string> = {
+		gneg: '#ffffff', gpos25: '#d8e1e8', gpos50: '#94a6b5', gpos75: '#526779',
+		gpos100: '#142b3f', acen: '#708b9d', gvar: '#c2cfd9', stalk: '#94a6b5'
 	};
 
-	// Map chromosome name to its abnormalities and the specific breakpoint index it should highlight
-	const abnormalitiesByChr = $derived.by(() => {
-		const map: Record<string, { abn: any, bpIndex: number }[]> = {};
-		ast.abnormalities.forEach(abn => {
-			const chrs = abn.chromosome.split(';');
-			chrs.forEach((c, i) => {
-				if (!map[c]) map[c] = [];
-				map[c].push({ abn, bpIndex: i });
-			});
-		});
-		return map;
-	});
-
-	function getStainColor(stain: string) {
-		return STAIN_COLORS[stain] || '#cccccc';
+	function highlights(chromosome: string) {
+		const entries = ast.abnormalities.filter((item) => item.chromosome.split(';').includes(chromosome));
+		return entries.flatMap((item) => breakpointRanges(item, chromosome));
 	}
 
-	let hoveredBand = $state<string | null>(null);
+	function changes(chromosome: string, type: string) {
+		return ast.abnormalities.some((item) => item.chromosome === chromosome && item.type === type);
+	}
+
+	const listedChanges = $derived(ast.abnormalities.map((item) => item.raw).join('; '));
 </script>
 
-<div class="ideogram-container">
-	<div class="legend">
-		<div class="legend-item"><span class="swatch gain"></span> Gain (+)</div>
-		<div class="legend-item"><span class="swatch loss"></span> Loss (-)</div>
-		<div class="legend-item"><span class="swatch structural"></span> Structural (breakpoint)</div>
+<figure class="ideogram">
+	<div class="legend" aria-label="Chromosome overview legend">
+		<span><i class="gain"></i>Listed gain (+)</span>
+		<span><i class="loss"></i>Listed loss (−)</span>
+		<span><i class="breakpoint"></i>Mapped breakpoint</span>
 	</div>
-
-	<div class="ideogram-grid">
-		{#each chromosomes as chr}
-			{@const bands = getChromosomeBands(chr)}
-			{@const chrAbns = abnormalitiesByChr[chr] || []}
-			{@const maxBp = bands.length > 0 ? bands[bands.length - 1].end : 0}
-			
-			<div class="chr-container">
-				<span class="chr-label">{chr}</span>
-				<svg width="40" height="300" viewBox="0 0 40 300">
-					{#if bands.length > 0}
-						<g transform="translate(10, 10)">
-							<!-- Chromosome Background -->
-							<rect x="0" y="0" width="20" height="280" rx="10" ry="10" fill="#f8f9fa" stroke="#eee" stroke-width="1" />
-							
-							<!-- Bands -->
-							{#each bands as band}
-								{@const y = (band.start / maxBp) * 280}
-								{@const h = ((band.end - band.start) / maxBp) * 280}
-								{#if band.stain === 'acen'}
-									<!-- Pinched Centromere look -->
-									<path 
-										d="M 0 {y} L 20 {y} L 10 {y + h/2} L 20 {y+h} L 0 {y+h} L 10 {y+h/2} Z" 
-										fill={getStainColor(band.stain)}
-									/>
-								{:else}
-									<rect 
-										x="0" 
-										y={y} 
-										width="20" 
-										height={h} 
-										fill={getStainColor(band.stain)}
-										stroke="none"
-										role="img"
-										aria-label="Band {chr}{band.name}"
-										onmouseenter={() => hoveredBand = `${chr}${band.name}`}
-										onmouseleave={() => hoveredBand = null}
-									>
-										<title>{chr}{band.name} ({band.stain})</title>
-									</rect>
-								{/if}
-							{/each}
-
-							<!-- Highlights for Abnormalities -->
-							{#each chrAbns as { abn, bpIndex }}
-								{#if abn.type === '+'}
-									<rect x="-6" y="0" width="3" height="280" fill="#0d6efd" rx="1.5" />
-								{:else if abn.type === '-'}
-									<g stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.6">
-										<line x1="0" y1="0" x2="20" y2="280" />
-										<line x1="20" y1="0" x2="0" y2="280" />
-									</g>
-								{:else if abn.breakpoints.length > 0}
-									{#if abn.breakpoints.length > 1 && abn.chromosome.includes(';')}
-										<!-- Translocation/Multi-chr: highlight specific breakpoint for this chr -->
-										{@const bp = abn.breakpoints[bpIndex]}
-										{#if bp}
-											{@const bandName = bp.arm + (bp.region ?? '') + (bp.band ?? '') + (bp.subband ? '.' + bp.subband : '')}
-											{@const range = mapBandToRange(chr, bandName)}
-											{#if range}
-												<rect x="23" y={(range.start / maxBp) * 280} width="4" height={Math.max(3, ((range.end - range.start) / maxBp) * 280)} fill="#0d6efd" rx="2" />
-												<rect x="0" y={(range.start / maxBp) * 280} width="20" height={Math.max(3, ((range.end - range.start) / maxBp) * 280)} fill="rgba(13, 110, 253, 0.2)" pointer-events="none" />
-											{/if}
-										{/if}
-									{:else}
-										<!-- Single chromosome: highlight all breakpoints (del, dup, inv) -->
-										{#each abn.breakpoints as bp}
-											{@const bandName = bp.arm + (bp.region ?? '') + (bp.band ?? '') + (bp.subband ? '.' + bp.subband : '')}
-											{@const range = mapBandToRange(chr, bandName)}
-											{#if range}
-												<rect x="23" y={(range.start / maxBp) * 280} width="4" height={Math.max(3, ((range.end - range.start) / maxBp) * 280)} fill="#0d6efd" rx="2" />
-												<rect x="0" y={(range.start / maxBp) * 280} width="20" height={Math.max(3, ((range.end - range.start) / maxBp) * 280)} fill="rgba(13, 110, 253, 0.2)" pointer-events="none" />
-											{/if}
-										{/each}
-									{/if}
-								{/if}
-							{/each}
-						</g>
-					{/if}
+	<div class="chromosomes" aria-hidden="true">
+		{#each chromosomes as chromosome}
+			{@const bands = getChromosomeBands(chromosome)}
+			{@const length = bands.length ? bands[bands.length - 1].end : 0}
+			{@const height = length * bandScale}
+			<div class="chromosome" class:marked={ast.abnormalities.some((item) => item.chromosome.split(';').includes(chromosome))}>
+				<svg viewBox="0 0 30 144" focusable="false">
+					<g transform="translate(8, {140 - height})">
+						<rect width="12" height={height} rx="4" fill="white" stroke="#b8c9d5" stroke-width="1" />
+						{#each bands as band}
+							{@const y = band.start * bandScale}
+							{@const bandHeight = (band.end - band.start) * bandScale}
+							{#if band.stain === 'acen'}
+								<path d="M0 {y} H12 L6 {y + bandHeight / 2} L12 {y + bandHeight} H0 L6 {y + bandHeight / 2} Z" fill={stains[band.stain]} />
+							{:else}
+								<rect y={y} width="12" height={bandHeight} fill={stains[band.stain] ?? '#c2cfd9'} />
+							{/if}
+						{/each}
+						{#if changes(chromosome, '+')}
+							<rect x="-5" width="3" height={height} rx="1.5" fill="#00788c" />
+						{/if}
+						{#if changes(chromosome, '-')}
+							<path d="M-3 0 L15 {height} M15 0 L-3 {height}" stroke="#b84242" stroke-width="2" />
+						{/if}
+						{#each highlights(chromosome) as range}
+							<rect x="14" y={range.start * bandScale} width="4" height={Math.max(3, (range.end - range.start) * bandScale)} fill="#9a6710" rx="1" />
+						{/each}
+					</g>
 				</svg>
+				<span>{chromosome}</span>
 			</div>
 		{/each}
 	</div>
-	
-	{#if hoveredBand}
-		<div class="tooltip">{hoveredBand}</div>
-	{/if}
-</div>
+	<figcaption>
+		Reference chromosomes; highlights show listed changes where a band can be mapped.
+		This is not a reconstructed karyotype or a band-validity check.
+		{#if ast.cell_lines?.length}The overview uses the first cell line.{/if}
+		<span class="change-description">{listedChanges ? `Listed changes: ${listedChanges}.` : 'No abnormalities are listed in the parsed result.'}</span>
+	</figcaption>
+</figure>
 
 <style>
-	.ideogram-container {
-		position: relative;
-		background: white;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		margin-top: 2rem;
-		padding: 1.5rem;
-	}
-
-	.legend {
-		display: flex;
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
-		justify-content: center;
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.swatch {
-		width: 12px;
-		height: 12px;
-		border-radius: 2px;
-	}
-
-	.swatch.gain { background: #0d6efd; width: 3px; height: 12px; }
-	.swatch.loss { background: #dc3545; position: relative; }
-	.swatch.loss::after { content: '×'; position: absolute; top: -4px; left: 1px; color: #dc3545; font-size: 14px; }
-	.swatch.structural { background: rgba(13, 110, 253, 0.4); border: 1px solid #0d6efd; }
-
-	.ideogram-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-		gap: 0.5rem;
-	}
-
-	.chr-container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
-
-	.chr-label {
-		font-size: 0.7rem;
-		font-weight: bold;
-		color: var(--color-text-muted);
-		margin-bottom: 0.25rem;
-	}
-
-	svg {
-		overflow: visible;
-	}
-
-	.tooltip {
-		position: absolute;
-		bottom: 1rem;
-		right: 1.5rem;
-		background: #333;
-		color: white;
-		padding: 0.25rem 0.6rem;
-		border-radius: 4px;
-		font-size: 0.75rem;
-		font-family: var(--font-mono);
-		pointer-events: none;
+	.ideogram { margin: 0; min-width: 0; }
+	.legend { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; font-size: .75rem; color: var(--color-text-muted); }
+	.legend span { display: inline-flex; align-items: center; gap: .45rem; }
+	.legend i { width: .65rem; height: .65rem; display: inline-block; border-radius: 2px; }
+	.gain { background: #00788c; }
+	.loss { background: #b84242; }
+	.breakpoint { background: #9a6710; }
+	.chromosomes { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .75rem .4rem; margin: 1rem 0; }
+	.chromosome { display: flex; flex-direction: column; align-items: center; padding-bottom: .3rem; border-radius: 5px; }
+	.chromosome.marked { background: #eaf4f6; }
+	svg { width: 100%; max-width: 32px; height: 138px; display: block; }
+	.chromosome span { font-family: var(--font-mono); font-size: .75rem; }
+	figcaption { color: var(--color-text-muted); font-size: .75rem; line-height: 1.6; }
+	.change-description { display: block; overflow-wrap: anywhere; }
+	@media (max-width: 540px) {
+		.chromosomes { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+		svg { height: 112px; }
 	}
 </style>

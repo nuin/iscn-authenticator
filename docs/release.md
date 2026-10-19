@@ -1,161 +1,135 @@
-# Release process
+# Release and deployment
 
-Packages are published from tagged commits by GitHub Actions. There are four
-tag conventions, one per publishable artefact:
+This repository ships the TypeScript core, Deno runtime, Python HTTP wrapper,
+and Cloudflare Pages application. The Python library is released from
+[iscn-authenticator-py](https://github.com/nuin/iscn-authenticator-py).
+There are no client-package or Python-library publishing workflows here.
 
-| Tag pattern      | Package              | Registry          | Workflow                                   |
-| ---------------- | -------------------- | ----------------- | ------------------------------------------ |
-| `v*-core`        | `@iscn/core`         | npm               | `.github/workflows/publish-npm.yml`        |
-| `v*-client`      | `@iscn/client`       | npm               | `.github/workflows/publish-npm-client.yml` (M3a/8) |
-| `v*-py`          | `iscn-authenticator` | PyPI              | `.github/workflows/publish-pypi.yml`       |
-| `v*-py-client`   | `iscn-client`        | PyPI              | `.github/workflows/publish-pypi-client.yml` (M3a/7) |
-| `v*-web`         | `iscn-web`           | Cloudflare Pages  | `.github/workflows/publish-web.yml`        |
+## Available workflows
 
-The version embedded in the tag must match the version recorded in the
-package's manifest (`packages/core/package.json`, `pyproject.toml`, etc.).
-Each workflow runs a `verify-tag` step before building so that mismatched
-tags fail loudly.
+| Workflow | Trigger | Result |
+|---|---|---|
+| [ci.yml](../.github/workflows/ci.yml) | Configured pull requests and branch pushes | Core, API wrapper, Deno, and web checks |
+| [publish-npm.yml](../.github/workflows/publish-npm.yml) | `v*-core` tag | Build and publish `@iscn/core` |
+| [publish-web.yml](../.github/workflows/publish-web.yml) | `v*-web` tag or manual dispatch | Build and deploy Pages project `iscn-web` |
 
-## Required secrets
+Read the actual workflow before a release. The npm workflow checks the tag
+against `packages/core/package.json`; the web workflow uses its configured
+trigger and deployment command. Do not assume a tag verifies product readiness.
 
-Configure these as repository secrets in GitHub:
+## Verify a release candidate
 
-| Secret                  | Used by                                             |
-| ----------------------- | --------------------------------------------------- |
-| `NPM_TOKEN`             | `publish-npm.yml`, `publish-npm-client.yml`         |
-| `PYPI_TOKEN`            | `publish-pypi.yml`, `publish-pypi-client.yml`       |
-| `CLOUDFLARE_API_TOKEN`  | `publish-web.yml`                                   |
-| `CLOUDFLARE_ACCOUNT_ID` | `publish-web.yml`                                   |
-
-`NPM_TOKEN` must be an automation token with publish rights on the `@iscn`
-scope. `PYPI_TOKEN` must be a project-scoped token (one per package is
-recommended). `CLOUDFLARE_API_TOKEN` needs the **Pages: Edit** permission
-on the target account.
-
-## Checklist before tagging
-
-1. Working tree is clean and on `master`.
-2. `CHANGELOG.md` has an entry for the new version.
-3. `package.json` / `pyproject.toml` version bumped.
-4. CI on `master` is green.
-
-## Publishing `@iscn/core`
+Use Node.js 24 LTS, Deno 2.9.7, and Python 3.11 or newer. Run from the repository
+root unless a command changes directory:
 
 ```bash
-# from repo root
-cd packages/core
-# bump version in package.json, commit
-git commit -am "chore(core): v0.1.1"
-git tag v0.1.1-core
-git push origin master --tags
+npm --prefix packages/core ci
+npm --prefix packages/core test
+npm --prefix packages/core run build
+npm --prefix packages/core run check:browser
+uv sync --project api --locked
+uv run --project api --locked --python 3.11 python -m unittest discover -s api/tests -v
 ```
 
-The `publish-npm.yml` workflow will:
-
-1. Check out the tagged commit.
-2. Run `scripts/verify-tag.mjs` (asserts tag == `package.json` version).
-3. `npm ci --ignore-scripts`.
-4. `npm run build`.
-5. Smoke-test the built bundle against `46,XX`.
-6. `npm publish --access public --provenance`.
-
-## Publishing `iscn-authenticator`
+Run `deno task check` and `deno task test` from `deno/`, then check the web app:
 
 ```bash
-# bump version in pyproject.toml + CHANGELOG.md, commit
-git commit -am "chore(py): v0.2.1"
-git tag v0.2.1-py
-git push origin master --tags
-```
-
-The `publish-pypi.yml` workflow will:
-
-1. Check out the tagged commit.
-2. Run `scripts/verify-pypi-tag.py` (asserts tag == `pyproject.toml` version,
-   rejects `v*-py-client` tags so the wrong workflow can never fire).
-3. `pip install build twine`.
-4. `python3 -m build` (sdist + wheel via hatchling).
-5. `twine check dist/*`.
-6. Smoke-test the wheel: `pip install dist/*.whl` in a fresh venv and import.
-7. `twine upload --non-interactive dist/*` using `PYPI_TOKEN`.
-
-## Post-release verification
-
-```bash
-# npm
-npm view @iscn/core version
-npm install @iscn/core@latest --prefix /tmp/verify
-node --input-type=module \
-  -e "import('@iscn/core').then(m => console.log(m.isValidKaryotypeNative('46,XX')))"
-
-# PyPI
-pip index versions iscn-authenticator
-python3 -m venv /tmp/verify-py && /tmp/verify-py/bin/pip install -U iscn-authenticator
-/tmp/verify-py/bin/python -c "from iscn_authenticator import is_valid_karyotype; print(is_valid_karyotype('46,XX'))"
-```
-
-Additional sections for the two client packages will be added as their
-workflows land (M3a/7, M3a/8).
-
-## Publishing `iscn-web` (Cloudflare Pages)
-
-```bash
-git tag v0.1.0-web
-git push origin master --tags
-```
-
-The `publish-web.yml` workflow will:
-
-1. Check out the tagged commit.
-2. Install + build `@iscn/core` (the web app imports it via `file:../core`).
-3. `npm ci --ignore-scripts` + `npm run check` + `npm run build` in `packages/web`.
-4. `wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web`.
-
-### One-time bootstrap
-
-The production app is hosted at <https://iscn-web.pages.dev>. Its `DB` binding
-points to `iscn-db`; the database ID is recorded in `packages/web/wrangler.toml`.
-KV and R2 are not used by the current web app.
-
-For a new account, create the Pages project and database once, then update
-the database ID in the config. Run these commands from `packages/web`:
-
-```bash
-# Create a Pages project matching the app's Pages adapter.
-# --force prevents Wrangler 4.151's automatic Workers migration on creation.
-npx wrangler pages project create iscn-web --production-branch=master --force
-
-# Create D1, then paste its returned database_id into wrangler.toml.
-npx wrangler d1 create iscn-db --update-config=false
-# Initialize only a new database; use migrations for subsequent schema changes.
-npx wrangler d1 execute iscn-db --remote --file=schema.sql
-
-npm run types:cloudflare
-
-# Configure these secrets to enable Stripe billing.
-npx wrangler pages secret put STRIPE_SECRET_KEY      --project-name iscn-web
-npx wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name iscn-web
-npx wrangler pages secret put STRIPE_PRICE_ID_PRO    --project-name iscn-web
-# Optional canonical origin; otherwise billing uses the request origin.
-npx wrangler pages secret put PUBLIC_BASE_URL        --project-name iscn-web
-# Optional log sink.
-npx wrangler pages secret put AXIOM_API_TOKEN        --project-name iscn-web
-npx wrangler pages secret put AXIOM_DATASET          --project-name iscn-web
-```
-
-After the first deploy, point the Stripe webhook at
-`${PUBLIC_BASE_URL}/api/webhooks/stripe` and copy the resulting
-`whsec_…` value into `STRIPE_WEBHOOK_SECRET`.
-
-### Direct production upload
-
-With `@iscn/core` built and the web checks passing, an authenticated Wrangler
-session can deploy without GitHub Actions credentials. From `packages/web`:
-
-```bash
+cd packages/web
+npm ci
+npm run types:cloudflare -- --check
+npm run check
 npm run build
+npm test
+npx playwright install chromium
+npm run test:browser
+```
+
+Run `aislop scan -d .` and `git diff --check` from the repository root. Resolve
+blocking findings without weakening the rules. Retain the actual command results
+for the release candidate; a prior green branch does not verify a new commit.
+
+After a core change, run `npm run build:browser` from `packages/core` and include
+the embedded update to `deno/main.ts`. After a Cloudflare binding change,
+regenerate and include `packages/web/src/worker-configuration.d.ts`. Schema changes
+require an explicit migration and rollback assessment.
+
+Review the [launch-readiness checklist](launch-readiness.md), including coverage
+notices, local browser processing, key visibility, mobile navigation, batch
+exports, and billing availability. Tests are evidence for exercised behavior,
+not proof of complete ISCN coverage or clinical performance.
+
+## Publish the core
+
+Update the package version and release notes, review the commit, and tag that
+specific commit using `v<version>-core`. Push only the intended release tag.
+The npm workflow requires `NPM_TOKEN` with publishing access to the package.
+
+The workflow builds the package, checks the tag, runs its configured smoke check,
+and publishes with provenance. Verify the registry version and test the exact
+released version in an isolated environment afterward. Do not use `@latest` as a
+substitute for identifying the release that was tested.
+
+When shared validation semantics change, coordinate the Python implementation and
+shared corpus, release that corpus, and advance the fixture pin in
+`packages/core/package.json`. Python library publication belongs in its own repository.
+
+## Cloudflare Pages
+
+The existing project is `iscn-web`, with production at
+[iscn-web.pages.dev](https://iscn-web.pages.dev). Its D1 binding `DB` points to
+`iscn-db`; the database ID is in
+[`packages/web/wrangler.toml`](../packages/web/wrangler.toml). The current Pages
+application does not use KV or R2.
+
+GitHub deployment requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` with
+access to the intended account/project. Verify the target before starting the
+workflow. The runtime's D1 data is independent of Deno KV.
+
+### Direct deployment
+
+After building core and passing the web checks, run from `packages/web`:
+
+```bash
 npx wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web --branch=master
 ```
 
-`--branch=master` selects the production deployment. Use a different branch
-name for a preview deployment.
+`--branch=master` targets the configured production branch. Use an explicit
+non-production branch name for a preview. This command publishes externally;
+run it only as part of an authorized release.
+
+Record the commit, deployment ID, URL, environment, and verification results.
+Check the production homepage, validator, guide pages, login, and configured
+billing state after deployment. Do not expose keys or account records in the
+release report.
+
+### Bootstrap a new environment only
+
+Existing production does not need to be recreated. For a separate environment,
+create its own Pages project and D1 database, update the binding, initialize a new
+database from `schema.sql`, and generate binding types. Use migrations for an
+existing database rather than replaying initialization blindly.
+
+The Pages Stripe flow uses these server-side secrets:
+
+```bash
+npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=iscn-web
+npx wrangler pages secret put STRIPE_PRICE_ID_PRO --project-name=iscn-web
+npx wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name=iscn-web
+npx wrangler pages secret put PUBLIC_BASE_URL --project-name=iscn-web
+```
+
+The command targets shown above are the existing project; substitute the intended
+new project for a separate environment. Configure billing only after the owner
+has selected the account, price, and commercial terms. The webhook path is
+`/api/webhooks/stripe`, not the Deno `/billing/webhook` route. Absent Stripe
+configuration should leave paid checkout unavailable.
+
+## Recovery
+
+Keep the previous verified deployment identifiable. Use Pages rollback controls
+for a failed web deployment and verify critical routes afterward. Code rollback
+does not roll back D1 data; check migration compatibility before reverting.
+
+Keep deployment credentials, billing configuration, and account records outside
+public release notes. Publish only supported feature claims and current coverage
+limits. Archived plans and legal templates are not release acceptance evidence.

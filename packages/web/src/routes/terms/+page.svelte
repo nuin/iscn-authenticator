@@ -1,53 +1,8 @@
-<h2>Terms of Service</h2>
-<p class="muted">Last updated: 2026-04-24</p>
-
-<section>
-	<h3>1. The Agreement</h3>
-	<p>
-		These Terms of Service (the "Terms") form a binding agreement between ISCN Authenticator ("we",
-		"us") and the customer identified in the signup flow ("Customer", "you"). By creating an account
-		or calling the ISCN Authenticator API, you agree to these Terms.
-	</p>
-</section>
-
-<section>
-	<h3>2. The Service</h3>
-	<p>
-		ISCN Authenticator is an API-first SaaS that validates karyotype strings against the ISCN 2024
-		grammar. The service does not provide medical advice and is not a diagnostic device.
-	</p>
-</section>
-
-<section>
-	<h3>3. Acceptable Use</h3>
-	<p>
-		You must not use the service to process data you do not have the right to process. Transmitting
-		Protected Health Information (PHI) is prohibited unless a Business Associate Agreement (BAA) is
-		executed.
-	</p>
-</section>
-
-<section>
-	<h3>4. Disclaimer</h3>
-	<p>
-		The service is provided "as is". We disclaim all warranties, express or implied. You are solely
-		responsible for the interpretation and clinical application of any output of the service.
-	</p>
-</section>
-
-<style>
-	section {
-		margin-bottom: 2rem;
-	}
-
-	h3 {
-		margin-bottom: 0.5rem;
-		font-size: 1.1rem;
-	}
-
-	.muted {
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
-		margin-bottom: 2rem;
-	}
-</style>
+<svelte:head><title>Terms of use · ISCN Authenticator</title><meta name="description" content="The scope and use of ISCN Authenticator’s notation review tools." /></svelte:head>
+<div class="page-shell text-page">
+	<header class="page-heading"><p class="section-label">Terms of use</p><h1>A clear scope<br />for the tools you use.</h1><p>Read these terms alongside the <a href="/docs/coverage">coverage guide</a> and <a href="/privacy">data and privacy information</a>.</p></header>
+	<section><h2>The service</h2><p>ISCN Authenticator provides tools for checking karyotype notation against its implemented rules. The service does not provide medical advice and is not a diagnostic device. A result is not a certification of full ISCN compliance.</p></section>
+	<section><h2>Acceptable use</h2><p>You must not use the service to process data you do not have the right to process. Do not submit patient-identifying information to the website. You are responsible for protecting account keys and any downloaded results.</p></section>
+	<section><h2>Your review remains essential</h2><p>The service is provided “as is”, without warranties, express or implied. You are responsible for the interpretation and clinical application of any output. Review known limitations and evaluate representative examples before adopting the tool in a workflow.</p></section>
+	<section><h2>Access and paid availability</h2><p>Current access options are described on the <a href="/pricing">plans page</a>. A paid checkout option appears only when it is configured. Review the price and billing details presented at checkout before authorizing a payment.</p><p>Website account keys authenticate this website. They do not provide access to the separately operated Deno API. See the <a href="/docs/integration">integration guide</a> for the available deployment options.</p></section>
+</div>

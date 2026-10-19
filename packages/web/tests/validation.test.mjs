@@ -1,0 +1,91 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { mapBandToRange, validateKaryotypeNative } from '@iscn/core';
+import { breakpointRanges } from '../src/lib/ideogram.ts';
+import {
+  reviewKaryotype,
+  reviewBatch,
+  batchCSV,
+  spreadsheetCell,
+} from '../src/lib/validation.ts';
+
+test('chromosome overview retains repeated chromosome positions and both insertion donor breakpoints', () => {
+  const translocation = validateKaryotypeNative('46,XX,t(1;1)(p36;q21)').parsed.abnormalities[0];
+  assert.deepEqual(breakpointRanges(translocation, '1'), ['p36', 'q21'].map((band) => mapBandToRange('1', band)));
+  const insertion = validateKaryotypeNative('46,XX,ins(1;2)(p36;q21q31)').parsed.abnormalities[0];
+  assert.deepEqual(breakpointRanges(insertion, '1'), [mapBandToRange('1', 'p36')]);
+  assert.deepEqual(breakpointRanges(insertion, '2'), ['q21', 'q31'].map((band) => mapBandToRange('2', band)));
+  assert.deepEqual(breakpointRanges(insertion, '3'), []);
+});
+
+test('review labels distinguish implemented checks from partial coverage without changing the core result', () => {
+  for (const [input, status] of [
+    ['46,XX', 'Checks passed'],
+    ['46,XX,del(5)(q13q33)', 'Checks passed'],
+    ['46XX', 'Issues found'],
+    ['46,XX,unrecognized', 'Review required'],
+    ['46,XX,der(9)t(9;22)(q34;q11.2)', 'Review required'],
+    ['45~48,XX', 'Review required'],
+    ['46,XX/47,XY,+99', 'Review required'],
+    ['46,XX.ish invalid assay text', 'Review required'],
+    ['46,XX.arr', 'Review required'],
+    ['nuc ish (D21S259x3)', 'Review required'],
+    ['46,XX.cp[20]', 'Review required'],
+    ['46,XX,+mar', 'Review required'],
+    ['46,XX,inc', 'Review required'],
+  ]) {
+    const review = reviewKaryotype(input);
+    assert.equal(review.status, status, input);
+    assert.deepEqual(review.result, validateKaryotypeNative(input), input);
+    assert.equal(review.coverage.length > 0, status === 'Review required', input);
+  }
+});
+
+test('issues take precedence while incomplete coverage remains visible', () => {
+  const review = reviewKaryotype('46,XX,+99,unsupported');
+  assert.equal(review.status, 'Issues found');
+  assert.ok(review.result.errors.length > 0);
+  assert.ok(review.coverage.some((note) => note.code === 'unsupported'));
+});
+
+test('coverage includes unsupported abnormalities in later cell lines', () => {
+  const review = reviewKaryotype('46,XX[10]/46,XX,unknown[5]');
+  assert.deepEqual(review.coverage.map((note) => note.code).sort(), ['mosaic', 'unsupported']);
+});
+
+test('batch keeps malformed entries and their original source line numbers', () => {
+  const batch = reviewBatch('46,XX\n \nnot a karyotype\r\n47,XY,+21\n');
+  assert.equal(batch.error, null);
+  assert.deepEqual(batch.rows.map(({ line, karyotype, status }) => ({ line, karyotype, status })), [
+    { line: 1, karyotype: '46,XX', status: 'Checks passed' },
+    { line: 3, karyotype: 'not a karyotype', status: 'Issues found' },
+    { line: 4, karyotype: '47,XY,+21', status: 'Checks passed' },
+  ]);
+  assert.equal(batch.rows[1].result.parsed, null);
+});
+
+test('batch accepts 500 nonempty lines and rejects overflow without silently truncating', () => {
+  assert.equal(reviewBatch(Array(500).fill('46,XX').join('\n')).rows.length, 500);
+  const overflow = reviewBatch(Array(501).fill('46,XX').join('\n'));
+  assert.equal(overflow.rows.length, 0);
+  assert.match(overflow.error, /501/);
+  assert.ok(reviewBatch(' \n\r\n').error);
+});
+
+test('spreadsheet export quotes every cell, doubles quotes, and neutralizes formula prefixes', () => {
+  for (const value of ['=SUM(1,2)', '+1', '-1', '@SUM(A1)', '  =1', '\t=1', '\r=1']) {
+    assert.equal(spreadsheetCell(value), `"'${value.replaceAll('"', '""')}"`);
+  }
+  assert.equal(spreadsheetCell('46,XX'), '"46,XX"');
+  assert.equal(spreadsheetCell('a"b\nc'), '"a""b\nc"');
+});
+
+test('CSV preserves every batch row with status, core valid flag, errors and coverage', () => {
+  const rows = reviewBatch('46,XX\n=2+3\n46,XX,unknown').rows;
+  const csv = batchCSV(rows);
+  assert.equal(csv.split('\r\n').length, 4);
+  assert.match(csv, /"1","46,XX","Checks passed","true","",""/);
+  assert.match(csv, /"2","'=2\+3","Issues found","false"/);
+  assert.match(csv, /"3","46,XX,unknown","Review required","true"/);
+  assert.match(csv, /not checked/);
+});

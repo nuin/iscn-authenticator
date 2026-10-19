@@ -1,96 +1,109 @@
-# ISCN Authenticator — HTTP API Reference
+# HTTP API reference
 
-The Deno app exposes a key-gated HTTP API for validating ISCN 2024 karyotype strings. The validator returns a structured `{ valid, errors, parsed }` result for every call.
+This reference describes the **self-hosted Deno service** in `deno/`. It is not a
+hosted API offer. The Cloudflare Pages website does not expose `/api/validate`,
+and its `/validate` route serves the browser workspace. Keys created in the
+hosted dashboard are stored in D1; Deno authenticates its own keys from Deno KV.
 
-- **Base URL (production):** set by your deployment (e.g. `https://iscn.example.com`).
-- **Base URL (local dev):** `http://localhost:8000`.
-- **Content-Type:** `application/json` on POST; responses are always JSON.
+Use the base URL of a Deno deployment you operate. Local development defaults to
+`http://127.0.0.1:8000`. See [quickstart](quickstart.md) for a local setup and
+[operator configuration](admin.md#configuration-environment-variables).
+The [Python wrapper](#python-wrapper) has a separate contract.
 
-## Endpoints
+## Deno endpoints
 
-| Method | Path | Auth | Purpose |
+| Method | Path | Authentication | Purpose |
 |---|---|---|---|
-| `GET` | `/` | none | HTML landing page with API-key input and inline docs |
-| `GET` | `/health` | none | Liveness probe; returns `200 {"status":"ok"}` |
-| `POST` | `/signup` | none | Create a customer + first API key (returns plaintext once) |
-| `POST` | `/validate` | API key | Validate a karyotype in a JSON body |
-| `GET` | `/validate?karyotype=...` | API key | Validate via query string |
-| `GET` | `/usage` | API key | Current-month quota snapshot for the authenticated customer |
-| `POST` | `/keys/rotate` | API key | Atomically issue a new key and revoke the caller's current key |
-| `GET` | `/login` | none | HTML login form (dashboard entry) |
-| `POST` | `/login` | none | Exchange an API key for a session cookie |
-| `POST` | `/logout` | session | Destroy session, clear cookie |
-| `GET` | `/dashboard` | session | Overview: tier, usage, key summary |
-| `GET` | `/dashboard/keys` | session | Manage keys (rotate / revoke) |
-| `GET` | `/dashboard/billing` | session | View plan and start upgrade / portal flows |
-| `POST` | `/dashboard/billing/upgrade` | session | Redirect to Stripe Checkout for the Pro plan |
-| `POST` | `/dashboard/billing/manage` | session | Redirect to Stripe Billing Portal |
-| `POST` | `/billing/webhook` | Stripe signature | Stripe event receiver (verified HMAC, idempotent) |
-| `OPTIONS` | `*` | none | CORS preflight (204) |
+| GET | `/health` | None | Liveness; returns `{"ok":true}` |
+| POST | `/signup` | None | Create a customer and show its first key once |
+| POST | `/validate` | Deno API key | Check a JSON `karyotype` string |
+| GET | `/validate?karyotype=...` | Deno API key | Check a URL query string |
+| GET | `/usage` | Deno API key | Customer's monthly quota snapshot |
+| POST | `/keys/rotate` | Deno API key | Issue a replacement and revoke the calling key |
+| GET, POST | `/login` | None | Form and key-to-session login |
+| POST | `/logout` | Session | End the session |
+| GET | `/dashboard`, `/dashboard/keys`, `/dashboard/billing` | Session | Deno customer dashboard |
+| POST | `/dashboard/billing/upgrade` | Session | Configured Stripe checkout |
+| POST | `/dashboard/billing/manage` | Session | Configured Stripe portal |
+| POST | `/billing/webhook` | Stripe signature | Deno subscription event handler |
+| GET | `/openapi.json` | None | API schema, when supplied to the runtime |
+| OPTIONS | Any path | None | CORS preflight |
 
-Anything else returns `404 not_found`. Unsupported methods on a matched route return `405 method_not_allowed` with an `Allow` header.
+The Deno runtime also serves a landing page, documentation, examples, and a
+lightweight dashboard. Its UI and storage are independent of the Pages app.
 
 ## Authentication
 
-### API key
-
-`/validate`, `/usage`, and `/keys/rotate` require a bearer key:
-
-```
-Authorization: Bearer iscn_live_<32 hex>
-X-API-Key: iscn_live_<32 hex>
-```
-
-Both headers are accepted; `Authorization` wins if both are present. Keys look like `iscn_live_abc…` (32 hex chars after the prefix). Secret scanners (GitHub, GitLab) flag the literal `iscn_live_` prefix, so leaked keys are detected automatically.
-
-- Plaintext is shown **once** at creation. Store it securely; the server keeps only a SHA-256 hash.
-- Revoked keys are rejected with `401 unauthenticated`.
-- Keys are either **customer-owned** (created via `/signup` or the admin CLI with `--customer`) or **grandfathered** (admin-created without a customer). Grandfathered keys skip monthly quota enforcement.
-
-### Session cookie
-
-Dashboard routes (`/dashboard*`, `/logout`) require a session cookie issued by `POST /login`. The cookie is HMAC-signed, HttpOnly, SameSite=Lax, and expires after 7 days.
-
-### Stripe signature
-
-`POST /billing/webhook` is authenticated by an HMAC signature in the `Stripe-Signature` header, verified against `STRIPE_WEBHOOK_SECRET`. Every accepted event is de-duplicated in Deno KV under `stripe_events:<event_id>` for 7 days.
-
-## Signup
+Send either header. `Authorization` takes precedence when both are present.
 
 ```http
-POST /signup HTTP/1.1
-Content-Type: application/json
-
-{"email":"demo@example.com"}
+Authorization: Bearer iscn_live_<32 hex characters>
+X-API-Key: iscn_live_<32 hex characters>
 ```
 
-Response on success (201):
+Full keys are shown once. The Deno service stores SHA-256 hashes and rejects
+revoked keys with `401 unauthenticated`. Keep keys in a secret store; do not
+embed them in browser bundles, URLs, shared examples, or source control.
+Do not assume a hosting provider's secret scanner recognizes this key format.
 
-```json
-{
-  "customer_id": "c_abc123...",
-  "key_id": "k_def456...",
-  "plaintext": "iscn_live_...",
-  "tier": "free"
-}
+Customer-owned keys participate in monthly quotas. Internal keys, created by
+the admin CLI without a customer, bypass monthly quota but retain rate limiting.
+Deno sessions use an HMAC-signed, HttpOnly, SameSite=Lax cookie with a seven-day
+lifetime. This does not describe the Pages application's session implementation.
+
+## Signup and rotation
+
+Create a Deno customer:
+
+```bash
+curl --fail-with-body "$ISCN_API_BASE/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"evaluation@example.com"}'
 ```
 
-Errors: `400 invalid_signup` (bad email or duplicate). Per-IP rate limit of 10 signups per hour (token bucket keyed on `signup:<ip>`).
+A successful `201` response has `customer_id`, `key_id`, `plaintext`, and
+`tier: "free"`. Save `plaintext` immediately. Signup has an IP-based throttle;
+invalid or duplicate email addresses are rejected.
+
+Rotate the authenticated key:
+
+```bash
+curl --fail-with-body -X POST "$ISCN_API_BASE/keys/rotate" \
+  -H "Authorization: Bearer $ISCN_API_KEY"
+```
+
+The response contains `old_key_id`, `new_key`, and `new_key_id`. Rotation revokes
+the old key immediately. Save and distribute the replacement through your secret
+management workflow. Requests authenticated before revocation may still finish.
 
 ## Validation
 
-### POST /validate
+Prefer POST so the input is not included in a request URL:
 
-```http
-POST /validate HTTP/1.1
-Host: iscn.example.com
-Authorization: Bearer iscn_live_abc...
-Content-Type: application/json
-
-{"karyotype":"46,XX"}
+```bash
+curl --fail-with-body "$ISCN_API_BASE/validate" \
+  -H "Authorization: Bearer $ISCN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"karyotype":"46,XX"}'
 ```
 
-Response (200):
+A completed check returns HTTP `200`, whether `valid` is `true` or `false`.
+Authentication, malformed requests, and limit failures use non-200 statuses.
+The endpoint adds `explanation` to a parsed result and to parsed abnormalities.
+Explanation source labels are `curated`, `template`, or `none`; they do not change
+validation coverage.
+
+GET is also supported. Encode query parameters rather than concatenating input:
+
+```bash
+curl --fail-with-body --get "$ISCN_API_BASE/validate" \
+  -H "Authorization: Bearer $ISCN_API_KEY" \
+  --data-urlencode 'karyotype=46,XX'
+```
+
+### Result contract
+
+This is the **core result** for `46,XX`, before Deno adds explanation fields:
 
 ```json
 {
@@ -100,215 +113,151 @@ Response (200):
     "chromosome_count": 46,
     "sex_chromosomes": "XX",
     "abnormalities": [],
-    "cell_lines": [],
-    "modifiers": []
+    "cell_lines": null,
+    "modifiers": null
   }
 }
 ```
 
-Invalid karyotypes still return `200` with `valid: false` and populated `errors`. Protocol-level failures (`400`, `401`, `402`, `413`, `429`, `500`) are reserved for the cases listed below.
-
-### GET /validate?karyotype=…
-
-```bash
-curl -H "Authorization: Bearer iscn_live_..." \
-  'https://iscn.example.com/validate?karyotype=46%2CXX'
-```
-
-## Usage
-
-```http
-GET /usage HTTP/1.1
-Authorization: Bearer iscn_live_...
-```
-
-Response (200):
-
-```json
-{
-  "customer_id": "c_abc123...",
-  "tier": "pro",
-  "month": "2026-04",
-  "used": 4213,
-  "limit": 1000000,
-  "remaining": 995787,
-  "reset_at": 1746057600
-}
-```
-
-- `month` is the current UTC month in `YYYY-MM` form.
-- `reset_at` is the Unix timestamp of the next month's start.
-- Read-only: repeated `/usage` calls do **not** consume quota.
-- Grandfathered keys (no owning customer) receive `404 not_found`.
-
-## Key rotation
-
-```http
-POST /keys/rotate HTTP/1.1
-Authorization: Bearer iscn_live_...
-```
-
-Response (200):
-
-```json
-{
-  "old_key_id": "k_abc...",
-  "new_key": "iscn_live_...",
-  "new_key_id": "k_def..."
-}
-```
-
-The old key is revoked immediately; any in-flight request that beats the rotation still succeeds, but subsequent calls with the old key return `401`. Swap atomically in your clients.
-
-## Rate limits (token bucket)
-
-Per-key token bucket. Refill rate defaults to 60 tokens/min (`RATE_LIMIT_PER_MIN`), burst defaults to `2 × refill` (`RATE_LIMIT_BURST`).
-
-Every authenticated response carries:
-
-| Header | Meaning |
+| Field | Type and meaning |
 |---|---|
-| `X-RateLimit-Limit` | Bucket capacity (burst) |
-| `X-RateLimit-Remaining` | Tokens currently available (floored) |
-| `X-RateLimit-Reset` | Unix ts when the bucket refills to full |
-| `Retry-After` | Seconds to wait (**429 only**) |
+| `valid` | Boolean; no implemented rule returned an error |
+| `errors` | Array of parser or rule messages |
+| `parsed` | Parsed object, or `null` on parsing failure |
+| `parsed.chromosome_count` | Number, range string such as `45~48`, or `null` for supported FISH-only input |
+| `parsed.sex_chromosomes` | String |
+| `parsed.abnormalities` | Array with `type`, `chromosome`, `breakpoints`, `inheritance`, `uncertain`, `copy_count`, and `raw` |
+| `parsed.cell_lines` | Array of cell-line records, or `null` |
+| `parsed.modifiers` | Modifier object, or `null`; never an empty array |
+| `explanation` | Deno enrichment with `summary`, `detail`, `citation`, `refs`, and `confidence` |
 
-The bucket smoothly amortizes bursts — unlike a fixed-window limiter, there is no boundary-crossing 2× spike.
+`valid: true` is not proof of complete ISCN conformity. Unknown abnormalities can
+pass; mosaic rules use the first cell line only; accepted assay modifiers are
+retained without full checks; chromosome count ranges skip numeric bounds and
+coherence checks. Keep the [coverage guide](https://iscn-web.pages.dev/docs/coverage)
+with any integration acceptance criteria.
 
-## Monthly quota
+### Node request example
 
-Customer-owned keys are additionally bounded by a monthly request quota per tier:
-
-| Tier | Requests per calendar month | Env var |
-|------|-----------------------------|---------|
-| Free | 10 000 | `MONTHLY_QUOTA_FREE` |
-| Pro | 1 000 000 | `MONTHLY_QUOTA_PRO` |
-
-Every authenticated response carries:
-
-| Header | Meaning |
-|---|---|
-| `X-Monthly-Quota-Limit` | Current-tier limit |
-| `X-Monthly-Quota-Remaining` | Remaining this month (floor 0) |
-| `X-Monthly-Quota-Reset` | Unix ts of the next UTC month start |
-
-When the counter exceeds the tier limit, requests return `402 quota_exceeded`. Rate limiting (`429`) is evaluated **before** the quota, so a tight-loop burst hits `429` before it has a chance to exhaust the monthly counter.
-
-Grandfathered keys (`customer_id = null`) bypass quota enforcement entirely and do not emit the quota headers.
-
-## Error responses
-
-All errors are JSON with a `request_id` you can quote to support for log correlation:
-
-```json
-{
-  "error": "rate_limited",
-  "message": "Rate limit exceeded. Try again in 37 seconds.",
-  "request_id": "c5a8e3b2-..."
-}
-```
-
-| Code | HTTP | Meaning | What to do |
-|---|---|---|---|
-| `unauthenticated` | 401 | Missing, malformed, or revoked key or session | Check credentials |
-| `rate_limited` | 429 | Token bucket empty | Back off `Retry-After` seconds |
-| `quota_exceeded` | 402 | Monthly tier quota exhausted | Upgrade your plan or wait for reset |
-| `body_too_large` | 413 | Request body > `MAX_BODY_BYTES` | Shorten the request |
-| `invalid_request` | 400 | Bad `Content-Type`, malformed JSON, bad field | Fix per the `message` |
-| `invalid_signup` | 400 | Bad email, duplicate, or signup rate limited | Check inputs or try later |
-| `method_not_allowed` | 405 | Wrong HTTP method | Use the method listed in `Allow` |
-| `not_found` | 404 | Unknown route or resource not owned by the caller | Check the URL |
-| `stripe_error` | 400 | Webhook signature missing, invalid, or body malformed | Re-send with a valid signature (Stripe handles this) |
-| `internal` | 500 | Unexpected server error | Retry once; report the `request_id` |
-
-Stack traces and internal details are never returned in the response body. The full error is logged server-side keyed to `request_id`.
-
-## CORS
-
-- `Access-Control-Allow-Origin` is set when the request origin matches the deployment's `ALLOWED_ORIGINS` (comma-separated allowlist; `*` disables the check).
-- Preflight (`OPTIONS`) returns `204` with the allowed method and header list.
-- The API surface uses bearer tokens; CORS credentials are only included on dashboard routes that rely on the session cookie.
-
-## Security headers
-
-Every response carries:
-
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: no-referrer`
-
-HTML responses additionally carry a strict `Content-Security-Policy` limiting scripts and styles to self and the pinned HTMX CDN origin. JSON responses do not include CSP.
-
-## Logging and privacy
-
-Each request emits one structured JSON log line with:
-
-- `ts`, `level`, `request_id`, `ip`, `method`, `path`, `status`, `latency_ms`
-- `key_id` (hashed identifier, not the plaintext), `user_agent`, `error_code`
-
-**The karyotype string itself is never logged by default.** When `AXIOM_API_TOKEN` and `AXIOM_DATASET` are set, logs tee to Axiom for long-term retention (required for the HIPAA narrative). Otherwise logs go to stdout only.
-
-## Examples
-
-### Python
-
-```python
-import os, urllib.request, json
-
-req = urllib.request.Request(
-    "https://iscn.example.com/validate",
-    data=json.dumps({"karyotype": "47,XY,+21"}).encode(),
-    headers={
-        "Authorization": f"Bearer {os.environ['ISCN_API_KEY']}",
-        "Content-Type": "application/json",
-    },
-    method="POST",
-)
-with urllib.request.urlopen(req) as resp:
-    print(json.load(resp))
-```
-
-### JavaScript
+Use this in a trusted server process with deployment-specific environment values:
 
 ```js
-const res = await fetch("https://iscn.example.com/validate", {
+const base = process.env.ISCN_API_BASE;
+const key = process.env.ISCN_API_KEY;
+if (!base || !key) throw new Error("Set ISCN_API_BASE and ISCN_API_KEY");
+
+const response = await fetch(new URL("/validate", base), {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${process.env.ISCN_API_KEY}`,
-    "Content-Type": "application/json",
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json"
   },
-  body: JSON.stringify({ karyotype: "47,XY,+21" }),
+  body: JSON.stringify({ karyotype: "46,XX" })
 });
-if (res.status === 402) {
-  console.error("quota exceeded; upgrade your plan");
-} else if (res.status === 429) {
-  const retry = res.headers.get("Retry-After");
-  console.error(`rate limited; retry in ${retry}s`);
-} else {
-  console.log(await res.json());
+const result = await response.json();
+if (!response.ok) {
+  throw new Error(`${response.status}: ${result.error} (${result.request_id})`);
+}
+console.log(result.valid, result.errors, result.parsed);
+```
+
+## Rate limits and quota
+
+These are **Deno defaults**, configurable by the operator. They are not hosted
+Pages plan allowances.
+
+| Setting | Default | Environment variable |
+|---|---|---|
+| Per-key refill | 60 requests/minute | `RATE_LIMIT_PER_MIN` |
+| Per-key burst | 120; otherwise twice configured refill | `RATE_LIMIT_BURST` |
+| Free customer monthly quota | 10,000 | `MONTHLY_QUOTA_FREE` |
+| Pro customer monthly quota | 1,000,000 | `MONTHLY_QUOTA_PRO` |
+| POST body size | 16,384 bytes | `MAX_BODY_BYTES` |
+| Karyotype length | 2,048 JavaScript string code units | `MAX_KARYOTYPE_LENGTH` |
+
+The order is authentication, token bucket, monthly quota, request parsing, then
+validation. Authenticated malformed requests can therefore consume rate tokens
+and monthly quota. A validation result with `valid: false` also consumes quota.
+
+Successful validation responses include `X-RateLimit-Limit`,
+`X-RateLimit-Remaining`, and `X-RateLimit-Reset`. A `429` response includes these
+rate headers and `Retry-After` in seconds. Do not assume all other error responses
+include rate or quota headers.
+
+Customer-owned successful validation responses include `X-Monthly-Quota-Limit`,
+`X-Monthly-Quota-Remaining`, and `X-Monthly-Quota-Reset`. Monthly reset is the start
+of the next UTC calendar month. Exceeding the quota returns `402 quota_exceeded`.
+Internal keys omit monthly quota headers.
+
+```bash
+curl --fail-with-body "$ISCN_API_BASE/usage" \
+  -H "Authorization: Bearer $ISCN_API_KEY"
+```
+
+`/usage` returns `customer_id`, `tier`, `month` (`YYYY-MM`), `used`, `limit`,
+`remaining`, and `reset_at` (Unix seconds). It does not consume validation quota.
+Internal keys receive `404` because they have no customer quota record.
+
+## Error handling
+
+Deno errors use this envelope:
+
+```json
+{
+  "error": "unauthenticated",
+  "message": "Missing or invalid API key",
+  "request_id": "request-specific identifier"
 }
 ```
 
-### Bash
+The message shown above is illustrative; clients should use the status and
+`error` code, not exact message text.
+
+| Code | HTTP | Action |
+|---|---|---|
+| `unauthenticated` | 401 | Check the key and issuing deployment |
+| `rate_limited` | 429 | Wait at least `Retry-After` seconds before a bounded retry |
+| `quota_exceeded` | 402 | Check the customer's configured quota and reset time |
+| `body_too_large` | 413 | Reduce the body size |
+| `invalid_request` | 400 | Correct JSON, content type, or field content |
+| `invalid_signup` | 400 | Check email, duplicate account, or signup throttle |
+| `method_not_allowed` | 405 | Use a method in the `Allow` header |
+| `not_found` | 404 | Check the route or resource ownership |
+| `stripe_error` | 400 | Operator should check webhook configuration |
+| `internal` | 500 | Record `request_id` for operator investigation |
+
+Review logs before repeated retries. Set `DEBUG_ERRORS=false` in production;
+error messages may contain implementation details when debugging is enabled.
+
+## Logging and transport
+
+Deno emits request metadata including request ID, IP, method, path, status,
+latency, key ID, user agent, and error code. Key IDs are identifiers, not plaintext
+keys or key hashes. The request logger omits karyotype payloads and query strings.
+If configured, an Axiom sink receives those logs. Review proxy and host logging
+separately; application behavior does not guarantee infrastructure retention.
+
+`ALLOWED_ORIGINS` controls CORS. The default `*` is permissive; scope it for your
+deployment. CORS is not authentication. The middleware adds HSTS, nosniff,
+frame-deny, and referrer-policy headers, with CSP on HTML responses.
+
+## Python wrapper
+
+`api/server.py` wraps the separately maintained Python library, using dependencies
+locked in `api/uv.lock`. It is not the Deno service and does not implement Deno
+API keys, rate limiting, quotas, sessions, or Stripe endpoints.
 
 ```bash
-curl -X POST https://iscn.example.com/validate \
-  -H "Authorization: Bearer $ISCN_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"karyotype":"47,XY,+21"}'
+uv sync --project api --locked
+uv run --project api --locked python -m uvicorn api.server:app --reload
 ```
 
-## Limits at a glance
+It exposes POST `/validate` with `{"karyotype":"46,XX"}`, GET `/validate` with a
+`karyotype` query parameter, and GET `/health` with `{"status":"healthy"}`.
+The validation response has `valid`, `errors`, and `parsed`. Request errors use
+FastAPI's `detail` shape rather than the Deno error envelope. Add and evaluate
+access controls before exposing this wrapper outside a trusted environment.
 
-| Limit | Default | Env var |
-|---|---|---|
-| Token-bucket refill rate | 60/min | `RATE_LIMIT_PER_MIN` |
-| Token-bucket burst | 2 × refill | `RATE_LIMIT_BURST` |
-| Monthly quota (free) | 10 000 | `MONTHLY_QUOTA_FREE` |
-| Monthly quota (pro) | 1 000 000 | `MONTHLY_QUOTA_PRO` |
-| Request body size | 4096 bytes | `MAX_BODY_BYTES` |
-| Karyotype string length | 2048 bytes | `MAX_KARYOTYPE_LENGTH` |
-| CORS origin allowlist | `*` | `ALLOWED_ORIGINS` |
-
-Validation semantics — which syntactic constructs are accepted, which rules fail — are defined by ISCN 2024 and the shared [`fixtures/validity.json`](../fixtures/validity.json) corpus. The parser + rule engine live in [`packages/core/src/`](../packages/core/src/).
+The implementation and fixture tests are in [`packages/core/`](../packages/core/)
+and [`api/tests/`](../api/tests/). The downloaded shared corpus is
+[`packages/core/tests/fixtures/validity.json`](../packages/core/tests/fixtures/validity.json).
