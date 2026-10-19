@@ -7,15 +7,7 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 [[d1_databases]]
 binding = "DB"
 database_name = "iscn-db"
-database_id = "your-database-id-here"
-
-[[kv_namespaces]]
-binding = "KV"
-id = "your-kv-id-here"
-
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "iscn-batches"
+database_id = "0f8fe4e8-a80b-4063-9cc5-1054d3d8b961"
 
 [vars]
 # Axiom for structured logs

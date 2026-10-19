@@ -113,31 +113,49 @@ The `publish-web.yml` workflow will:
 
 ### One-time bootstrap
 
-Before the first deploy you need a Cloudflare account with a Pages project
-and the bound resources:
+The production app is hosted at <https://iscn-web.pages.dev>. Its `DB` binding
+points to `iscn-db`; the database ID is recorded in `packages/web/wrangler.toml`.
+KV and R2 are not used by the current web app.
+
+For a new account, create the Pages project and database once, then update
+the database ID in the config. Run these commands from `packages/web`:
 
 ```bash
-# create the project (production branch is master)
-wrangler pages project create iscn-web --production-branch=master
+# Create a Pages project matching the app's Pages adapter.
+# --force prevents Wrangler 4.151's automatic Workers migration on creation.
+npx wrangler pages project create iscn-web --production-branch=master --force
 
-# D1 database for users/keys/webhooks; paste the returned id into wrangler.toml
-wrangler d1 create iscn-db
-wrangler d1 execute iscn-db --file=packages/web/schema.sql
+# Create D1, then paste its returned database_id into wrangler.toml.
+npx wrangler d1 create iscn-db --update-config=false
+# Initialize only a new database; use migrations for subsequent schema changes.
+npx wrangler d1 execute iscn-db --remote --file=schema.sql
 
-# KV namespace + R2 bucket; paste ids into wrangler.toml
-wrangler kv:namespace create KV
-wrangler r2 bucket create iscn-batches
+npm run types:cloudflare
 
-# Secrets (set once per environment in the Pages project)
-wrangler pages secret put STRIPE_SECRET_KEY      --project-name iscn-web
-wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name iscn-web
-wrangler pages secret put STRIPE_PRICE_ID_PRO    --project-name iscn-web
-wrangler pages secret put PUBLIC_BASE_URL        --project-name iscn-web
-# optional log sink
-wrangler pages secret put AXIOM_API_TOKEN        --project-name iscn-web
-wrangler pages secret put AXIOM_DATASET          --project-name iscn-web
+# Configure these secrets to enable Stripe billing.
+npx wrangler pages secret put STRIPE_SECRET_KEY      --project-name iscn-web
+npx wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name iscn-web
+npx wrangler pages secret put STRIPE_PRICE_ID_PRO    --project-name iscn-web
+# Optional canonical origin; otherwise billing uses the request origin.
+npx wrangler pages secret put PUBLIC_BASE_URL        --project-name iscn-web
+# Optional log sink.
+npx wrangler pages secret put AXIOM_API_TOKEN        --project-name iscn-web
+npx wrangler pages secret put AXIOM_DATASET          --project-name iscn-web
 ```
 
 After the first deploy, point the Stripe webhook at
 `${PUBLIC_BASE_URL}/api/webhooks/stripe` and copy the resulting
 `whsec_…` value into `STRIPE_WEBHOOK_SECRET`.
+
+### Direct production upload
+
+With `@iscn/core` built and the web checks passing, an authenticated Wrangler
+session can deploy without GitHub Actions credentials. From `packages/web`:
+
+```bash
+npm run build
+npx wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web --branch=master
+```
+
+`--branch=master` selects the production deployment. Use a different branch
+name for a preview deployment.
