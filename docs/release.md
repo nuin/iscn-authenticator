@@ -80,12 +80,16 @@ When shared validation semantics change, coordinate the Python implementation an
 shared corpus, release that corpus, and advance the fixture pin in
 `packages/core/package.json`. Python library publication belongs in its own repository.
 
-The laboratory-review validation update uses Python commit
-`47e1c8124364952e0afeff71128d43e526716354` and the shared corpus tag
-`fixtures-lab-review-20261019`. The API wrapper pins that Git revision through
+The current validation update uses Python commit
+`e7ea7438b4ef6aa944717b2ff5dc19cbc215abe8` and the shared corpus tag
+`fixtures-complex-review-20261020`. The API wrapper pins that Git revision through
 `tool.uv.sources` and `api/uv.lock` so it receives the same fixes before a PyPI
 release. Use the documented `uv --locked` commands; a plain pip install of the
 older PyPI release does not include them. This fixture tag does not publish to PyPI.
+
+The [complex-notation test report](testing/complex-karyotypes.md) records 48
+synthetic cases, their expected outcomes, remaining exclusions and commands to
+repeat TypeScript/Python parity and browser checks.
 
 ## Cloudflare Pages
 

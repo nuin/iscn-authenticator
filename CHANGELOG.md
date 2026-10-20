@@ -12,6 +12,15 @@ Sections per release: **Added**, **Changed**, **Fixed**, **Removed**.
 
 ---
 
+## Complex notation testing — 2026-10-20
+
+- Added 48 synthetic complex-notation cases, including deliberate corruptions,
+  known unsupported families, nuclei fractions and branching clone references.
+- Fixed compact and tab-separated `nuc ish` prefixes in TypeScript and Python.
+  Their payloads remain partial coverage, with no claim of full FISH validation.
+- Advanced the core rule revision to `2026-10-20`. Laboratory QC and CNV worksheet
+  revisions are unchanged.
+
 ## Laboratory review update — 2026-10-19
 
 Application/source update; no new npm or PyPI package release is implied.

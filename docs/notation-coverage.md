@@ -6,7 +6,7 @@ The validator checks a bounded subset of ISCN 2024. A result with `valid: true` 
 
 TypeScript exports `getValidationCoverage(parsed)`; Python exports `get_validation_coverage(parsed)`. Both return `level`, `notes`, `reference`, `rule_version`, and `band_reference`. Levels are `supported`, `partial`, and `unparsed`. `supported` describes coverage of the implemented routine checks and is independent of whether those checks passed. A parsed invalid karyotype can therefore have supported coverage.
 
-The reference is `ISCN 2024`; the rule version is `2026-10-19`; the band reference is `UCSC hg38 cytoBand`. Applications must present partial or unparsed results for review. The existing `valid`, `errors`, and `parsed` validation contract is unchanged.
+The reference is `ISCN 2024`; the core rule version is `2026-10-20`; the band reference is `UCSC hg38 cytoBand`. Applications must present partial or unparsed results for review. The existing `valid`, `errors`, and `parsed` validation contract is unchanged.
 
 ## Checked and deferred notation
 
@@ -24,7 +24,7 @@ The reference is `ISCN 2024`; the rule version is `2026-10-19`; the band referen
 | Composite counts | Final `[cpN]`, with legacy `.cp[N]` accepted; positive safe count | Per-abnormality frequencies and mixed composite/noncomposite line grammar are not fully supported |
 | `der`, `rec`, `cpx`, `cth`, `cpy`, `upd` | Outer form and chromosome identifiers | Nested rearrangements, derivation, phase, and complex structure are partial coverage |
 | Unknown abnormality tokens | Original text retained | These produce partial coverage even if no implemented rule reports an error |
-| FISH | Standalone `nuc ish` and appended `.ish` payload retained | Full FISH grammar, signal interpretation, probe validity and clinical cutoffs are not validated by core |
+| FISH | Standalone `nuc ish(...)`, space/tab-separated `nuc ish (...)`, and appended `.ish` payload retained | Full FISH grammar, signal interpretation, probe validity and clinical cutoffs are not validated by core |
 | Array and OGM | Appended `.arr` / `.ogm` payload retained | Full assay grammar, coordinates, assemblies and interpretation are not validated; standalone assay descriptions may be unparsed |
 
 The laboratory review FISH builder checks its separate, bounded structured copy-number input. That does not broaden core coverage of arbitrary FISH expressions. CNV evidence assessment is also separate from notation validity.

@@ -63,7 +63,7 @@ export const laboratoryGuides: Guide[] = [
 		group: 'Set up your workflow', keywords: ['ISCN 2024', 'errata', 'UCSC', 'version', 'ACMG', 'ClinGen', 'rules', 'provenance'],
 		sections: [
 			{ id: 'notation', title: 'Notation and corrections', paragraphs: [
-				'The nomenclature reference is ISCN 2024. The implemented rule revision is 2026-10-19. Cell-line and FISH work uses the relevant general, clonal-evolution and interphase sections; coverage remains bounded.',
+				'The nomenclature reference is ISCN 2024. Core notation checks use revision 2026-10-20; laboratory QC rules use revision 2026-10-19. Cell-line and FISH work uses the relevant general, clonal-evolution and interphase sections; coverage remains bounded.',
 				'The later erratum includes corrected chromosome totals and related-clone examples. Its relevant corrections were consulted; inclusion in a record does not mean every affected grammar family has been implemented. The repository reference register records these limits.'
 			], links: [{ label: 'ISCN 2024', href: 'https://doi.org/10.1159/000538512' }, { label: 'Erratum, DOI 10.1159/000549238', href: 'https://doi.org/10.1159/000549238' }, { label: 'Coverage matrix', href: '/docs/coverage' }] },
 			{ id: 'bands', title: 'Band catalogue checks', paragraphs: [

@@ -9,6 +9,20 @@ class ValidationApiTests(unittest.TestCase):
     def setUp(self):
         self.client = self.enterContext(TestClient(app))
 
+    def test_interphase_nuclei_fraction_is_preserved_without_cell_lines(self):
+        payload = "(D21S259)x3[25/100]"
+        for separator in ("", " ", "\t"):
+            with self.subTest(separator=separator):
+                response = self.client.post(
+                    "/validate", json={"karyotype": f"nuc ish{separator}{payload}"}
+                )
+                self.assertEqual(response.status_code, 200)
+                result = response.json()
+                self.assertTrue(result["valid"], result["errors"])
+                self.assertEqual(result["parsed"]["modifiers"]["ish"], payload)
+                self.assertIsNone(result["parsed"]["cell_lines"])
+                self.assertIsNone(result["parsed"]["chromosome_count"])
+
     def test_health_is_available_without_validation_input(self):
         response = self.client.get("/health")
 

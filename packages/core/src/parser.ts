@@ -23,8 +23,9 @@ export class KaryotypeParser {
     karyotype = karyotype.trim();
 
     // Check for standalone interphase FISH notation (nuc ish)
-    if (karyotype.startsWith("nuc ish ")) {
-      const fishData = karyotype.slice(8); // Remove "nuc ish " prefix
+    const interphasePrefix = karyotype.match(/^nuc ish(?:[ \t]+|(?=\())/);
+    if (interphasePrefix) {
+      const fishData = karyotype.slice(interphasePrefix[0].length);
       return {
         raw: original,
         chromosome_count: null,
