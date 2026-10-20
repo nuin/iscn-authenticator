@@ -71,7 +71,7 @@ Files: `docs/laboratory-review.md`, `docs/notation-coverage.md`, `docs/reference
 - [x] Reconcile all documentation with the implemented behavior, exports and actual reference coverage.
 - [x] Run core/Python, API, Deno and web suites, browser checks, type checks and builds; regenerate the embedded browser bundle.
 - [x] Run `aislop scan`, resolve findings, and inspect the complete diff with an independent reviewer.
-- [ ] Commit/push authorized work, deploy the tested Pages build and smoke-test live workflows.
+- [x] Commit/push authorized work, deploy the tested Pages build and smoke-test live workflows.
 
 ## Execution ledger
 
@@ -83,3 +83,4 @@ Files: `docs/laboratory-review.md`, `docs/notation-coverage.md`, `docs/reference
 - Integration checks passed: core 67 Deno + 7 Node tests, Python library 290 tests, Deno service 288 tests, web 108 tests, API 16 tests on each of Python 3.11 and 3.14, browser 16 tests. Type checks, production build, binding freshness, embedded-bundle freshness and diff whitespace checks passed.
 - Final Aislop scan: 99/100, zero errors or fixable warnings. Four stable citation/dataset URLs are false-positive hardcoded-environment warnings and remain intact per repository instructions.
 - Side documentation uses the same guide data as hosted docs and preserves worksheet state. Desktop/mobile screenshots and keyboard/focus behavior were checked.
+- Delivery: source `fead6724949f6a633759b5ce61bf8def1473d6c7` pushed and deployed to production `fee4f1ea-d3e7-4d8f-a0ea-e091d6699466`. Live checks passed, including full report/FISH/CNV workflows. See `docs/releases/2026-10-19-laboratory-review.md` for evidence and the separate pending custom-domain DNS status.
