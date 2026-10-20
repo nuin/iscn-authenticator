@@ -1,7 +1,7 @@
 import type { CellLine, KaryotypeAST, Rule } from "../types.js";
 
 export function isNormalCellLine(line: CellLine): boolean {
-  return line.chromosome_count === 46 &&
+  return !line.composite && line.chromosome_count === 46 &&
     (line.sex_chromosomes === "XX" || line.sex_chromosomes === "XY") &&
     line.abnormalities.length === 0;
 }

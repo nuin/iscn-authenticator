@@ -17,7 +17,7 @@
 		<section class="counts" aria-labelledby="cell-count-heading">
 			<div class="section-heading"><h3 id="cell-count-heading">Cell line counts</h3><p>{review.totalCells === null ? 'Total not established' : `${review.totalCells} cells in notation`}</p></div>
 			{#if review.lines.length}
-				<div class="table-scroll"><table aria-label="Cell line counts"><thead><tr><th scope="col">Cell line</th><th scope="col">Cells</th><th scope="col">Share</th></tr></thead><tbody>{#each review.lines as line}<tr><th scope="row"><code>{line.label}</code>{#if line.isDonor}<span class="donor">Donor group</span>{/if}</th><td>{line.count ?? 'Not stated'}</td><td>{percentage(line.percentage)}</td></tr>{/each}</tbody></table></div>
+				<div class="table-scroll"><table aria-label="Cell line counts"><thead><tr><th scope="col">Cell line</th><th scope="col">Cells</th><th scope="col">Share</th></tr></thead><tbody>{#each review.lines as line}<tr><th scope="row"><code>{line.label}</code>{#if line.isComposite}<span class="donor">Composite group — aggregate findings</span>{/if}{#if line.isDonor}<span class="donor">Donor group</span>{/if}</th><td>{line.count ?? 'Not stated'}</td><td>{percentage(line.percentage)}</td></tr>{/each}</tbody></table></div>
 			{:else}<p class="help">No cell-line counts are available for this notation.</p>{/if}
 			<p class="help">Percentages describe the counted cells in the notation; they do not establish specimen-wide prevalence.</p>
 		</section>

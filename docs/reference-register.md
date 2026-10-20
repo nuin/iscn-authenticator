@@ -1,6 +1,6 @@
 # Reference register
 
-Core rule revision: `2026-10-20`; laboratory application QC revision: `2026-10-19`.
+Core rule revision: `2026-10-20.1`; laboratory application QC revision: `2026-10-20`.
 Reference review: 2026-10-19, with interphase prefix handling rechecked against the
 local ISCN text on 2026-10-20.
 CNV worksheet revision is independently recorded in its exported framework metadata.

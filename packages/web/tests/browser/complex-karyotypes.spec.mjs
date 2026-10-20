@@ -17,7 +17,7 @@ test('complex notation produces the expected user-visible status for every synth
   await expect(page.locator('#svelte-announcer')).toBeAttached();
   const requests = [];
   page.on('request', (request) => requests.push({ url: request.url(), body: request.postData() }));
-  expect(cases).toHaveLength(48);
+  expect(cases).toHaveLength(72);
   for (const example of cases) {
     await test.step(`${example.id}: ${example.purpose}`, async () => {
       await page.getByLabel('ISCN notation', { exact: true }).fill(example.input);

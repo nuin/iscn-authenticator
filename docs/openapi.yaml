@@ -394,6 +394,8 @@ components:
       properties:
         token: { type: string, description: "Related-clone token as entered, such as idem or sdl1." }
         cell_line: { type: integer, minimum: 1, description: "One-based source position within the recipient or donor group." }
+        multiplier: { type: [integer, "null"], minimum: 1, description: "Explicit non-unit reference multiplier, when present." }
+        adjusted: { type: boolean, description: "Subtraction, cancellation or inherited transformation was applied. Raw findings are source text, not a canonical resolved notation." }
 
     CellLine:
       type: object
@@ -409,6 +411,7 @@ components:
           items: { $ref: "#/components/schemas/Abnormality" }
         count: { type: integer }
         is_donor: { type: boolean }
+        composite: { type: boolean, description: "Aggregate composite group; count is metaphases, not a per-finding frequency." }
         raw: { type: string, description: "Original cell-line notation." }
         reference: { $ref: "#/components/schemas/CloneReference" }
         changes:

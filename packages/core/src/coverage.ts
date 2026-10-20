@@ -1,13 +1,14 @@
 import type { KaryotypeAST } from "./types.js";
 import { bandStatus, chromosomeBreakpoints, expectedDiploidCount } from "./rules/routine.js";
 import { needsCellLineOrderReview } from "./rules/cell-lines.js";
+import { cellLineContext } from "./cell-line-context.js";
 
 export interface CoverageNote { code: string; message: string }
 export interface ValidationCoverage {
   level: "supported" | "partial" | "unparsed";
   notes: CoverageNote[];
   reference: "ISCN 2024";
-  rule_version: "2026-10-20";
+  rule_version: "2026-10-20.1";
   band_reference: "UCSC hg38 cytoBand";
 }
 
@@ -23,16 +24,17 @@ export function getValidationCoverage(ast: KaryotypeAST | null): ValidationCover
     if (modifiers?.ish !== undefined || modifiers?.arr !== undefined || modifiers?.ogm !== undefined) {
       add("assay", "FISH, array and OGM payloads are preserved but their complete assay grammar is not validated.");
     }
-    if (modifiers?.composite !== undefined) add("composite", "Composite counts are checked; per-abnormality frequencies and chromosome totals require review.");
-    const lines = ast.cell_lines?.map((line) => ({ ...ast, ...line, cell_lines: null })) ?? [ast];
+    if (modifiers?.composite !== undefined || ast.cell_lines?.some((line) => line.composite)) add("composite", "Composite counts are checked; per-abnormality frequencies and chromosome totals require review.");
+    const lines = ast.cell_lines?.map((line) => cellLineContext(ast, line)) ?? [ast];
     for (const line of lines) {
+      if (line.reference?.multiplier || line.reference?.adjusted) add("clone_resolution", "Clone multiplication or subtraction was expanded within bounded rules; review the original notation and resolved findings together.");
       if (line.chromosome_count !== null && expectedDiploidCount(line) === null) {
         add("count_scope", "A reliable diploid numerical total cannot be inferred for this notation; review ploidy, structural changes and chromosome balance.");
       }
       for (const abn of line.abnormalities) {
         if (abn.type === "unknown") add("unknown", "Unrecognized abnormality text is preserved and requires manual review.");
-        if (["der", "rec", "cpx", "cth", "cpy", "upd"].includes(abn.type)) {
-          add("complex", "Derivative, recombinant and complex descriptions receive only outer parsing and chromosome checks; nested structure requires review.");
+        if (["der", "+der", "-der", "rec", "cpx", "cth", "cpy", "upd"].includes(abn.type)) {
+          add("complex", "Recognizable derivative components receive chromosome, band and breakpoint checks; complete derivative paths, recombinant and complex structures require review.");
         }
         if (abn.uncertain || abn.breakpoints.some((bp) => bp.uncertain)) add("uncertain", "Uncertain abnormalities or breakpoints require review.");
         if (chromosomeBreakpoints(abn).some(([chromosome, bp]) => bandStatus(chromosome, bp) === "finer")) {
@@ -45,6 +47,6 @@ export function getValidationCoverage(ast: KaryotypeAST | null): ValidationCover
   }
   return {
     level: !ast ? "unparsed" : notes.length ? "partial" : "supported",
-    notes, reference: "ISCN 2024", rule_version: "2026-10-20", band_reference: "UCSC hg38 cytoBand",
+    notes, reference: "ISCN 2024", rule_version: "2026-10-20.1", band_reference: "UCSC hg38 cytoBand",
   };
 }

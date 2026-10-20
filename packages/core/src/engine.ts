@@ -4,6 +4,7 @@
  */
 
 import type { KaryotypeAST, ValidationResult, Rule } from "./types.js";
+import { cellLineContext } from "./cell-line-context.js";
 
 export class RuleEngine {
   private rules: Rule[] = [];
@@ -34,7 +35,7 @@ export class RuleEngine {
     const errors = this.karyotypeRules.flatMap((rule) => rule.validate(ast, ast));
     if (ast.cell_lines?.length) {
       ast.cell_lines.forEach((line, index) => {
-        const context: KaryotypeAST = { ...ast, ...line, cell_lines: null };
+        const context = cellLineContext(ast, line);
         errors.push(...this.validateLine(context).map((error) => `Cell line ${index + 1}: ${error}`));
       });
     } else {

@@ -1,15 +1,36 @@
 # Complex-karyotype test report
 
-Date: 2026-10-20. Core rule revision: `2026-10-20`.
+Date: 2026-10-20. Core rule revision: `2026-10-20.1`.
 
-The [48-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
+The [72-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
 tests the implemented checks, coverage notices and known exclusions. It contains
 no patient data. Each case records its input, intended user-visible status,
 purpose and, where relevant, required coverage notes, errors or cell total.
 These are software regression expectations, not a certification that every
 example is a complete, clinically appropriate ISCN description.
 
-## Results
+## Current expansion results
+
+All 72 expected outcomes agree between Python and TypeScript, including normalized
+resolved AST fields, original source text, copy counts, clone references and
+composite flags. There are seven Checks passed, 33 Review required and 32 Issues
+found results. The original 48 cases remain; C49–C72 add arithmetic, ambiguity,
+allocation, derivative-component and composite-context controls.
+
+C40 now rejects its invalid nested chromosome. C41 expands its multiplier, C42
+parses mixed composite/ordinary groups, and C43 subtracts the unique inversion
+while retaining the implied numerical loss and cancelling a written replacement.
+All three accepted expanded forms retain explicit review coverage.
+
+See [notation coverage](../notation-coverage.md#expanded-clones-and-composite-groups)
+for field semantics, worked examples and implementation boundaries. Existing
+72-case parity and browser tests run the same expected-outcome corpus. Core unit
+tests additionally check source immutability, unsafe arithmetic, optional
+breakpoint disambiguation and dependent sideline behavior. Report tests confirm
+that aggregate counts are labelled and transformed clones cannot produce a
+misleading literal longitudinal comparison.
+
+## Initial 48-case release results (historical)
 
 After the interphase-prefix fix, all 48 cases match their expected outcomes in
 TypeScript and Python. Both implementations agree on validity, error messages,
@@ -71,16 +92,15 @@ Shared validity corpus tag: `fixtures-complex-review-20261020`.
 
 ## Remaining gaps demonstrated by the tests
 
-- **Nested derivative validation:** C40 deliberately uses chromosome 99 and band
-  p99 inside a derivative. It receives a complex-structure review notice, but no
-  nested error. The outer derivative chromosome alone is checked.
-- **Clone subtraction:** C43 preserves `-inv(3)` as an unknown token. The resolved
-  abnormality list still includes the inherited inversion; it is not a fully
-  reconstructed clone. Review the source or restate the clone explicitly.
-- **Polyploid clone references:** C41 rejects `idemx2`. Multiplier expansion is
-  not implemented.
-- **Mixed composite lines:** C42 rejects `[cp12]/...`; only the documented final
-  composite form is supported.
+- **Complete derivative reconstruction:** Recognizable flat components and simple
+  junction bands are checked. Abbreviated components, chromosome paths, centromere
+  identity, phase and sequential-event consistency still require review.
+- **General clone arithmetic:** Unique certain single-autosome structural losses
+  and reference multiplication are expanded. Multiple stemlines, ambiguous
+  losses, multi-chromosome/derivative subtraction and X/Y arithmetic remain
+  outside this bounded expansion.
+- **Composite frequencies:** Group totals are parsed independently. Per-event
+  bracketed frequencies and co-occurrence are not reconstructed.
 - **Assay grammar and diagnostics:** FISH, appended array and OGM payloads remain
   partial. Standalone array C44 is unparsed and currently receives a generic
   cell-count error, not a dedicated array-coverage explanation.
@@ -106,7 +126,7 @@ node packages/core/scripts/check-complex-parity.mjs api/.venv/bin/python /tmp/is
 
 The audit exits nonzero on any unexpected status, missing expected diagnostic or
 coverage note, wrong cell total, or Python/TypeScript mismatch. Its optional final
-argument writes measured results for all 48 cases. It refuses an incomplete
+argument writes measured results for all 72 cases. It refuses an incomplete
 corpus.
 
 Core regressions run with `npm --prefix packages/core test`. Browser regressions

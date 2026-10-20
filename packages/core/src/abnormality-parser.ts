@@ -85,7 +85,9 @@ const OPTIONAL_PATTERNS: readonly StructuralPattern[] = [
 ];
 
 const CHROMOSOME_ONLY_PATTERNS: readonly (readonly [string, RegExp])[] = [
-  ["der", /^der\((\d{1,2}|[XY])\)(.+)$/],
+  ["der", /^der\(([^)]+)\)(.+)$/],
+  ["+der", /^\+der\(([^)]+)\)(.+)$/],
+  ["-der", /^-der\(([^)]+)\)(.+)$/],
   ["rec", /^rec\((\d{1,2}|[XY])\)(.+)$/],
   ["upd", /^upd\((\d{1,2}|[XY])\)(mat|pat)?$/],
   ["cpx", /^cpx\(([^)]+)\)$/],

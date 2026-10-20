@@ -4,6 +4,7 @@ import { abnormalityRule } from "./abnormality-checks.js";
 
 const STABLE_COUNT_TYPES = new Set(["del", "dup", "inv", "t", "add", "trp", "qdp", "i", "fra", "ins"]);
 export function expectedDiploidCount(ast: KaryotypeAST): number | null {
+  if (ast.reference?.multiplier || ast.reference?.adjusted) return null;
   const count = ast.chromosome_count;
   if (typeof count !== "number" || count < 40 || count > 55 ||
     !/^[XY]{1,4}$/.test(ast.sex_chromosomes) || ast.modifiers?.composite !== undefined) return null;

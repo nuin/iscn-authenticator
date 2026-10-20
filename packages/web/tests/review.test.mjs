@@ -14,6 +14,29 @@ const fish = {
 };
 const signoff = { reviewer: 'Example reviewer', disposition: 'reviewed', rationale: 'Synthetic evaluation case checked.', acknowledgedLimits: true };
 
+test('composite metaphases are labeled as aggregate groups in report counts', () => {
+  const result = reviewReport({ ...report, context: 'neoplastic', notation: '45~47,XX,+8[cp12]/46,XX[8]' });
+  assert.equal(result.totalCells, 20);
+  assert.equal(result.lines[0].isComposite, true);
+  assert.equal(result.lines[1].isComposite, false);
+  assert.equal(result.lines[0].label, '45~47,XX,+8[cp12]');
+  assert.equal(result.lines[0].percentage, 60);
+  assert.ok(result.checks.some((check) => /do not establish.*co-occurrence/i.test(check.outcome)));
+});
+
+test('expanded clone arithmetic cannot feed a misleading literal comparison', () => {
+  const expanded = '47,XX,+8[10]/94,idemx2[5]';
+  for (const input of [
+    { notation: expanded, previousNotation: '47,XX,+8[15]' },
+    { notation: '47,XX,+8[15]', previousNotation: expanded },
+    { notation: '46,XX,inv(3)(p21q26)[10]/46,idem,+3,-inv(3)[5]', previousNotation: '46,XX[15]' },
+  ]) {
+    const result = reviewReport({ ...report, ...input, context: 'neoplastic', analyzedCells: '15' });
+    assert.equal(result.comparison, null);
+    assert.ok(result.issues.some((issue) => issue.code === 'QC_COMPARISON_EXPANSION'));
+  }
+});
+
 test('report checks declared totals and uses all cell lines as the percentage denominator', () => {
   const result = reviewReport(report);
   assert.equal(result.status, 'Checks passed');

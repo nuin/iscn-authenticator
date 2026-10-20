@@ -24,13 +24,14 @@ function inputIssues(input: ReportInput): ReviewIssue[] {
 
 function cellLines(ast: KaryotypeAST | null): ReviewedCellLine[] {
 	if (!ast || ast.chromosome_count === null) return [];
-	const lines = ast.cell_lines ?? [{ ...ast, count: ast.count ?? 0, is_donor: false }];
+	const lines = ast.cell_lines ?? [{ ...ast, count: ast.count ?? 0, is_donor: false, composite: ast.modifiers?.composite !== undefined }];
 	return lines.map((line, index) => ({
 		line: index + 1,
 		label: line.raw ?? [line.chromosome_count, line.sex_chromosomes, ...line.abnormalities.map((abnormality) => abnormality.raw)].join(','),
 		count: Number.isSafeInteger(line.count) && line.count > 0 ? line.count : null,
 		percentage: null,
 		isDonor: line.is_donor,
+		isComposite: Boolean(line.composite),
 	}));
 }
 
@@ -101,9 +102,9 @@ export function reviewReport(input: ReportInput): ReportReview {
 		status, validation, issues, lines, totalCells, comparison: compared.comparison,
 		checks: [
 			{ name: 'Notation', outcome: validation.status },
-			{ name: 'Cell totals', outcome: totalCells === null ? 'Counts unavailable or incomplete.' : `${totalCells} cells represented; percentages use this denominator across all recipient and donor lines.` },
+			{ name: 'Cell totals', outcome: totalCells === null ? 'Counts unavailable or incomplete.' : `${totalCells} cells represented; percentages use this denominator across all recipient and donor lines.${lines.some((line) => line.isComposite) ? ' Composite counts do not establish per-finding frequencies or co-occurrence.' : ''}` },
 			{ name: 'Conclusion', outcome: 'Only the structured conclusion is compared. Free-text narrative requires reviewer assessment.' },
-			{ name: 'Previous/current findings', outcome: compared.comparison ? 'Literal abnormality comparison; repeated findings within a line are preserved. Clone identity, biological evolution, sex complements and counts require separate review.' : 'No comparable previous result supplied.' },
+			{ name: 'Previous/current findings', outcome: compared.comparison ? 'Literal abnormality comparison; repeated findings within a line are preserved. Clone identity, biological evolution, sex complements and counts require separate review.' : 'Comparison unavailable or no previous result supplied; see review notices.' },
 		],
 	};
 }

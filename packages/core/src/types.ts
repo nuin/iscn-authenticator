@@ -43,6 +43,8 @@ export interface CloneReference {
   token: string;
   /** One-based position within the recipient or donor group. */
   cell_line: number;
+  multiplier?: number;
+  adjusted?: boolean;
 }
 
 /** Represents a cell line in mosaic/chimera notation. */
@@ -52,6 +54,7 @@ export interface CellLine {
   abnormalities: Abnormality[];
   count: number;
   is_donor: boolean;
+  composite?: boolean;
   raw?: string;
   reference?: CloneReference;
   changes?: Abnormality[];

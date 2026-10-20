@@ -4,6 +4,7 @@
  */
 
 import { structuralReferenceRule, misplacedCloneRule } from "./routine.js";
+import { validateDerivativeComponents } from "./derivative.js";
 import type { Abnormality, Rule } from "../types.js";
 import {
   abnormalityRule,
@@ -279,4 +280,9 @@ export const ALL_ABNORMALITY_RULES: Rule[] = [
   fissionBreakpointRule,
   neocentromereBreakpointRule,
   incompleteBreakpointRule,
+  {
+    id: "ABN_DER_COMPONENTS", category: "abnormality",
+    description: "Check recognizable derivative components without reconstructing the chromosome path",
+    validate: (ast, target) => validateDerivativeComponents(ast, target as Abnormality, ALL_ABNORMALITY_RULES),
+  },
 ];

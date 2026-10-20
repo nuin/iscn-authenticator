@@ -25,6 +25,7 @@ export interface ReviewedCellLine {
 	count: number | null;
 	percentage: number | null;
 	isDonor: boolean;
+	isComposite: boolean;
 }
 
 export interface FindingComparison {

@@ -1,4 +1,4 @@
-export const REVIEW_RULE_VERSION = '2026-10-19';
+export const REVIEW_RULE_VERSION = '2026-10-20';
 
 export const REVIEW_REFERENCES = [
 	{ id: 'iscn-2024', title: 'ISCN 2024', url: 'https://doi.org/10.1159/000538512', scope: 'Notation: general rules, cell lines (§4.5.3), clone references (§6.3.4), and interphase FISH (§7.3.1).' },

@@ -6,6 +6,10 @@ function normalizedFinding(abnormality: Abnormality): string {
 	return abnormality.raw.trim().replaceAll('×', 'x').replace(/[−–]/g, '-');
 }
 
+function hasExpandedClone(ast: KaryotypeAST): boolean {
+	return (ast.cell_lines ?? [ast]).some((line) => line.reference?.multiplier || line.reference?.adjusted);
+}
+
 function findings(ast: KaryotypeAST): string[] {
 	const lines = ast.cell_lines ?? [ast];
 	const maximum = new Map<string, number>();
@@ -25,6 +29,9 @@ export function compareFindings(previousNotation: string, current: KaryotypeAST 
 	const prior = reviewKaryotype(previousNotation);
 	if (!prior.result.valid || !prior.result.parsed || !current) {
 		return { comparison: null, issues: [{ code: 'QC_PREVIOUS_NOTATION', severity: 'review', message: 'The previous and current notation must both pass the implemented checks before findings can be compared.', reference: 'Laboratory QC rule 2026-10-19' }] };
+	}
+	if (hasExpandedClone(prior.result.parsed) || hasExpandedClone(current)) {
+		return { comparison: null, issues: [{ code: 'QC_COMPARISON_EXPANSION', severity: 'review', message: 'Clone multiplication or subtraction changes the resolved findings. Compare the original notations and expanded clones manually; literal finding comparison is unavailable for these operations.', reference: 'Laboratory QC rule 2026-10-20' }] };
 	}
 	const remaining = findings(prior.result.parsed);
 	const added: string[] = [];

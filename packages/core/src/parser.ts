@@ -11,7 +11,7 @@ import { parseAbnormalities } from "./abnormality-parser.js";
 export { ParseError } from "./parse-error.js";
 
 /** Pattern for cell line count: [10], [20], etc. */
-const CELL_LINE_COUNT_PATTERN = /^(.+?)\[(\d+)\]$/;
+const CELL_LINE_COUNT_PATTERN = /^(.+?)(?:\.cp\[(\d+)\]|\[(cp)?(\d+)\])$/;
 
 export class KaryotypeParser {
   parse(karyotype: string): KaryotypeAST {
@@ -57,14 +57,6 @@ export class KaryotypeParser {
       karyotype = karyotype.slice(0, ogmIndex);
     }
 
-    // Check for composite karyotype notation (cp[n] at end)
-    let compositeCount: number | null = null;
-    const cpMatch = karyotype.match(/(?:\.cp\[(\d+)\]|\[cp(\d+)\])$/);
-    if (cpMatch) {
-      compositeCount = Number(cpMatch[1] ?? cpMatch[2]);
-      karyotype = karyotype.slice(0, -cpMatch[0].length);
-    }
-
     const isChimera = karyotype.startsWith("chi ");
     const isMosaic = karyotype.startsWith("mos ");
     if (isChimera || isMosaic) {
@@ -81,7 +73,7 @@ export class KaryotypeParser {
 
     // Add modifiers
     if (
-      fishData !== null || arrData !== null || ogmData !== null || compositeCount !== null || isChimera || isMosaic
+      fishData !== null || arrData !== null || ogmData !== null || isChimera || isMosaic
     ) {
       ast.modifiers = ast.modifiers || {};
       if (fishData !== null) {
@@ -92,9 +84,6 @@ export class KaryotypeParser {
       }
       if (ogmData !== null) {
         ast.modifiers.ogm = ogmData;
-      }
-      if (compositeCount !== null) {
-        ast.modifiers.composite = compositeCount;
       }
       if (isChimera) {
         ast.modifiers.chimera = true;
@@ -115,6 +104,7 @@ export class KaryotypeParser {
   ): KaryotypeAST | { ast: KaryotypeAST; count: number } {
     const original = karyotype;
     let count = 0;
+    let composite = false;
 
     // Extract cell count if present (e.g., "46,XX[10]")
     if (extractCount || karyotype.includes("[") || karyotype.includes("]")) {
@@ -124,9 +114,10 @@ export class KaryotypeParser {
       }
       if (countMatch) {
         karyotype = countMatch[1];
-        count = Number(countMatch[2]);
+        composite = countMatch[2] !== undefined || countMatch[3] !== undefined;
+        count = Number(countMatch[2] ?? countMatch[4]);
         if (!Number.isSafeInteger(count) || count <= 0) {
-          throw new ParseError("Cell count must be a positive safe integer in square brackets");
+          throw new ParseError(composite ? "Composite cell count must be a positive safe integer" : "Cell count must be a positive safe integer in square brackets");
         }
       }
     }
@@ -161,7 +152,7 @@ export class KaryotypeParser {
       sex_chromosomes: sexChromosomes,
       abnormalities,
       cell_lines: null,
-      modifiers: null,
+      modifiers: composite ? { composite: count } : null,
     };
 
     resolveCloneReference(ast, preceding);
@@ -187,6 +178,7 @@ export class KaryotypeParser {
           };
           cellLines.push({
             raw: ast.raw,
+            ...(ast.modifiers?.composite !== undefined ? { composite: true } : {}),
             ...(ast.reference ? { reference: ast.reference, changes: ast.changes } : {}),
             chromosome_count: ast.chromosome_count as number | string,
             sex_chromosomes: ast.sex_chromosomes,

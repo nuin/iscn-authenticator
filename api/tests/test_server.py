@@ -209,9 +209,26 @@ class ValidationApiTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         line = result["parsed"]["cell_lines"][1]
         self.assertEqual(line["raw"], "48,idem,+21[5]")
-        self.assertEqual(line["reference"], {"token": "idem", "cell_line": 1})
+        self.assertEqual(line["reference"], {"token": "idem", "cell_line": 1, "multiplier": None, "adjusted": False})
         self.assertEqual([item["raw"] for item in line["abnormalities"]], ["+8", "+21"])
         self.assertEqual([item["raw"] for item in line["changes"]], ["+21"])
+
+    def test_expanded_clone_and_composite_metadata(self):
+        result = self.validate("POST", "47,XY,+8[10]/94,idemx2[5]").json()
+        self.assertTrue(result["valid"], result["errors"])
+        line = result["parsed"]["cell_lines"][1]
+        self.assertEqual(line["sex_chromosomes"], "XXYY")
+        self.assertEqual(line["reference"]["multiplier"], 2)
+        self.assertEqual(line["abnormalities"][0]["copy_count"], 2)
+        result = self.validate("POST", "45~47,XX,+8[cp12]/46,XX[8]").json()
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual([line["count"] for line in result["parsed"]["cell_lines"]], [12, 8])
+        self.assertTrue(result["parsed"]["cell_lines"][0]["composite"])
+
+    def test_nested_derivative_errors_reach_http_clients(self):
+        result = self.validate("POST", "46,XX,der(5)t(5;99)(q13;p13)").json()
+        self.assertFalse(result["valid"])
+        self.assertIn("Invalid chromosome '99'", "; ".join(result["errors"]))
 
     def test_post_rejects_non_string_karyotypes(self):
         for value in (None, True, 46, [], {}):

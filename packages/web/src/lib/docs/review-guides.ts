@@ -97,7 +97,7 @@ export const reviewGuides: Guide[] = [
 						['Chromosome count ranges', 'Ranges such as 45~48 must have ascending positive safe-integer bounds. Composition and numerical coherence are not inferred.'],
 						['Numerical totals', 'Reliable near-diploid cases receive consistency checks. Acquired X/Y changes, polyploid, uncertain, composite and unsupported structural composition require review.'],
 						['Cytobands', 'Coarse band existence is checked against UCSC hg38. Finer subbands below catalogue resolution need manual review.'],
-						['Derivative and complex descriptions', 'Outer chromosome fields are checked; nested rearrangement structure is not fully interpreted.'],
+						['Derivative and complex descriptions', 'Recognizable flat derivative components receive chromosome, band and breakpoint checks. Abbreviated components, complete paths, centromere reconstruction and complex event relationships still require review.'],
 						['Biological or clinical meaning', 'The validator does not establish a finding’s clinical significance or compare it with patient or specimen information.']
 					]
 				}
@@ -107,6 +107,13 @@ export const reviewGuides: Guide[] = [
 				title: 'Review the cell-line order',
 				paragraphs: ['The example below passes the implemented checks: both cell lines are evaluated, their bracketed metaphase counts are positive, and the normal cell line is last even though more normal cells were counted. Optional mos and chi prefixes are supported.', 'Under ISCN 2024 section 4.5.3, normal cell lines follow abnormal lines. The workspace checks this within each recipient or donor group; a double slash preserves the transplant boundary. Normal XX/XY lines are ordered by decreasing count, with XX first for equal counts.', 'When a group contains multiple abnormal cell lines, their ordering still needs review: clone relationships, constitutional versus acquired findings, and tie-break rules require more context. The tool does not infer those relationships or verify donor identity.'],
 				code: { label: 'Abnormal cell line followed by normal cell line', value: '47,XX,+21[5]/46,XX[10]' }
+			},
+			{
+				id: 'expanded-clones',
+				title: 'Multipliers, subtraction and composite groups',
+				paragraphs: ['References accept positive safe-integer xN or ×N multipliers. Inherited copy counts and sex complements expand while each original line and its written changes remain available in JSON. The expanded sex complement is limited to 4096 characters to bound allocation; this is not an ISCN ploidy limit.', 'A structural loss such as -inv(3) removes the inverted chromosome, so its numerical loss remains unless a normal chromosome 3 is also added. Only a unique, certain inherited single-autosome del, dup, inv, add, trp, qdp, i, r or idic can be subtracted. Missing, ambiguous, uncertain or excessive losses require the clone to be written explicitly.', 'Composite [cpN] counts belong to their own group and can appear beside ordinary cell lines. Their counts contribute to the metaphase denominator, but do not establish per-finding frequency or co-occurrence. Composite groups cannot act as reference clones; per-abnormality bracketed frequencies are not implemented.', 'Expanded operations retain Review required. Numeric totals are checked from a numeric reference when all written changes have inferable count effects. Complete chromosome reconstruction and X/Y arithmetic still need review. Literal previous/current comparison is unavailable when either result contains clone multiplication or subtraction.'],
+				code: { label: 'Synthetic examples for review', value: '47,XY,+8[10]/94,idemx2[5]\n46,XX,inv(3)(p21q26)[10]/45,idem,-inv(3)[5]\n45~47,XX,+8[cp12]/46,XX[8]' },
+				links: [{ label: 'Review report counts and comparison limits', href: '/docs/report-review' }]
 			},
 			{
 				id: 'evaluate-locally',
