@@ -3,6 +3,7 @@
  * Port of iscn_authenticator/rules/chromosome.py to TypeScript.
  */
 
+import { numericalTotalRule } from "./routine.js";
 import type { KaryotypeAST, Rule } from "../types.js";
 
 function validateChromosomeCountNumeric(ast: KaryotypeAST): string[] {
@@ -13,7 +14,9 @@ function validateChromosomeCountNumeric(ast: KaryotypeAST): string[] {
   if (typeof ast.chromosome_count === "string") {
     // Range notation like "45~48" is valid
     if (ast.chromosome_count.includes("~")) {
-      return [];
+      const match = ast.chromosome_count.match(/^(\d+)~(\d+)$/);
+      if (match && Number(match[1]) <= Number(match[2]) && Number(match[1]) > 0 && Number.isSafeInteger(Number(match[1])) && Number.isSafeInteger(Number(match[2]))) return [];
+      return ["Chromosome count range must be ascending positive safe integers"];
     }
     return [`Chromosome count '${ast.chromosome_count}' is not numeric`];
   }
@@ -30,8 +33,8 @@ function validateChromosomeCountRange(ast: KaryotypeAST): string[] {
     // Skip range validation for range notation
     return [];
   }
-  if (count < 23 || count > 92) {
-    return [`Chromosome count ${count} is outside valid range (must be between 23 and 92)`];
+  if (!Number.isSafeInteger(count) || count <= 0) {
+    return [`Chromosome count ${count} must be a positive safe integer`];
   }
   return [];
 }
@@ -46,6 +49,7 @@ function validateSexChromosomesValid(ast: KaryotypeAST): string[] {
     // Undisclosed
     return [];
   }
+  if (sex === "Y" && ast.abnormalities.some((abn) => abn.type === "-" && abn.chromosome === "X")) return [];
   if (!sex.includes("X")) {
     return [`Sex chromosomes '${sex}' must contain at least one X chromosome`];
   }
@@ -96,7 +100,7 @@ export const chromosomeCountNumericRule: Rule = {
 export const chromosomeCountRangeRule: Rule = {
   id: "CHR_COUNT_RANGE",
   category: "chromosome_count",
-  description: "Chromosome count must be between 23 and 92",
+  description: "Chromosome count must be a positive safe integer",
   validate: (ast) => validateChromosomeCountRange(ast),
 };
 
@@ -120,4 +124,5 @@ export const ALL_CHROMOSOME_RULES: Rule[] = [
   chromosomeCountRangeRule,
   sexChromosomesValidRule,
   sexChromosomesCoherenceRule,
+  numericalTotalRule,
 ];

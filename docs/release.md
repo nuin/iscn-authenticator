@@ -53,9 +53,16 @@ the embedded update to `deno/main.ts`. After a Cloudflare binding change,
 regenerate and include `packages/web/src/worker-configuration.d.ts`. Schema changes
 require an explicit migration and rollback assessment.
 
+If the OpenAPI contract changes, regenerate its embedded copy with
+`deno run --allow-read --allow-write deno/scripts/embed-openapi.ts` from the root.
+The Deno suite checks the two copies byte-for-byte.
+
 Review the [launch-readiness checklist](launch-readiness.md), including coverage
 notices, local browser processing, key visibility, mobile navigation, batch
-exports, and billing availability. Tests are evidence for exercised behavior,
+exports, report/FISH records, CNV evidence boundaries and billing availability.
+Use the synthetic cases in [laboratory review](laboratory-review.md) and
+[CNV evidence](cnv-evidence.md), including edits after calculation and exact score
+and cutoff boundaries. Tests are evidence for exercised behavior,
 not proof of complete ISCN coverage or clinical performance.
 
 ## Publish the core
@@ -73,9 +80,9 @@ When shared validation semantics change, coordinate the Python implementation an
 shared corpus, release that corpus, and advance the fixture pin in
 `packages/core/package.json`. Python library publication belongs in its own repository.
 
-The cell-line validation update uses Python commit
-`5aebd35cbb701c485539f2b4169a884bd5435700` and the shared corpus tag
-`fixtures-cell-lines-20261019`. The API wrapper pins that Git revision through
+The laboratory-review validation update uses Python commit
+`47e1c8124364952e0afeff71128d43e526716354` and the shared corpus tag
+`fixtures-lab-review-20261019`. The API wrapper pins that Git revision through
 `tool.uv.sources` and `api/uv.lock` so it receives the same fixes before a PyPI
 release. Use the documented `uv --locked` commands; a plain pip install of the
 older PyPI release does not include them. This fixture tag does not publish to PyPI.
@@ -104,8 +111,13 @@ npx wrangler pages deploy .svelte-kit/cloudflare --project-name=iscn-web --branc
 non-production branch name for a preview. This command publishes externally;
 run it only as part of an authorized release.
 
+Use the project-local Wrangler version and check `wrangler pages deploy --help`
+before changing flags. Cloudflare's [direct-upload instructions](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/)
+describe the upload flow and the required Cloudflare Pages Edit permission.
+
 Record the commit, deployment ID, URL, environment, and verification results.
-Check the production homepage, validator, guide pages, login, and configured
+Check the production homepage, validator, laboratory workspace with its side
+documentation, guide pages, login, and configured
 billing state after deployment. Do not expose keys or account records in the
 release report.
 

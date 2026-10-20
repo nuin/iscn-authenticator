@@ -50,8 +50,8 @@ Deno.test("malformed committed prefixes preserve exact parse errors", () => {
     ["i(1)", "Invalid isochromosome format: 'i(1)'"],
     ["r(1)(bad)", "Invalid breakpoint format: 'bad'"],
     [
-      "inv(1)(p10?p20?)",
-      "Inversion requires two breakpoints: 'inv(1)(p10?p20?)'",
+      "inv(1)(p10??p20?)",
+      "Inversion requires two breakpoints: 'inv(1)(p10??p20?)'",
     ],
     ["trp(1)(p10)", "Triplication requires two breakpoints: 'trp(1)(p10)'"],
     ["qdp(1)(p10)", "Quadruplication requires two breakpoints: 'qdp(1)(p10)'"],

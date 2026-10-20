@@ -32,6 +32,10 @@ class ValidationApiTests(unittest.TestCase):
                             "abnormalities": [],
                             "cell_lines": None,
                             "modifiers": None,
+                            "count": None,
+                            "raw": "46,XX",
+                            "reference": None,
+                            "changes": None,
                         },
                     },
                 )
@@ -113,6 +117,9 @@ class ValidationApiTests(unittest.TestCase):
                     "abnormalities": [],
                     "count": 10,
                     "is_donor": False,
+                    "raw": "45,X[10]",
+                    "reference": None,
+                    "changes": None,
                 },
                 {
                     "chromosome_count": 46,
@@ -120,6 +127,9 @@ class ValidationApiTests(unittest.TestCase):
                     "abnormalities": [],
                     "count": 20,
                     "is_donor": False,
+                    "raw": "46,XX[20]",
+                    "reference": None,
+                    "changes": None,
                 },
             ],
         )
@@ -151,6 +161,43 @@ class ValidationApiTests(unittest.TestCase):
                 error = response.json()["detail"][0]
                 self.assertEqual(error["loc"], [location, "karyotype"])
                 self.assertEqual(error["type"], "missing")
+
+    def test_routine_notation_errors_reach_both_http_methods(self):
+        for notation in ("46,XX,+21", "46,XX,del(99)(p15)", "46,XX,del(5)(p99)", "48~45,XX"):
+            for method in ("GET", "POST"):
+                with self.subTest(notation=notation, method=method):
+                    response = self.validate(method, notation)
+                    self.assertEqual(response.status_code, 200)
+                    result = response.json()
+                    self.assertFalse(result["valid"])
+                    self.assertTrue(result["errors"])
+
+    def test_single_line_metaphase_count_and_raw_input_are_retained(self):
+        response = self.validate("POST", "47,XX,+21[20]")
+        result = response.json()
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["parsed"]["count"], 20)
+        self.assertEqual(result["parsed"]["raw"], "47,XX,+21[20]")
+
+    def test_acquired_sex_chromosome_losses_are_not_double_subtracted(self):
+        for notation in ("45,X,-Y[20]/46,XY[5]", "45,X,-X[8]"):
+            with self.subTest(notation=notation):
+                result = self.validate("POST", notation).json()
+                self.assertTrue(result["valid"], result["errors"])
+
+    def test_unmapped_insertion_layouts_do_not_skip_band_checks(self):
+        result = self.validate("POST", "46,XX,ins(1;2;3;4)(p99q99q99)").json()
+        self.assertFalse(result["valid"])
+        self.assertTrue(result["errors"])
+
+    def test_related_clone_keeps_reference_and_resolved_findings(self):
+        result = self.validate("POST", "47,XX,+8[10]/48,idem,+21[5]").json()
+        self.assertTrue(result["valid"])
+        line = result["parsed"]["cell_lines"][1]
+        self.assertEqual(line["raw"], "48,idem,+21[5]")
+        self.assertEqual(line["reference"], {"token": "idem", "cell_line": 1})
+        self.assertEqual([item["raw"] for item in line["abnormalities"]], ["+8", "+21"])
+        self.assertEqual([item["raw"] for item in line["changes"]], ["+21"])
 
     def test_post_rejects_non_string_karyotypes(self):
         for value in (None, True, 46, [], {}):

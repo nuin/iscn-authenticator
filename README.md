@@ -4,6 +4,11 @@ A workspace and software library for reviewing ISCN karyotype notation. Laborato
 scientists can check single entries or batches in the browser; informatics teams
 can evaluate the TypeScript core or run a separate HTTP service.
 
+The laboratory review workspace reconciles notation, metaphase totals and a
+structured report conclusion, compares prior findings, and exports a reviewer
+record. It also includes a bounded FISH constructor and a constitutional CNV
+evidence worksheet with explicit scoring coverage.
+
 [Open the workspace](https://iscn-web.pages.dev/validate) ·
 [Read the guides](https://iscn-web.pages.dev/docs) ·
 [Review coverage](https://iscn-web.pages.dev/docs/coverage)
@@ -21,7 +26,10 @@ Known limits affect otherwise passing results:
   clones and confirming donor identity still require context and manual review.
 - Accepted `nuc ish`, `arr`, and `ogm` modifiers are retained as text without full
   assay-specific validation.
-- Chromosome count ranges bypass numeric bounds and coherence checks.
+- Chromosome count ranges receive ascending positive-integer checks; their
+  chromosome composition and numerical coherence still require review.
+- Structural chromosome names and supported cytobands are checked against the
+  bundled catalogue. Finer subbands and complex nested rearrangements need review.
 
 Use representative examples and known errors when evaluating the tool for a lab
 workflow. Keep manual review for unsupported notation.
@@ -31,6 +39,7 @@ workflow. Keep manual review for unsupported notation.
 | Workflow | Where checks run | Access |
 |---|---|---|
 | [Single entry](https://iscn-web.pages.dev/validate) | Browser | No account needed |
+| [Report QC, FISH and CNV evidence](https://iscn-web.pages.dev/review) | Browser; explicit local exports | No account needed |
 | [Batch review](https://iscn-web.pages.dev/dashboard/batch) | Browser, up to 500 entries | Sign in |
 | TypeScript core | Your Node or Deno process | Consume from source |
 | Deno HTTP API | A deployment you operate | Keys issued by that Deno deployment |
@@ -49,6 +58,10 @@ self-hosted service defaults, not hosted browser plan allowances. See
 ## Documentation
 
 - [Quickstart](docs/quickstart.md): browser review and a local core example.
+- [Laboratory review](docs/laboratory-review.md): report checks, FISH construction, record schemas and developer architecture.
+- [Notation coverage](docs/notation-coverage.md): implemented grammar, rule boundaries and exclusions.
+- [CNV evidence](docs/cnv-evidence.md): supported ACMG/ClinGen categories, provisional scoring and evidence requirements.
+- [Reference register](docs/reference-register.md): editions, errata and what each source supports.
 - [API reference](docs/api.md): self-hosted Deno endpoints and the separate Python wrapper.
 - [Operator guide](docs/admin.md): Deno configuration, keys, logs, and incidents.
 - [Billing](docs/billing.md): current hosted access and runtime-specific Stripe setup.

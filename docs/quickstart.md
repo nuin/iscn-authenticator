@@ -17,6 +17,27 @@ For multiple entries, [sign in](https://iscn-web.pages.dev/login) and open
 per line, up to 500 entries. Review row-level issues and coverage before exporting
 CSV or JSON. Batch access does not require a paid subscription in the current app.
 
+## Review a laboratory report or assay worksheet
+
+Open the [laboratory review workspace](https://iscn-web.pages.dev/review). No account
+is required. Its three tabs keep their inputs in browser memory:
+
+- **Report QC:** compare current and previous notation, reconcile a declared cell
+  total, and check a structured conclusion against recognized findings. Record a
+  reviewer decision and explicitly download JSON or CSV.
+- **FISH builder:** enter probe names, signal counts and observed/total nuclei for
+  one hybridization. Choose the counting mode. Enter your laboratory's threshold,
+  comparison operator and protocol only when a threshold comparison is needed.
+- **CNV evidence:** record a constitutional loss or gain, cited evidence and all
+  five section assessments. The worksheet calculates a provisional score only for
+  its supported, complete evidence combinations.
+
+Start with the synthetic examples in the
+[laboratory workflow guide](laboratory-review.md) and
+[CNV evidence guide](cnv-evidence.md). Edits invalidate a previous result. Downloaded
+review records are local, self-attested records; the application does not provide
+an authenticated signature or retain a server-side review history.
+
 ## Read a result
 
 The core result for `46,XX` is:
@@ -30,7 +51,8 @@ The core result for `46,XX` is:
     "sex_chromosomes": "XX",
     "abnormalities": [],
     "cell_lines": null,
-    "modifiers": null
+    "modifiers": null,
+    "raw": "46,XX"
   }
 }
 ```
@@ -39,11 +61,16 @@ The core result for `46,XX` is:
 complete ISCN conformity. Every cell line receives the implemented rules, with
 line-numbered errors. Ordering multiple abnormal clones still requires review.
 Unknown abnormalities can pass; accepted assay modifiers are retained without full
-checks; count ranges bypass numeric bounds and coherence checks.
+checks. Count ranges must have ascending positive safe-integer bounds; their
+composition and numerical coherence are not inferred. Routine near-diploid totals
+and structural chromosome/band references receive additional bounded checks.
 
 `valid: false` includes detected issues in `errors`. A parsing failure has
 `parsed: null`; a rule failure may still have a parsed result. `cell_lines` is an
-array or `null`, and `modifiers` is an object or `null`.
+array or `null`, and `modifiers` is an object or `null`. The example above is the
+TypeScript result; Python additionally serializes unused optional AST fields as
+`null`. Consult the [notation coverage matrix](notation-coverage.md) for the exact
+grammar and reference limits.
 
 Read the [coverage guide](https://iscn-web.pages.dev/docs/coverage) and
 [result guide](https://iscn-web.pages.dev/docs/reading-results) before using the

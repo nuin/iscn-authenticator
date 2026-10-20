@@ -84,6 +84,8 @@
 				{/each}
 			</section>
 			<nav class="workspace-links" aria-label="Workspace guides">
+				<a href="/review">Review a laboratory report <span aria-hidden="true">→</span></a>
+				<a href="/docs/report-review" target="_blank" rel="noopener noreferrer">Laboratory review guide (opens a new tab)</a>
 				<a href="/docs/coverage">What the validator covers <span aria-hidden="true">→</span></a>
 				<a href="/dashboard/batch">Review a batch <span aria-hidden="true">→</span></a>
 			</nav>

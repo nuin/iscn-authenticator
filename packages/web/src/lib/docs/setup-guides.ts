@@ -99,7 +99,7 @@ export const setupGuides: Guide[] = [
 			{
 				id: 'browser-checks',
 				title: 'Browser checks stay on your device',
-				paragraphs: ['After the page and its assets load, single and batch checks run in your browser. Running a check does not send the entered karyotype or its normalized signature to the application server.', 'There is no server-side validation history. CSV and JSON downloads are generated locally. The browser, operating system, clipboard, and downloaded files remain part of your own data-handling environment.'],
+				paragraphs: ['After the page and its assets load, single, batch and report checks run in your browser. FISH construction and CNV evidence calculations also run locally. Review inputs, narratives, evidence citations and reviewer names are not sent by these checks to the application server.', 'There is no server-side validation history. CSV and JSON downloads are generated locally. Inputs remain in page memory until cleared or discarded; no review data is written to localStorage. The browser, operating system, clipboard, and downloaded files remain part of your own data-handling environment.'],
 				note: 'Use notation without patient names or specimen identifiers. If you put a karyotype in a URL, the URL is sent when the page is requested and can appear in browser history or infrastructure logs. Paste into the workspace for local checking.'
 			},
 			{

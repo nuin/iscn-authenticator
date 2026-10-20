@@ -39,6 +39,12 @@ export interface Modifiers {
   interphase?: boolean; // Interphase/nuclear FISH (nuc ish)
 }
 
+export interface CloneReference {
+  token: string;
+  /** One-based position within the recipient or donor group. */
+  cell_line: number;
+}
+
 /** Represents a cell line in mosaic/chimera notation. */
 export interface CellLine {
   chromosome_count: number | string;
@@ -46,6 +52,9 @@ export interface CellLine {
   abnormalities: Abnormality[];
   count: number;
   is_donor: boolean;
+  raw?: string;
+  reference?: CloneReference;
+  changes?: Abnormality[];
 }
 
 /** Abstract syntax tree for a parsed karyotype. */
@@ -55,6 +64,10 @@ export interface KaryotypeAST {
   abnormalities: Abnormality[];
   cell_lines: CellLine[] | null;
   modifiers: Modifiers | null;
+  count?: number;
+  raw?: string;
+  reference?: CloneReference;
+  changes?: Abnormality[];
 }
 
 /** Result of karyotype validation. */

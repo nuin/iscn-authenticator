@@ -1,8 +1,8 @@
 import type { Breakpoint } from "./types.js";
 import { ParseError } from "./parse-error.js";
 
-const BREAKPOINT_PATTERN = /^([pq])(\d+)(?:\.(\d+))?(\?)?$/;
-const DOUBLE_BREAKPOINT_PATTERN = /^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$/;
+const BREAKPOINT_PATTERN = /^([pq])([1-9][0-9]?)(?:\.(\d+))?(\?)?$/;
+const DOUBLE_BREAKPOINT_PATTERN = /^([pq]\d+(?:\.\d+)?\??)([pq]\d+(?:\.\d+)?\??)$/;
 const UNCERTAIN_PAIR_PATTERN = /^([pq]\d+(?:\.\d+)?\??)([pq]\d+(?:\.\d+)?\??)$/;
 
 export function parseBreakpoint(value: string): Breakpoint {
@@ -14,7 +14,7 @@ export function parseBreakpoint(value: string): Breakpoint {
   return {
     arm: match[1],
     region: parseInt(regionBand[0], 10),
-    band: regionBand.length >= 2 ? parseInt(regionBand.slice(1), 10) : 0,
+    band: regionBand.length >= 2 ? parseInt(regionBand.slice(1), 10) : null,
     subband: match[3] || null,
     uncertain: match[4] === "?",
   };
@@ -44,6 +44,7 @@ export function parseDoubleBreakpoints(
 export function parseInsertionBreakpoints(value: string): Breakpoint[] {
   if (value.includes(";")) {
     const parts = value.split(";");
+    if (parts.length !== 2) throw new ParseError(`Invalid insertion breakpoints: '${value}'`);
     const first = parseBreakpoint(parts[0].trim());
     const segment = parts[1].trim();
     const pair = segment.match(DOUBLE_BREAKPOINT_PATTERN);
@@ -55,7 +56,7 @@ export function parseInsertionBreakpoints(value: string): Breakpoint[] {
     ];
   }
   const triple = value.match(
-    /^([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)([pq]\d+(?:\.\d+)?)$/,
+    /^([pq]\d+(?:\.\d+)?\??)([pq]\d+(?:\.\d+)?\??)([pq]\d+(?:\.\d+)?\??)$/,
   );
   if (!triple) {
     throw new ParseError(`Invalid insertion breakpoints: '${value}'`);

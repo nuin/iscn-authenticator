@@ -3,6 +3,7 @@
  * Port of iscn_authenticator/rules/abnormality.py to TypeScript.
  */
 
+import { structuralReferenceRule, misplacedCloneRule } from "./routine.js";
 import type { Abnormality, Rule } from "../types.js";
 import {
   abnormalityRule,
@@ -40,7 +41,7 @@ const VALID_CHROMOSOMES = new Set([
 ]);
 
 function validateNumericalChromosome(abn: Abnormality): string[] {
-  if (abn.type !== "+" && abn.type !== "-") {
+  if (!["+", "-", "+c", "-c"].includes(abn.type)) {
     return [];
   }
   if (!VALID_CHROMOSOMES.has(abn.chromosome)) {
@@ -252,6 +253,8 @@ export const incompleteBreakpointRule: Rule = abnormalityRule(
 
 export const ALL_ABNORMALITY_RULES: Rule[] = [
   numericalChromosomeValidRule,
+  structuralReferenceRule,
+  misplacedCloneRule,
   breakpointArmValidRule,
   inversionTwoBreakpointsRule,
   translocationBreakpointCountRule,

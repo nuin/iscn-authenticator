@@ -33,12 +33,35 @@ validateKaryotypeNative("not a karyotype").valid;
 
 Invalid-but-parseable karyotypes return `valid: false` with populated `errors` and a parsed AST. Malformed strings return `valid: false`, errors, and `parsed: null`. Calling `KaryotypeParser.parse()` directly can throw `ParseError`.
 
+Pair validity with coverage when presenting a result to users:
+
+```typescript
+import { getValidationCoverage, validateKaryotypeNative } from "./dist/index.js";
+
+const result = validateKaryotypeNative("47,XX,+21[20]");
+const coverage = getValidationCoverage(result.parsed);
+// coverage.level: supported, partial, or unparsed
+// coverage.notes: stable codes and explanations of remaining review needs
+```
+
+The helper leaves the `{ valid, errors, parsed }` envelope unchanged. A true
+validity flag means the implemented rules found no error; partial coverage still
+requires review. Single-line metaphase counts appear in `parsed.count`. Original
+notation is retained in `raw`; resolved related clones also carry `reference` and
+literal `changes`. See the [notation coverage matrix](../../docs/notation-coverage.md)
+for supported shorthand, numerical total checks and cytoband reference limits.
+
 ## Scope
 
 This package is the validation core only — no HTTP, no auth, no rate limiting. If you want a hosted API with keys and quotas, see:
 
 - **HTTP API:** [iscn-authenticator](https://github.com/nuin/iscn-authenticator) — self-host or use the reference deployment.
 - **Python equivalent:** [`iscn-authenticator`](https://pypi.org/project/iscn-authenticator/) on PyPI.
+
+The Python revision used for current cross-runtime verification may be newer than
+the PyPI release. The [release guide](../../docs/release.md) records the immutable
+API dependency and fixture pins. Browser report QC, FISH construction and CNV
+evidence worksheets live in the web package; they are not core validation APIs.
 
 ## Deno
 

@@ -114,6 +114,10 @@ function structuralAbnormality(
       breakpoints = parseMultipleBreakpoints(match[2]);
       break;
     case "insertion":
+      if (![1, 2].includes(match[1].split(";").length) ||
+        (match[1].includes(";") !== match[2].includes(";"))) {
+        throw new ParseError(`Unsupported insertion chromosome/breakpoint layout: '${part}'`);
+      }
       breakpoints = parseInsertionBreakpoints(match[2]);
       break;
   }
@@ -213,11 +217,14 @@ function parseAbnormality(part: string): ParsedAbnormality {
 }
 
 function parseWithMetadata(raw: string): Abnormality {
-  let part = raw;
+  let part = raw.replaceAll("−", "-");
   const uncertain = part.startsWith("?");
   if (uncertain) part = part.slice(1);
-  const copy = part.match(/x(\d+)$/);
-  const copyCount = copy ? parseInt(copy[1], 10) : null;
+  const copy = part.match(/[x×](\d+)$/);
+  const copyCount = copy ? Number(copy[1]) : null;
+  if (copyCount !== null && (!Number.isSafeInteger(copyCount) || copyCount <= 0)) {
+    throw new ParseError("Abnormality copy count must be a positive safe integer");
+  }
   if (copy) part = part.slice(0, -copy[0].length);
   const inheritance =
     ["umat", "upat", "mat", "pat", "dn"].find((suffix) =>

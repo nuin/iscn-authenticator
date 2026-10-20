@@ -40,6 +40,12 @@ function validateCellLineOrder(ast: KaryotypeAST): string[] {
 
 export const ALL_CELL_LINE_RULES: Rule[] = [
   {
+    id: "COMPOSITE_COUNT", category: "cell_lines", description: "Composite counts must be positive safe integers",
+    validate: (ast) => ast.modifiers?.composite !== undefined &&
+      (!Number.isSafeInteger(ast.modifiers.composite) || ast.modifiers.composite <= 0)
+      ? ["Composite cell count must be a positive safe integer"] : [],
+  },
+  {
     id: "CELL_LINE_COUNTS", category: "cell_lines",
     description: "Every cell line must have a positive integer metaphase count",
     validate: (ast) => (ast.cell_lines ?? []).flatMap((line, index) =>

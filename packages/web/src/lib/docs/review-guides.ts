@@ -49,7 +49,7 @@ export const reviewGuides: Guide[] = [
 				},
 				code: {
 					label: 'Core result for 46,XX',
-					value: '{\n  "valid": true,\n  "errors": [],\n  "parsed": {\n    "chromosome_count": 46,\n    "sex_chromosomes": "XX",\n    "abnormalities": [],\n    "cell_lines": null,\n    "modifiers": null\n  }\n}'
+					value: '{\n  "valid": true,\n  "errors": [],\n  "parsed": {\n    "raw": "46,XX",\n    "chromosome_count": 46,\n    "sex_chromosomes": "XX",\n    "abnormalities": [],\n    "cell_lines": null,\n    "modifiers": null\n  }\n}'
 				}
 			},
 			{
@@ -82,7 +82,7 @@ export const reviewGuides: Guide[] = [
 			{
 				id: 'implemented-checks',
 				title: 'Implemented checks',
-				paragraphs: ['The TypeScript core parses karyotype strings and applies a defined set of chromosome and abnormality rules. These include numeric count bounds, selected sex-chromosome checks, and checks for recognized abnormality forms and breakpoints.', 'This is partial implementation coverage. The shared test corpus checks agreement with expected examples; it does not demonstrate complete coverage of ISCN 2024.'],
+				paragraphs: ['The TypeScript core parses karyotype strings and applies a defined set of chromosome and abnormality rules. These include positive integer counts, reliable diploid total consistency, structural chromosome identifiers and cytoband checks against the bundled catalogue.', 'Single-line metaphase counts such as 46,XX[20] are supported. Each parsed cell line receives the implemented rules. This is partial coverage: agreement with the shared test corpus does not demonstrate complete ISCN 2024 implementation.'],
 				note: 'Use the result to support a review process. It is not a certification of nomenclature, a diagnosis, or authorization to release a report.'
 			},
 			{
@@ -92,9 +92,12 @@ export const reviewGuides: Guide[] = [
 					headings: ['Notation', 'Current behavior'],
 					rows: [
 						['Unknown abnormalities', 'Unrecognized text can be retained as type unknown and still return valid: true.'],
-						['Mosaics and multiple cell lines', 'Every cell line receives the implemented checks. Counts and normal-last ordering are checked. Ordering multiple abnormal clones, resolving clone shorthand and confirming donor identity still need manual review.'],
+						['Mosaics and multiple cell lines', 'Counts and normal-last ordering are checked. Supported idem, sl and sdl references resolve to earlier lines while preserving source text. Ambiguous references fail; clone relationships and tie-break ordering still need review.'],
 						['FISH, array, and OGM modifiers', 'Accepted nuc ish, arr, and ogm content is retained as modifier text. Assay-specific content is not fully validated.'],
-						['Chromosome count ranges', 'Ranges such as 45~48 are retained as strings; numeric bound and coherence checks are skipped.'],
+						['Chromosome count ranges', 'Ranges such as 45~48 must have ascending positive safe-integer bounds. Composition and numerical coherence are not inferred.'],
+						['Numerical totals', 'Reliable near-diploid cases receive consistency checks. Acquired X/Y changes, polyploid, uncertain, composite and unsupported structural composition require review.'],
+						['Cytobands', 'Coarse band existence is checked against UCSC hg38. Finer subbands below catalogue resolution need manual review.'],
+						['Derivative and complex descriptions', 'Outer chromosome fields are checked; nested rearrangement structure is not fully interpreted.'],
 						['Biological or clinical meaning', 'The validator does not establish a finding’s clinical significance or compare it with patient or specimen information.']
 					]
 				}
@@ -109,7 +112,7 @@ export const reviewGuides: Guide[] = [
 				id: 'evaluate-locally',
 				title: 'Evaluate against your laboratory’s notation',
 				steps: ['Select representative, non-identifying examples from the notation families your workflow uses.', 'Include known errors and unsupported forms, not only common examples that pass.', 'Record the software version, expected outcome, actual issues, and coverage gaps.', 'Keep a manual review step for unsupported input and decide where the tool fits in your own procedures.'],
-				links: [{ label: 'Read result fields', href: '/docs/reading-results' }, { label: 'Evaluate integration options', href: '/docs/integration' }]
+				links: [{ label: 'Read result fields', href: '/docs/reading-results' }, { label: 'Report QC and evidence workflows', href: '/docs/report-review' }, { label: 'References and corrections', href: '/docs/review-references' }, { label: 'Evaluate integration options', href: '/docs/integration' }]
 			}
 		]
 	},

@@ -2,14 +2,16 @@ openapi: 3.1.0
 info:
   title: ISCN Authenticator API
   version: 0.2.0
-  summary: ISCN 2024 karyotype validation as a service.
+  summary: Self-hosted Deno API for bounded ISCN 2024 notation checks.
   description: |
-    Validates karyotype strings against the 2024 International System for
-    Human Cytogenomic Nomenclature (ISCN) and returns a structured AST
-    alongside any rule violations.
+    Runs implemented ISCN 2024 notation checks and returns a structured AST
+    alongside detected rule violations. A valid result does not establish
+    complete nomenclature coverage or clinical interpretation. This contract
+    describes the Deno service; the Pages website does not host this API.
 
-    All requests are authenticated by API key (Bearer or `X-API-Key`)
-    except for `/health`, `/status`, `/openapi.json`, and `/docs`.
+    Validation, usage and key rotation require a Deno API key (Bearer or
+    `X-API-Key`). Public routes and the Stripe webhook override authentication
+    as specified on each operation. Hosted Pages account keys are separate.
 
     Errors share a common envelope:
 
@@ -24,13 +26,10 @@ info:
   contact:
     name: ISCN Authenticator
     url: https://github.com/nuin/iscn-authenticator
-    email: nuin@genedrift.org
 
 servers:
-  - url: https://iscn.bioinformat.com
-    description: Reference deployment
-  - url: http://localhost:8000
-    description: Local dev
+  - url: /
+    description: The Deno deployment serving this specification
 
 security:
   - BearerAuth: []
@@ -389,22 +388,44 @@ components:
         sideline: { type: boolean }
         interphase: { type: boolean }
 
+    CloneReference:
+      type: object
+      required: [token, cell_line]
+      properties:
+        token: { type: string, description: "Related-clone token as entered, such as idem or sdl1." }
+        cell_line: { type: integer, minimum: 1, description: "One-based source position within the recipient or donor group." }
+
     CellLine:
       type: object
       required: [chromosome_count, sex_chromosomes, abnormalities, count, is_donor]
       properties:
-        chromosome_count: { type: integer }
+        chromosome_count:
+          oneOf:
+            - { type: integer }
+            - { type: string, description: "Range like '45~48'" }
         sex_chromosomes: { type: string }
         abnormalities:
           type: array
           items: { $ref: "#/components/schemas/Abnormality" }
         count: { type: integer }
         is_donor: { type: boolean }
+        raw: { type: string, description: "Original cell-line notation." }
+        reference: { $ref: "#/components/schemas/CloneReference" }
+        changes:
+          type: array
+          description: "Findings explicitly written in a related line; abnormalities includes resolved inherited findings."
+          items: { $ref: "#/components/schemas/Abnormality" }
 
     KaryotypeAST:
       type: object
       required: [chromosome_count, sex_chromosomes, abnormalities, cell_lines, modifiers]
       properties:
+        raw: { type: string, description: "Original notation." }
+        count: { type: integer, minimum: 1, description: "Bracketed metaphase count for a single line, when supplied." }
+        reference: { $ref: "#/components/schemas/CloneReference" }
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/Abnormality" }
         chromosome_count:
           oneOf:
             - { type: integer }

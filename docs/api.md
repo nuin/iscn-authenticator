@@ -110,6 +110,7 @@ This is the **core result** for `46,XX`, before Deno adds explanation fields:
   "valid": true,
   "errors": [],
   "parsed": {
+    "raw": "46,XX",
     "chromosome_count": 46,
     "sex_chromosomes": "XX",
     "abnormalities": [],
@@ -129,12 +130,19 @@ This is the **core result** for `46,XX`, before Deno adds explanation fields:
 | `parsed.abnormalities` | Array with `type`, `chromosome`, `breakpoints`, `inheritance`, `uncertain`, `copy_count`, and `raw` |
 | `parsed.cell_lines` | Array of cell-line records, or `null` |
 | `parsed.modifiers` | Modifier object, or `null`; never an empty array |
+| `parsed.raw` | Original notation, retained for source comparison |
+| `parsed.count` | Optional single-line bracketed metaphase count; no invented count when absent |
+| Cell-line `reference` / `changes` | Optional resolved clone token and one-based source line, plus changes explicitly written in that line |
 | `explanation` | Deno enrichment with `summary`, `detail`, `citation`, `refs`, and `confidence` |
+
+TypeScript omits unused optional AST fields. The Python wrapper serializes them as
+`null`; clients should accept either representation. A clone reference's source
+position is one-based within its recipient or donor group, not across both groups.
 
 `valid: true` is not proof of complete ISCN conformity. Unknown abnormalities can
 pass; ordering multiple abnormal clones still needs context; accepted assay modifiers are
-retained without full checks; chromosome count ranges skip numeric bounds and
-coherence checks. Keep the [coverage guide](https://iscn-web.pages.dev/docs/coverage)
+retained without full checks; chromosome count ranges have ascending positive
+integer checks but no composition/coherence check. Keep the [coverage guide](https://iscn-web.pages.dev/docs/coverage)
 with any integration acceptance criteria.
 
 Each cell line receives the chromosome and abnormality rules. Errors begin with
@@ -142,6 +150,13 @@ Each cell line receives the chromosome and abnormality rules. Errors begin with
 in brackets. Normal lines must follow abnormal lines within each recipient or
 donor group; `//` preserves that boundary. Among normal XX/XY lines, size comes
 first, with XX before XY when counts are equal. The original AST order is retained.
+
+For TypeScript integrations, use `getValidationCoverage(result.parsed)` from
+`@iscn/core` alongside `valid`. It returns `level`, `notes`, `reference`,
+`rule_version`, and `band_reference`. Coverage describes what was checked, not
+whether those checks passed. This additive helper does not change the existing
+HTTP result envelope. The hosted report-QC and evidence worksheets are browser
+functions, not additional HTTP endpoints; see [their schemas](laboratory-review.md).
 
 ### Node request example
 

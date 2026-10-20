@@ -1,4 +1,4 @@
-import { needsCellLineOrderReview, validateKaryotypeNative } from '@iscn/core';
+import { getValidationCoverage, validateKaryotypeNative } from '@iscn/core';
 import type { KaryotypeAST, ValidationResult } from '@iscn/core';
 import { spreadsheetCell } from './csv.ts';
 export { spreadsheetCell } from './csv.ts';
@@ -21,43 +21,18 @@ export interface BatchRow extends ValidationReview {
 	karyotype: string;
 }
 
-const CHECKED_TYPES = new Set([
-	'+', '-', 'del', 'dup', 'inv', 't', 'r', 'i', 'trp', 'qdp', 'dic', 'idic',
-	'rob', 'add', 'fra', 'ins', 'dmin', 'hsr', 'psu dic', 'ace', 'tas', 'fis', 'neo', 'inc',
-]);
-
-function coverageNotes(ast: KaryotypeAST | null, input: string): CoverageNote[] {
+function coverageNotes(ast: KaryotypeAST | null): CoverageNote[] {
 	if (!ast) return [];
-	const notes: CoverageNote[] = [];
-	const abnormalities = [
-		...ast.abnormalities,
-		...(ast.cell_lines?.flatMap((line) => line.abnormalities) ?? []),
-	];
-	const unchecked = [...new Set(abnormalities.filter((item) => !CHECKED_TYPES.has(item.type)).map((item) => item.raw))];
-	if (unchecked.length) {
-		notes.push({ code: 'unsupported', message: `These entries are not checked by a dedicated rule: ${unchecked.join('; ')}. Review them against the reference.` });
-	}
-	if (needsCellLineOrderReview(ast)) {
-		notes.push({ code: 'cell-line-order', message: 'Every cell line was checked. Ordering multiple abnormal cell lines still needs review against specimen context, clone relationships and ISCN tie-break rules.' });
-	}
-	if (ast.cell_lines?.length && input.includes('//')) {
-		notes.push({ code: 'donor', message: 'Recipient and donor groups were checked separately. Confirm donor identity and transplant context against the source records.' });
-	}
-	if (typeof ast.chromosome_count === 'string' || ast.cell_lines?.some((line) => typeof line.chromosome_count === 'string')) {
-		notes.push({ code: 'range', message: 'Chromosome-count ranges are retained as text. Their bounds and count coherence are not checked.' });
-	}
-	if (/\.ish\s|\.arr|\.ogm|^nuc ish\s/.test(input.trim())) {
-		notes.push({ code: 'assay', message: 'FISH, array and optical genome mapping extensions are retained as text; their assay syntax and content are not checked.' });
-	}
-	if (ast.modifiers?.composite !== undefined || ast.modifiers?.incomplete || abnormalities.some((item) => item.type === 'inc')) {
-		notes.push({ code: 'modifier', message: 'Composite or incomplete notation needs manual review. The modifier does not receive a full consistency check.' });
-	}
-	return notes;
+	return getValidationCoverage(ast).notes.map((note) => {
+		if (note.code === 'unknown') return { code: 'unsupported', message: 'Unrecognized entries are not checked by a dedicated rule. Review the preserved source text against the reference.' };
+		if (note.code === 'clone_order') return { ...note, code: 'cell-line-order' };
+		return note;
+	});
 }
 
 export function reviewKaryotype(input: string): ValidationReview {
 	const result = validateKaryotypeNative(input);
-	const coverage = coverageNotes(result.parsed, input);
+	const coverage = coverageNotes(result.parsed);
 	const status = !result.valid ? 'Issues found' : coverage.length ? 'Review required' : 'Checks passed';
 	return { result, status, coverage };
 }

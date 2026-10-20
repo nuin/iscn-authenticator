@@ -21,7 +21,8 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
   });
 
   await t.test('product documentation and example links resolve', async () => {
-    for (const path of ['/validate', '/docs', '/docs/getting-started', '/docs/coverage',
+    for (const path of ['/validate', '/review', '/docs', '/docs/getting-started', '/docs/coverage',
+      '/docs/report-review', '/docs/fish-builder', '/docs/cnv-evidence', '/docs/review-references',
       '/docs/integration', '/docs/lab-evaluation', '/explain', '/explain/del(5)(p15)', '/about', '/privacy', '/terms']) {
       const response = await request(path);
       assert.equal(response.status, 200, path);

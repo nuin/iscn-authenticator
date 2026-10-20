@@ -42,3 +42,8 @@ export type { Band, ChromosomeBands } from "./ideogram.js";
 export { ALL_CHROMOSOME_RULES } from "./rules/chromosome.js";
 export { ALL_ABNORMALITY_RULES } from "./rules/abnormality.js";
 export { ALL_CELL_LINE_RULES, needsCellLineOrderReview } from "./rules/cell-lines.js";
+
+export { getValidationCoverage } from "./coverage.js";
+export type { CoverageNote, ValidationCoverage } from "./coverage.js";
+export type { CloneReference } from "./types.js";
+export { isNormalCellLine } from "./rules/cell-lines.js";

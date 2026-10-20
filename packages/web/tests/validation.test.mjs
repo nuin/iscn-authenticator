@@ -66,6 +66,13 @@ test('issues take precedence while incomplete coverage remains visible', () => {
   assert.ok(review.coverage.some((note) => note.code === 'unsupported'));
 });
 
+test('central core coverage reaches the browser for uncertainty, polyploid totals and finer subbands', () => {
+  for (const input of ['69,XXX', '46,XX,?del(5)(p15)', '46,XX,del(5)(p15.31111)']) {
+    assert.equal(reviewKaryotype(input).status, 'Review required', input);
+    assert.ok(reviewKaryotype(input).coverage.length > 0, input);
+  }
+});
+
 test('coverage includes unsupported abnormalities in later cell lines', () => {
   const review = reviewKaryotype('47,XX,+21[10]/46,XX,unknown[5]');
   assert.ok(review.coverage.some((note) => note.code === 'unsupported'));

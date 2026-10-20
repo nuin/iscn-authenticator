@@ -7,15 +7,18 @@ link the resulting evidence in their controlled release record.
 
 ## Current product boundary
 
-The Pages app provides browser checks, example explanations, D1 accounts and keys,
-and signed-in browser batch review. It has no hosted validation API, metered
+The Pages app provides browser checks, example explanations, report QC, FISH
+construction, a selected-category CNV evidence worksheet, D1 accounts and keys,
+and signed-in browser batch review. Review worksheets use explicit local downloads.
+It has no hosted validation API, metered
 validation usage, saved validation history, or team roles. Deno is a separate
 self-hosted runtime with its own keys and quotas. Checkout remains unavailable
 unless the required Stripe configuration is present.
 
 Core checks have known gaps: unknown abnormalities may pass, ordering multiple
 abnormal clones needs context, accepted assay modifiers are retained without full checking, and
-count ranges skip numeric bounds and coherence checks. The interface must keep
+count ranges do not receive composition/coherence checks. Their ordering and positive
+integer bounds are checked. The interface must keep
 these limits visible; a passing result is not certification or report approval.
 
 ## Owner decisions and evidence
@@ -47,6 +50,10 @@ remain open. This name alone does not enable paid checkout.
 - [ ] Check single results, unknown input, multiple cell lines, count ranges, and assay modifiers.
 - [ ] Verify browser checks make no request containing entered notation or its signature.
 - [ ] Exercise 500/501-entry batches and inspect CSV/JSON downloads, including formula-like inputs.
+- [ ] Exercise report-total mismatches, conclusion conflicts, prior/current comparisons and input edits after review.
+- [ ] Check FISH reporting modes, exact cutoff equality, protocol provenance and worksheet export.
+- [ ] Adjudicate supported CNV score cases and excluded evidence; verify incomplete assessments suppress classification.
+- [ ] Retain local review exports under the laboratory procedure; do not describe them as authenticated signatures or immutable history.
 - [ ] Test keyboard use and narrow screens, including documentation search and navigation.
 - [ ] Save a signup key before continuing; test sign-in, key creation, revocation, and sign-out.
 - [ ] Confirm unavailable billing stays unavailable when secrets are absent.

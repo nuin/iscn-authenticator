@@ -7,6 +7,7 @@
 	let menuOpen = $state(false);
 	const links = [
 		{ href: '/validate', label: 'Validator' },
+		{ href: '/review', label: 'Report review' },
 		{ href: '/explain', label: 'Examples' },
 		{ href: '/docs', label: 'Documentation' },
 		{ href: '/pricing', label: 'Plans' }
@@ -42,7 +43,7 @@
 <footer class="site-footer">
 	<div class="page-shell footer-content">
 		<div class="footer-brand"><a href="/" class="brand-link" aria-label="ISCN Authenticator home"><Brand /></a><p>A notation workspace by Bioinformat.<br />Clearer notation. More informed review.</p></div>
-		<div><h2>Workspace</h2><a href="/validate">Single karyotype</a><a href="/dashboard/batch">Batch review</a><a href="/explain">Example library</a></div>
+		<div><h2>Workspace</h2><a href="/validate">Single karyotype</a><a href="/review">Report review</a><a href="/dashboard/batch">Batch review</a><a href="/explain">Example library</a></div>
 		<div><h2>Resources</h2><a href="/docs/getting-started">Getting started</a><a href="/docs/coverage">Coverage and limitations</a><a href="/docs/integration">Integration guide</a></div>
 		<div><h2>About</h2><a href="/about">The project</a><a href="/privacy">Data and privacy</a><a href="/terms">Terms of use</a></div>
 	</div>
@@ -76,6 +77,6 @@
 	.footer-bottom p { margin: 0; }
 	.footer-bottom a { color: inherit; }
 	@media (max-width: 1060px) { .desktop-nav { gap: 1rem; } .header-content { gap: 1rem; } .header-actions { gap: 1rem; } }
-	@media (max-width: 900px) { .desktop-nav, .header-actions { display: none; } .menu-toggle { display: flex; } .header-content { min-height: 76px; } .footer-content { gap: 2rem; grid-template-columns: 1.4fr 1fr; } }
+	@media (max-width: 980px) { .desktop-nav, .header-actions { display: none; } .menu-toggle { display: flex; } .header-content { min-height: 76px; } .footer-content { gap: 2rem; grid-template-columns: 1.4fr 1fr; } }
 	@media (max-width: 480px) { .footer-content { grid-template-columns: 1fr 1fr; gap: 2rem 1rem; } .footer-brand { grid-column: 1/-1; } .footer-bottom { flex-wrap: wrap; gap: .5rem 1rem; } .footer-bottom p { width: 100%; order: 1; } }
 </style>

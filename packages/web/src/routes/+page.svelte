@@ -12,7 +12,7 @@
 		<p class="audience"><span aria-hidden="true"></span> For cytogenetics and laboratory informatics</p>
 		<h1>Every karyotype<br />deserves a<br />clearer review.</h1>
 		<p class="hero-description">Check the notation. Understand the structure. Bring a consistent first pass to your lab’s karyotype review.</p>
-		<div class="hero-actions"><a href="/validate" class="button">Open the validator</a><a href="/docs/getting-started" class="button secondary">Explore the workflow</a></div>
+		<div class="hero-actions"><a href="/validate" class="button">Open the validator</a><a href="/review" class="button secondary">Open report review</a></div>
 		<p class="hero-note">Runs in your browser. No account needed to start.</p>
 	</div>
 	<div class="hero-visual"><NotationPreview /><p>Example result from the implemented checks.<br /><a href="/docs/coverage">Understand the scope of a result.</a></p></div>
@@ -24,8 +24,8 @@
 	<div class="section-heading"><div><p class="section-label">From notation to review</p><h2>A useful first pass.<br />A clearer next step.</h2></div><p>Whether you are checking one string or reviewing an export, keep the original notation and the evidence of the check together.</p></div>
 	<div class="workflow-grid">
 		<article><span class="workflow-number">01</span><h3>Check a karyotype</h3><p>Paste a string or open an example. See syntax and consistency issues alongside parsed chromosome and breakpoint details.</p><a href="/validate">Try a single check</a></article>
-		<article><span class="workflow-number">02</span><h3>Review the result</h3><p>Separate issues from coverage limits. Inspect what the engine recognized and the parts that still need your attention.</p><a href="/docs/reading-results">Learn to read results</a></article>
-		<article><span class="workflow-number">03</span><h3>Keep a record</h3><p>Download the raw result, or review up to 500 entries in a batch and export row-level results as CSV or JSON.</p><a href="/dashboard/batch">Open batch review</a></article>
+		<article><span class="workflow-number">02</span><h3>Reconcile the report</h3><p>Compare notation with metaphase counts and the structured conclusion. Review differences from a previous result and record your decision.</p><a href="/review">Open laboratory review</a></article>
+		<article><span class="workflow-number">03</span><h3>Keep the evidence</h3><p>Construct a bounded FISH expression, organize CNV evidence, or export a report review with its inputs, references and coverage limits.</p><a href="/docs/report-review">Explore the review workflow</a></article>
 	</div>
 </section>
 
@@ -42,7 +42,7 @@
 
 <section class="page-shell coverage-section">
 	<div><p class="section-label">Know what “checked” means</p><h2>Make the limits<br />part of the review.</h2></div>
-	<div class="coverage-copy"><p>ISCN Authenticator checks implemented notation rules. Some constructs are parsed without complete validation. A passing check does not certify full ISCN compliance or establish a clinical interpretation.</p><p>Coverage notes identify cases such as unrecognized abnormalities, extended assay notation, and multiple cell lines.</p><a href="/docs/coverage">Read coverage and limitations</a></div>
+	<div class="coverage-copy"><p>ISCN Authenticator checks implemented notation rules. Some constructs are parsed without complete validation. A passing check does not certify full ISCN compliance or establish a clinical interpretation.</p><p>Coverage notes identify cases such as unrecognized abnormalities, extended assay notation, and unresolved clone ordering. CNV scoring uses a separate, explicitly bounded evidence worksheet.</p><a href="/docs/coverage">Read coverage and limitations</a></div>
 </section>
 
 <section class="page-shell closing-section"><div><h2>Start with a karyotype<br />you already know.</h2><p>Explore the workspace, compare a result, and see where it fits in your lab.</p></div><a class="button" href="/validate">Open the validator</a></section>

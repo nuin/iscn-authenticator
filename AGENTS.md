@@ -146,6 +146,31 @@ Adding a new abnormality type: update the abnormality parser and dispatch order,
 
 `KaryotypeAST` carries `chromosome_count` (number, `"45~48"` range string, or `null` for FISH-only notation), `sex_chromosomes`, `abnormalities`, nullable `cell_lines` (for mosaics, split on `/`), and nullable `modifiers`. `Abnormality.raw` preserves the original substring including uncertainty `?` and inheritance suffixes (`mat`/`pat`/`dn`), which are represented separately for validation.
 
+ASTs retain original `raw` notation and optional single-line `count`. Related
+clones expose a `reference` (token and one-based position within their recipient
+or donor group), resolved findings and literal `changes`. `clone-references.ts`
+handles this bounded grammar. `rules/routine.ts` validates structural chromosome
+and band references plus inferable near-diploid totals. Consult
+`docs/notation-coverage.md` before extending these checks.
+
+`getValidationCoverage()` in `coverage.ts` reports supported, partial or unparsed
+scope without changing the validation envelope. Keep the UI's coverage notices
+connected to this helper rather than maintaining another list of supported types.
+
+### Browser laboratory workflows
+
+`packages/web/src/routes/review/` hosts report QC, a bounded interphase FISH
+builder and a constitutional CNV evidence worksheet. Pure checks, snapshot
+validation and exports live in `packages/web/src/lib/review/`; components live in
+`lib/components/review/`. Inputs remain in browser memory and records are explicit
+downloads. No workflow payload is stored in D1 or sent to an HTTP validation API.
+
+The CNV worksheet supports an explicit subset of ACMG/ClinGen criteria; incomplete
+or unsupported evidence must suppress its score. Do not infer evidence or default
+clinical cutoffs. Review records are unauthenticated, self-attested snapshots.
+See `docs/laboratory-review.md`, `docs/cnv-evidence.md` and
+`docs/reference-register.md` for scope, schemas and reference maintenance.
+
 ### TypeScript port
 
 `packages/core/src/index.ts` is the public entry point for validation, parser/engine types, explanation helpers, and ideogram data. Use `.js` extensions for intra-package imports so the emitted Node build and Deno's sloppy-import resolution both work.

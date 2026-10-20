@@ -5,6 +5,7 @@
 
 import type { CellLine, KaryotypeAST } from "./types.js";
 import { ParseError } from "./parse-error.js";
+import { resolveCloneReference } from "./clone-references.js";
 import { parseAbnormalities } from "./abnormality-parser.js";
 
 export { ParseError } from "./parse-error.js";
@@ -18,12 +19,14 @@ export class KaryotypeParser {
       throw new ParseError("Karyotype string is empty");
     }
 
+    const original = karyotype;
     karyotype = karyotype.trim();
 
     // Check for standalone interphase FISH notation (nuc ish)
     if (karyotype.startsWith("nuc ish ")) {
       const fishData = karyotype.slice(8); // Remove "nuc ish " prefix
       return {
+        raw: original,
         chromosome_count: null,
         sex_chromosomes: "",
         abnormalities: [],
@@ -55,9 +58,9 @@ export class KaryotypeParser {
 
     // Check for composite karyotype notation (cp[n] at end)
     let compositeCount: number | null = null;
-    const cpMatch = karyotype.match(/\.cp\[(\d+)\]$/);
+    const cpMatch = karyotype.match(/(?:\.cp\[(\d+)\]|\[cp(\d+)\])$/);
     if (cpMatch) {
-      compositeCount = parseInt(cpMatch[1], 10);
+      compositeCount = Number(cpMatch[1] ?? cpMatch[2]);
       karyotype = karyotype.slice(0, -cpMatch[0].length);
     }
 
@@ -77,16 +80,16 @@ export class KaryotypeParser {
 
     // Add modifiers
     if (
-      fishData || arrData || ogmData || compositeCount !== null || isChimera || isMosaic
+      fishData !== null || arrData !== null || ogmData !== null || compositeCount !== null || isChimera || isMosaic
     ) {
       ast.modifiers = ast.modifiers || {};
-      if (fishData) {
+      if (fishData !== null) {
         ast.modifiers.ish = fishData;
       }
-      if (arrData) {
+      if (arrData !== null) {
         ast.modifiers.arr = arrData;
       }
-      if (ogmData) {
+      if (ogmData !== null) {
         ast.modifiers.ogm = ogmData;
       }
       if (compositeCount !== null) {
@@ -100,17 +103,20 @@ export class KaryotypeParser {
       }
     }
 
+    ast.raw = original;
     return ast;
   }
 
   private parseSingleKaryotype(
     karyotype: string,
     extractCount = false,
+    preceding: CellLine[] = [],
   ): KaryotypeAST | { ast: KaryotypeAST; count: number } {
+    const original = karyotype;
     let count = 0;
 
     // Extract cell count if present (e.g., "46,XX[10]")
-    if (extractCount) {
+    if (extractCount || karyotype.includes("[") || karyotype.includes("]")) {
       const countMatch = karyotype.match(CELL_LINE_COUNT_PATTERN);
       if (!countMatch && (karyotype.includes("[") || karyotype.includes("]"))) {
         throw new ParseError("Cell count must be a positive safe integer in square brackets");
@@ -118,10 +124,14 @@ export class KaryotypeParser {
       if (countMatch) {
         karyotype = countMatch[1];
         count = Number(countMatch[2]);
-        if (!Number.isSafeInteger(count)) {
+        if (!Number.isSafeInteger(count) || count <= 0) {
           throw new ParseError("Cell count must be a positive safe integer in square brackets");
         }
       }
+    }
+
+    if (karyotype.includes("[") || karyotype.includes("]")) {
+      throw new ParseError("Unexpected bracketed count inside the cell line");
     }
 
     // Split on comma
@@ -135,7 +145,8 @@ export class KaryotypeParser {
 
     const chromosomeCount = this.parseChromosomeCount(parts[0]);
 
-    const sexChromosomes = this.parseSexChromosomes(parts[1]);
+    const sexToken = parts[1].trim();
+    const sexChromosomes = /^(idem|sl|sdl)/.test(sexToken) ? sexToken : this.parseSexChromosomes(sexToken);
 
     // Parse abnormalities (if any)
     const abnormalities = parts.length > 2
@@ -143,6 +154,8 @@ export class KaryotypeParser {
       : [];
 
     const ast: KaryotypeAST = {
+      raw: original,
+      ...(count ? { count } : {}),
       chromosome_count: chromosomeCount,
       sex_chromosomes: sexChromosomes,
       abnormalities,
@@ -150,6 +163,7 @@ export class KaryotypeParser {
       modifiers: null,
     };
 
+    resolveCloneReference(ast, preceding);
     if (extractCount) {
       return { ast, count };
     }
@@ -166,11 +180,13 @@ export class KaryotypeParser {
       if (!group.trim() && groups.length === 2) continue;
       for (const lineStr of group.split("/")) {
         try {
-          const { ast, count } = this.parseSingleKaryotype(lineStr.trim(), true) as {
+          const { ast, count } = this.parseSingleKaryotype(lineStr.trim(), true, cellLines.filter((line) => line.is_donor === (groupIndex === 1))) as {
             ast: KaryotypeAST;
             count: number;
           };
           cellLines.push({
+            raw: ast.raw,
+            ...(ast.reference ? { reference: ast.reference, changes: ast.changes } : {}),
             chromosome_count: ast.chromosome_count as number | string,
             sex_chromosomes: ast.sex_chromosomes,
             abnormalities: ast.abnormalities,

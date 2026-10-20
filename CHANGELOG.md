@@ -12,6 +12,37 @@ Sections per release: **Added**, **Changed**, **Fixed**, **Removed**.
 
 ---
 
+## Laboratory review update — 2026-10-19
+
+Application/source update; no new npm or PyPI package release is implied.
+
+### Added
+
+- Browser-local report QC with metaphase-total reconciliation, structured-conclusion
+  checks, literal prior/current finding comparison and explicit reviewer records.
+- Interphase FISH copy-number construction for one hybridization/pattern, with
+  explicit nuclei modes and exact comparison to a laboratory-supplied threshold.
+- A constitutional CNV evidence worksheet using selected ACMG/ClinGen criteria and
+  the 2021 correction, with incomplete assessments excluded from scoring.
+- Hosted workflow guides, a notation coverage matrix, export contracts and a
+  versioned reference register.
+- Core coverage metadata, original notation, single-line metaphase counts and
+  bounded related-clone reference resolution.
+
+### Fixed
+
+- Inferable near-diploid numerical totals, malformed chromosome-count ranges,
+  invalid structural chromosome identifiers and nonexistent coarse cytobands.
+- Browser status now uses shared core coverage metadata, retaining review notices
+  for unsupported count inference, uncertain breakpoints and finer subbands.
+
+### Scope
+
+The workflows provide bounded checks and self-attested local records. They do not
+establish full ISCN conformity, authenticated signoff, comprehensive CNV evidence
+assessment or hematologic disease/risk classification. See
+[laboratory review](docs/laboratory-review.md) and [coverage](docs/notation-coverage.md).
+
 ## `@iscn/core` (npm)
 
 ### 0.1.0 — 2026-04
