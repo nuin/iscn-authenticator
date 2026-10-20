@@ -131,5 +131,7 @@ stable scientific-reference URLs.
 
 See [notation coverage](../notation-coverage.md) and the
 [reference register](../reference-register.md) for the limits behind these
-outcomes. Deployment and live verification are recorded separately in the release
-evidence.
+outcomes. The same 48 cases passed through the canonical production validation
+form after deployment, including FISH JSON export and input-locality checks.
+[Release evidence](../releases/2026-10-20-complex-karyotypes.md) identifies the
+deployed commit and verification results.
