@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setupApi, validationRequest } from './helpers/validation-api.mjs';
 import { createIntegrationKey, listIntegrationKeys, revokeIntegrationKey } from '../src/lib/server/validation-api/keys.ts';
+import { validateKey } from '../src/lib/server/db.ts';
 
 test('integration secrets are hashed, tenant scoped, and capped atomically', async (t) => {
   const { db, sqlite, key, call } = await setupApi(t);
@@ -12,6 +13,7 @@ test('integration secrets are hashed, tenant scoped, and capped atomically', asy
   const stored = sqlite.prepare('SELECT hash FROM validation_api_key WHERE id = ?').get(key.id).hash;
   assert.match(stored, /^[a-f0-9]{64}$/);
   assert.notEqual(stored, key.plaintext);
+  assert.equal(await validateKey(db, key.plaintext), null);
   const attempts = await Promise.allSettled(Array.from({ length: 15 }, (_, i) => createIntegrationKey(db, 'api-user', `Device ${i}`)));
   assert.equal(attempts.filter((item) => item.status === 'fulfilled').length, 9);
   const listed = await listIntegrationKeys(db, 'api-user');

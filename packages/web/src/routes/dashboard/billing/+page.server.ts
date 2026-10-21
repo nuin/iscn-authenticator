@@ -1,16 +1,18 @@
 import { env } from 'cloudflare:workers';
 import { redirect, fail, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { checkoutAvailable } from '#lib/server/billing-availability.js';
+import { getCheckoutOffering } from '#lib/server/billing-availability.js';
 import {
 	createBillingPortalSession,
 	createCheckoutSession,
+	listCurrentSubscriptions,
 } from '#lib/server/stripe.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/login');
+	const offering = await getCheckoutOffering(env);
 	return {
-		checkoutAvailable: checkoutAvailable(env),
+		checkoutAvailable: Boolean(offering), offering,
 		portalAvailable: Boolean(env.STRIPE_SECRET_KEY?.trim() && locals.user.stripe_customer_id)
 	};
 };
@@ -22,7 +24,7 @@ export const actions: Actions = {
 		const secretKey = env.STRIPE_SECRET_KEY;
 		const priceId = env.STRIPE_PRICE_ID_PRO;
 		const baseUrl = env.PUBLIC_BASE_URL ?? url.origin;
-		if (!secretKey || !priceId || !checkoutAvailable(env)) {
+		if (!secretKey || !priceId || !(await getCheckoutOffering(env))) {
 			return fail(503, {
 				message:
 					'Paid checkout is not available at the moment. Your browser workspace remains available.',
@@ -30,6 +32,12 @@ export const actions: Actions = {
 		}
 
 		try {
+			if (locals.user.stripe_customer_id) {
+				const subscriptions = await listCurrentSubscriptions(secretKey, locals.user.stripe_customer_id);
+				if (subscriptions.some((item) => item.userId === locals.user!.id && item.prices.includes(priceId) && !['canceled', 'incomplete_expired'].includes(item.status))) {
+					return fail(409, { message: 'This account already has a subscription. Use Manage subscription to update it.' });
+				}
+			}
 			const session = await createCheckoutSession(secretKey, {
 				priceId,
 				customerEmail: locals.user.email,
@@ -44,7 +52,7 @@ export const actions: Actions = {
 			if (isRedirect(err)) {
 				throw err;
 			}
-			console.error('checkout session creation failed:', err);
+			console.error('Checkout session creation failed.');
 			return fail(502, { message: 'Could not start checkout. Try again shortly.' });
 		}
 	},
@@ -75,7 +83,7 @@ export const actions: Actions = {
 			if (isRedirect(err)) {
 				throw err;
 			}
-			console.error('billing portal session creation failed:', err);
+			console.error('Billing portal session creation failed.');
 			return fail(502, { message: 'Could not open the billing portal. Try again shortly.' });
 		}
 	},

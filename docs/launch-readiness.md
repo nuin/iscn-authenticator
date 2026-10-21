@@ -10,10 +10,11 @@ link the resulting evidence in their controlled release record.
 The Pages app provides browser checks, example explanations, report QC, FISH
 construction, a selected-category CNV evidence worksheet, D1 accounts and keys,
 and signed-in browser batch review. Review worksheets use explicit local downloads.
-It has no hosted validation API, metered
-validation usage, saved validation history, or team roles. Deno is a separate
+It also exposes a subscription-gated hosted customer API with dedicated integration
+keys and aggregate period usage. It has no saved validation history or team roles. Deno is a separate
 self-hosted runtime with its own keys and quotas. Checkout remains unavailable
-unless the required Stripe configuration is present.
+until price, currency and included volume are approved and the required Stripe
+Price/credentials are configured. See [hosted API setup](hosted-api.md).
 
 Core checks have known gaps: unknown abnormalities may pass, ordering multiple
 abnormal clones needs context, accepted assay modifiers are retained without full checking, and
@@ -69,6 +70,7 @@ an audit, a qualification result, or a certification. Do not claim medical
 approval, clinical efficacy, a guaranteed support response time, or a hosting
 retention period without an applicable reviewed basis.
 
-A new hosted API, team permissions, persisted result history, or new data flows
-would change the product boundary. Treat those as new implementation and review
+The hosted API adds server processing and aggregate usage to the browser-only
+validation boundary; its data flow and billing lifecycle require launch evidence.
+Team permissions, persisted result history or additional data flows would expand it further. Treat those as new implementation and review
 work, not as features implied by an existing account or a `pro` database value.

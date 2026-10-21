@@ -41,18 +41,20 @@ workflow. Keep manual review for unsupported notation.
 | [Single entry](https://iscn-web.pages.dev/validate) | Browser | No account needed |
 | [Report QC, FISH and CNV evidence](https://iscn-web.pages.dev/review) | Browser; explicit local exports | No account needed |
 | [Batch review](https://iscn-web.pages.dev/dashboard/batch) | Browser, up to 500 entries | Sign in |
+| [Hosted customer API](docs/hosted-api.md) | Cloudflare service | Integration key and paid subscription; pricing pending |
 | TypeScript core | Your Node or Deno process | Consume from source |
 | Deno HTTP API | A deployment you operate | Keys issued by that Deno deployment |
 | Python HTTP wrapper | A deployment you operate | No built-in API-key authentication |
 
-The hosted Cloudflare Pages application does not expose `/api/validate`. Its
-`/validate` route is an interactive page, not the Deno API. Hosted account keys
-live in D1 and are separate from Deno KV keys. Browser checks do not upload entered
-notation; account and billing actions contact the server. Downloads are local,
-and no server-side validation history is provided.
+The hosted customer API accepts `POST /api/v1/validate`; `/validate` remains the
+browser workspace. Integration keys are separate from website account keys and
+Deno KV keys. Browser checks do not upload entered notation; API calls send it to
+the hosted service. The application keeps aggregate API usage, not validation
+bodies or result history.
 
-Paid checkout is unavailable when Stripe is unconfigured. Deno quotas are
-self-hosted service defaults, not hosted browser plan allowances. See
+Price, currency and included volume are pending owner decisions. Checkout stays
+unavailable until a valid monthly Stripe Price and billing credentials are
+configured. See [hosted API setup](docs/hosted-api.md),
 [commercial availability](docs/billing.md) and [launch readiness](docs/launch-readiness.md).
 
 ## Documentation
@@ -62,7 +64,8 @@ self-hosted service defaults, not hosted browser plan allowances. See
 - [Notation coverage](docs/notation-coverage.md): implemented grammar, rule boundaries and exclusions.
 - [CNV evidence](docs/cnv-evidence.md): supported ACMG/ClinGen categories, provisional scoring and evidence requirements.
 - [Reference register](docs/reference-register.md): editions, errata and what each source supports.
-- [API reference](docs/api.md): self-hosted Deno endpoints and the separate Python wrapper.
+- [Hosted customer API](docs/hosted-api.md): integration keys, subscription limits, setup and launch tests.
+- [Deno API reference](docs/api.md): self-hosted Deno endpoints and the separate Python wrapper.
 - [Operator guide](docs/admin.md): Deno configuration, keys, logs, and incidents.
 - [Billing](docs/billing.md): current hosted access and runtime-specific Stripe setup.
 - [Release process](docs/release.md): checks, publishing, and Pages deployment.
@@ -72,6 +75,7 @@ self-hosted service defaults, not hosted browser plan allowances. See
 
 | Component | Location | Purpose |
 |---|---|---|
+| [Hosted customer API](docs/hosted-api.md) | Cloudflare service | Integration key and paid subscription; pricing pending |
 | TypeScript core | [`packages/core/`](packages/core/) | Parser, rules, explanation helpers, and types; Node and Deno |
 | Hosted web app | [`packages/web/`](packages/web/) | SvelteKit application on Cloudflare Pages with D1 accounts |
 | Deno service | [`deno/`](deno/) | Optional HTTP API, middleware, admin CLI, and lightweight UI |

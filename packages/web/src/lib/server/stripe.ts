@@ -1,7 +1,6 @@
 import { accountMetadata, stripeId, stripeObject } from '#lib/server/stripe-events.js';
 import { parseApiOffering, type ApiOffering } from '#lib/server/api-offering.js';
-
-const STRIPE_API = 'https://api.stripe.com/v1';
+import { STRIPE_API, stripeHeaders } from '#lib/server/stripe-config.js';
 
 export interface CurrentSubscription {
   id: string;
@@ -15,7 +14,7 @@ function paidApiPeriods(subscription: Record<string, unknown>, items: unknown[])
   if (subscription.status !== 'active' || subscription.pause_collection != null ||
       !subscription.latest_invoice || typeof subscription.latest_invoice !== 'object') return [];
   const invoice = stripeObject(subscription.latest_invoice);
-  if (invoice.status !== 'paid' || invoice.paid !== true) return [];
+  if (invoice.object !== 'invoice' || invoice.status !== 'paid') return [];
   return items.flatMap((value) => {
     const item = stripeObject(value);
     const offering = parseApiOffering(item.price);
@@ -50,7 +49,7 @@ export async function listCurrentSubscriptions(secretKey: string, customerId: st
   const query = new URLSearchParams({ customer: customerId, status: 'all', limit: '100' });
   query.append('expand[]', 'data.latest_invoice');
   const response = await fetch(`${STRIPE_API}/subscriptions?${query}`, {
-    headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10_000),
+    headers: stripeHeaders(secretKey), signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error('Stripe subscription lookup failed');
   const list = stripeObject(await response.json());
@@ -83,10 +82,11 @@ async function stripeFetch<T>(
   const res = await fetch(`${STRIPE_API}${path}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${secretKey}`,
+      ...stripeHeaders(secretKey),
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: formEncode(body),
+    signal: AbortSignal.timeout(10_000),
   });
   const json = (await res.json()) as { error?: StripeError } & T;
   if (!res.ok || (json as { error?: StripeError }).error) {

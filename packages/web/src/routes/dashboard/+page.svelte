@@ -27,6 +27,8 @@
 	</a>
 </div>
 
+<p><a href="/dashboard/api">Connect a laboratory system with the hosted API →</a></p>
+
 <section class="account-section" aria-labelledby="account-heading">
 	<div class="section-heading"><h2 id="account-heading">Your account</h2><a href="/dashboard/keys">Manage keys <span aria-hidden="true">→</span></a></div>
 	<dl class="panel account-facts">

@@ -1,9 +1,9 @@
 # HTTP API reference
 
-This reference describes the **self-hosted Deno service** in `deno/`. It is not a
-hosted API offer. The Cloudflare Pages website does not expose `/api/validate`,
-and its `/validate` route serves the browser workspace. Keys created in the
-hosted dashboard are stored in D1; Deno authenticates its own keys from Deno KV.
+This reference describes the **self-hosted Deno service** in `deno/`.
+For the Pages customer API at `/api/v1/validate`, use the separate
+[hosted API guide](hosted-api.md). Its `/validate` route is the browser workspace.
+Hosted keys are stored in D1; Deno authenticates its own keys from Deno KV.
 
 Use the base URL of a Deno deployment you operate. Local development defaults to
 `http://127.0.0.1:8000`. See [quickstart](quickstart.md) for a local setup and

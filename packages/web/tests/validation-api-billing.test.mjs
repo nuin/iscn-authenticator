@@ -4,11 +4,11 @@ import { setup, subscription, event, deliver } from './helpers/billing-webhook.m
 
 const start = Math.floor(Date.now() / 1000) - 60;
 const end = start + 30 * 86400;
-const price = { id: 'price_pro', object: 'price', active: true, type: 'recurring', unit_amount: 1000,
-  currency: 'usd', recurring: { interval: 'month', interval_count: 1 }, metadata: { validations_per_month: '100' } };
+const price = { id: 'price_pro', object: 'price', active: true, type: 'recurring', billing_scheme: 'per_unit', unit_amount: 1000,
+  currency: 'usd', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, metadata: { validations_per_month: '100' } };
 
 function current(overrides = {}) {
-  return subscription({ latest_invoice: { status: 'paid', paid: true }, items: { has_more: false, data: [{ price, quantity: 1, current_period_start: start, current_period_end: end }] }, ...overrides });
+  return subscription({ latest_invoice: { object: 'invoice', status: 'paid' }, items: { has_more: false, data: [{ price, quantity: 1, current_period_start: start, current_period_end: end }] }, ...overrides });
 }
 
 test('paid access has an explicit subscription-period expiry and allowance', async (t) => {

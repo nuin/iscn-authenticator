@@ -24,8 +24,15 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
     url: new URL('https://app.example.test/dashboard/billing'),
   };
 
-  await t.test('checkout availability exposes only a boolean and requires all billing settings', async () => {
-    assert.deepEqual(await load(event), { checkoutAvailable: true, portalAvailable: true });
+  const price = { id: bindings.STRIPE_PRICE_ID_PRO, object: 'price', active: true, type: 'recurring', billing_scheme: 'per_unit', unit_amount: 2500,
+    currency: 'cad', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, metadata: { validations_per_month: '500' } };
+  t.mock.method(globalThis, 'fetch', async () => Response.json(price));
+  await t.test('checkout requires a valid configured monthly price and allowance', async () => {
+    const available = await load(event);
+    assert.equal(available.offering.monthlyLimit, 500);
+    assert.equal(available.offering.displayPrice, 'CAD 25.00');
+    assert.equal(available.checkoutAvailable, true);
+    assert.equal(available.portalAvailable, true);
     for (const setting of ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID_PRO', 'STRIPE_WEBHOOK_SECRET']) {
       const value = env[setting];
       delete env[setting];
@@ -48,6 +55,8 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
     await t.test(action, async (subtest) => {
       let called = false;
       subtest.mock.method(globalThis, 'fetch', async (url, options) => {
+        if (String(url).includes('/prices/')) return Response.json(price);
+        if (String(url).includes('/subscriptions?')) return Response.json({ object: 'list', data: [], has_more: false });
         assert.equal(url, `https://api.stripe.com/v1${path}`);
         assert.equal(options.method, 'POST');
         assert.equal(options.headers.Authorization, `Bearer ${bindings.STRIPE_SECRET_KEY}`);
@@ -62,4 +71,16 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
       assert.ok(called);
     });
   }
+  await t.test('existing subscriptions use the portal instead of a second checkout', async (subtest) => {
+    subtest.mock.method(globalThis, 'fetch', async (url) => {
+      if (String(url).includes('/prices/')) return Response.json(price);
+      assert.ok(String(url).includes('/subscriptions?'));
+      return Response.json({ object: 'list', has_more: false, data: [{ id: 'sub_existing', object: 'subscription',
+        customer: 'cus_test', status: 'active', metadata: { customer_id: 'user-test' },
+        items: { has_more: false, data: [{ price: { id: bindings.STRIPE_PRICE_ID_PRO } }] } }] });
+    });
+    const result = await actions.upgrade(event);
+    assert.equal(result.status, 409);
+    assert.match(result.data.message, /Manage subscription/);
+  });
 });

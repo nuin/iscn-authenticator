@@ -3,17 +3,20 @@
 ## Hosted Cloudflare Pages application
 
 The current hosted product provides single-karyotype browser review, an example
-library, accounts and keys, and signed-in browser batch review. It does not expose
-a metered validation API, saved validation history, or team roles.
+library, accounts and keys, signed-in browser batch review, and a subscription-gated
+customer API. It does not provide saved validation history or team roles. See
+[hosted API setup](hosted-api.md) for the current paid-access contract.
 
 The pricing and account billing pages show checkout availability from server
-configuration. When Stripe checkout is unconfigured, paid checkout is unavailable.
+configuration and a verified monthly Stripe Price with an included allowance. Price,
+currency and volume remain pending owner decisions. Unconfigured checkout is unavailable.
 Do not present a commercial price, purchase entitlement, API quota, or service
 level that has not been decided and implemented. A database `free` or `pro` label
 alone does not define a complete commercial offering.
 
-Browser validation does not update a server usage counter. There is no hosted
-monthly-validation usage meter. The Deno limits below apply to a separate runtime.
+Browser validation does not update a server usage counter. Hosted API usage is
+counted per paid subscription period, with a shared hard cap and 60 validations
+per fixed UTC minute. The Deno limits below apply to a separate runtime.
 Hosted D1 account keys cannot authenticate against the Deno service.
 
 ### Configured Stripe flows
@@ -26,7 +29,7 @@ needed to create those sessions; it does not send validation input to Stripe.
 | Configuration | Purpose |
 |---|---|
 | `STRIPE_SECRET_KEY` | Server API credential for Stripe |
-| `STRIPE_PRICE_ID_PRO` | Recurring price selected by the product owner |
+| `STRIPE_PRICE_ID_PRO` | Monthly licensed Price with positive `validations_per_month` metadata |
 | `STRIPE_WEBHOOK_SECRET` | Verify events at `/api/webhooks/stripe` |
 | `PUBLIC_BASE_URL` | Optional callback origin; otherwise the request origin is used |
 
@@ -66,7 +69,10 @@ This permits payment recovery without trusting an old invoice snapshot. A cancel
 subscription cannot reactivate access, and cancellation of an old subscription
 does not remove access supplied by another active matching subscription. A
 scheduled cancellation remains active until Stripe changes the subscription's
-status. The webhook clears the local trial expiry when applying Stripe state.
+status. This legacy plan label alone does not authorize API access: a separate
+current entitlement requires active status, a paid latest invoice, valid item
+periods and Price metadata, and no paused collection. `plan_expires_at` records
+the API entitlement end or null; trialing never creates an API entitlement.
 
 The account mutation and processed-event marker share one
 [D1 batch transaction](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
@@ -79,13 +85,11 @@ error details. Valid events that require no action are acknowledged and recorded
 
 ### Remaining billing launch checks
 
-This is not a guarantee of ordering across distinct events. Stripe does not
-guarantee delivery order, and event timestamps cannot establish it. Fetching
-current subscription state limits stale-event effects, but overlapping Stripe
-reads and D1 writes can still finish in the wrong order. Before relying on this
-as a commercial entitlement system, add serialized per-customer reconciliation
-and durable subscription identity/state, with periodic repair against Stripe.
-See [Stripe event delivery behavior](https://docs.stripe.com/webhooks#event-ordering).
+Per-account reconciliation revisions prevent a delayed Stripe snapshot from
+overwriting a newer committed state. A conflict returns a retryable failure;
+redelivery fetches fresh state. Entitlement, account, revision and event marker
+changes commit atomically. Duplicate events never reset usage. Access expires
+locally at the recorded period end even if a renewal event has not arrived.
 
 The current lookup requests at most 100 subscriptions, including canceled ones.
 It fails for retry if Stripe reports more subscriptions or truncated subscription

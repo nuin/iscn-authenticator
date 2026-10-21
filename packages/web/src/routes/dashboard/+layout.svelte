@@ -7,6 +7,7 @@
 		{ href: '/dashboard', label: 'Overview' },
 		{ href: '/dashboard/batch', label: 'Batch review' },
 		{ href: '/dashboard/keys', label: 'Account keys' },
+		{ href: '/dashboard/api', label: 'API access' },
 		{ href: '/dashboard/billing', label: 'Billing' }
 	];
 </script>
@@ -59,7 +60,7 @@
 		.workspace-shell { grid-template-columns: 1fr; gap: 2rem; padding-top: 1.5rem; }
 		.workspace-sidebar { position: static; }
 		.workspace-label { padding-bottom: 1rem; }
-		nav { grid-template-columns: repeat(4, 1fr); }
+		nav { grid-template-columns: repeat(5, 1fr); }
 		nav a { text-align: center; padding: 0.75rem 0.4rem; font-size: 0.8rem; }
 		.workspace-resources { display: none; }
 		.workspace-account { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 1rem 0.5rem 0; }

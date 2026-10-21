@@ -93,8 +93,9 @@ No API key is needed for local library calls.
 
 ## Evaluate HTTP integration
 
-The hosted Pages website has no `/api/validate` service. Its `/validate` page is
-the browser workspace. Hosted account keys do not authenticate a Deno deployment.
+For the hosted customer service, use `POST /api/v1/validate` with a dedicated
+integration key and an active subscription; see [hosted API setup](hosted-api.md).
+Its `/validate` page is the browser workspace. Hosted keys do not authenticate Deno.
 
 For a local Deno API, use the same explicit KV path for the CLI and server:
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { plaintext }: { plaintext: string } = $props();
+	let { plaintext, kind = 'account', onDismiss }: { plaintext: string; kind?: 'account' | 'API'; onDismiss?: () => void } = $props();
 	let copyMessage = $state('');
 	let copyFailed = $state(false);
 
@@ -7,7 +7,7 @@
 		try {
 			await navigator.clipboard.writeText(plaintext);
 			copyFailed = false;
-			copyMessage = 'Account key copied. Save it in a secure password manager.';
+			copyMessage = `${kind === 'API' ? 'API' : 'Account'} key copied. Save it securely.`;
 		} catch {
 			copyFailed = true;
 			copyMessage = 'Copy was unavailable. Select the key above and copy it manually.';
@@ -16,10 +16,11 @@
 </script>
 
 <div class="plaintext-reveal">
-	<strong>Save your account key now</strong>
-	<p>This is the only time the full key will be shown. You will need it to sign in again.</p>
-	<div role="textbox" aria-readonly="true" tabindex="0" aria-label="Your new account key"><code>{plaintext}</code></div>
-	<button type="button" class="button secondary" onclick={copyKey}>Copy account key</button>
+	<strong>Save your {kind} key now</strong>
+	<p>This is the only time the full key will be shown. {kind === 'API' ? 'Keep it in your server’s secret store. It grants API access when your subscription is active.' : 'You will need it to sign in again.'}</p>
+	<div role="textbox" aria-readonly="true" tabindex="0" aria-label={`Your new ${kind} key`}><code>{plaintext}</code></div>
+	<button type="button" class="button secondary" onclick={copyKey}>Copy {kind} key</button>
+	{#if onDismiss}<button type="button" class="button quiet" onclick={onDismiss}>I have saved this key</button>{/if}
 	<p class="copy-status" class:copy-failed={copyFailed} role="status" aria-live="polite">{copyMessage}</p>
 </div>
 

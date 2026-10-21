@@ -35,12 +35,12 @@
 	</div>
 
 	<section class="panel paid-availability" aria-labelledby="paid-heading">
-		<div><p class="section-label">Paid availability</p><h2 id="paid-heading">{data.checkoutAvailable ? 'Review the current offering' : 'Paid checkout is not available yet'}</h2><p>{data.checkoutAvailable ? 'Review the configured price, billing interval, and purchase details in Stripe before confirming any payment.' : 'The browser tools above are available now. A paid offering and its price will be shown when checkout is available.'}</p></div>
+		<div><p class="section-label">Paid availability</p><h2 id="paid-heading">{data.offering ? 'Hosted validation API' : 'Paid checkout is not available yet'}</h2><p>{data.offering ? `${data.offering.displayPrice} per month · ${data.offering.monthlyLimit.toLocaleString('en')} validations per subscription period. No automatic overage charges. Review taxes, discounts and the final total in Stripe before paying.` : 'The hosted API is built for laboratory integrations. Price and included volume are being finalized. Browser review remains available now.'}</p></div>
 		{#if data.checkoutAvailable}<a href={data.signedIn ? '/dashboard/billing' : '/login'} class="button secondary">View billing options</a>{:else}<span class="availability-label">Not available</span>{/if}
 	</section>
 
 	<div class="pricing-notes">
-		<section><h2>Integrating with a laboratory workflow?</h2><p>This website provides browser validation. The TypeScript library, self-hosted Deno API, and Python wrapper are separate integration options. Website account keys do not grant access to a hosted validation API.</p><a href="/docs/lab-evaluation">Start a laboratory evaluation</a><p><a href="/docs/integration">Read the integration guide</a></p></section>
+		<section><h2>Integrating with a laboratory workflow?</h2><p>Use the hosted API from your laboratory systems with a dedicated integration key and an active subscription. The TypeScript library and self-hosted Deno and Python services remain available for workflows you operate.</p><a href="/docs/hosted-api">Read the hosted API guide</a><p><a href="/docs/integration">Read the integration guide</a></p></section>
 		<section><h2>Know what a result means.</h2><p>Validation checks implemented notation rules. It is not complete ISCN certification, and review by a qualified professional remains essential. Browser results are not saved to your account.</p><a href="/docs/coverage">Read coverage and limitations <span aria-hidden="true">→</span></a></section>
 	</div>
 </div>

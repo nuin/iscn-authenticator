@@ -30,7 +30,7 @@
 	{/if}
 	{#if data.user.plan !== 'pro'}
 		{#if data.checkoutAvailable}
-			<p>Paid checkout is available. Review the configured price, billing interval, and purchase details in Stripe before confirming a payment.</p>
+			<p>{#if data.offering}{data.offering.displayPrice} per month includes {data.offering.monthlyLimit.toLocaleString('en')} API validations per subscription period.{/if} No automatic overage charges. Review the final total in Stripe before confirming payment.</p>
 			<form method="POST" action="?/upgrade" use:enhance><button type="submit" class="button">Review checkout</button></form>
 		{:else}
 			<div class="availability-note"><span class="availability-mark" aria-hidden="true"></span><strong>Paid checkout is not available yet</strong></div>
@@ -39,7 +39,7 @@
 	{/if}
 </section>
 
-<p class="billing-note">This website does not provide a hosted validation API subscription. Account keys and billing here are separate from the self-hosted Deno service. <a href="/docs/integration">Explore integration options</a>.</p>
+<p class="billing-note">Subscriptions enable the <a href="/dashboard/api">hosted validation API</a> after payment is confirmed. Browser checks remain free. Integration keys are separate from website account keys and self-hosted Deno keys. <a href="/docs/hosted-api">Read the API guide</a>.</p>
 
 <style>
 	.plan-panel, .billing-options { padding: clamp(1.5rem, 4vw, 2rem); margin-bottom: 1.5rem; }

@@ -17,7 +17,7 @@
 
 <div class="notice key-scope">
 	<strong>For this website</strong>
-	<p>These keys provide access to your account. They do not authenticate a separate Deno API deployment. <a href="/docs/integration">Read the integration guide</a>.</p>
+	<p>These keys provide access to your account. For hosted API requests, create a separate key on the <a href="/dashboard/api">API access page</a>. These account keys do not authenticate API requests. <a href="/docs/integration">Read the integration guide</a>.</p>
 </div>
 
 {#if form?.message}<p class="notice form-error" role="alert">{form.message}</p>{/if}

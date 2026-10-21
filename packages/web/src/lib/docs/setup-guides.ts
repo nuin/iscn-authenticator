@@ -25,13 +25,13 @@ export const setupGuides: Guide[] = [
 			{
 				id: 'which-service',
 				title: 'Use credentials with the service that issued them',
-				paragraphs: ['Keys created in this hosted Pages application authenticate your account here. They do not enable a hosted validation API.', 'A self-hosted Deno service has separate customers, keys, sessions, and quotas in Deno KV. Hosted account keys are stored in Cloudflare D1. The two stores are not connected, even though the key formats look similar.'],
+				paragraphs: ['Keys created in this hosted Pages application authenticate your account here. For hosted API access, create an integration key at /dashboard/api and activate a paid subscription when checkout is available.', 'A self-hosted Deno service has separate customers, keys, sessions, and quotas in Deno KV. Hosted account keys are stored in Cloudflare D1. The two stores are not connected, even though the key formats look similar.'],
 				links: [{ label: 'Choose an integration option', href: '/docs/integration' }]
 			},
 			{
 				id: 'access-and-billing',
 				title: 'Check current commercial availability',
-				paragraphs: ['The pricing and billing pages show whether paid checkout is configured. When checkout is unavailable, creating an account does not start a paid subscription.', 'The hosted app does not provide a metered validation API, saved validation history, or team roles. Deno API quotas do not describe browser usage.'],
+				paragraphs: ['The pricing and billing pages show whether paid checkout is configured. When checkout is unavailable, creating an account does not start a paid subscription.', 'The hosted API has a subscription allowance shared by integration keys. Browser checks do not consume it. Saved validation history and team roles are not provided. Deno quotas belong to a separate service.'],
 				links: [{ label: 'View access and pricing', href: '/pricing' }, { label: 'Open billing', href: '/dashboard/billing' }]
 			}
 		]
@@ -39,7 +39,7 @@ export const setupGuides: Guide[] = [
 	{
 		slug: 'integration',
 		title: 'Choose an integration path',
-		description: 'Compare local TypeScript, the self-hosted Deno API, and the Python wrapper.',
+		description: 'Compare the hosted customer API, local TypeScript, self-hosted Deno, and Python.',
 		group: 'Set up your workflow',
 		keywords: ['API', 'HTTP', 'REST', 'Node', 'Deno', 'Python', 'curl', 'Bearer', 'self-hosted'],
 		sections: [
@@ -51,11 +51,12 @@ export const setupGuides: Guide[] = [
 					rows: [
 						['Hosted browser workspace', 'Interactive single and batch review on your device.', 'No account for single entries; sign in for batch.'],
 						['TypeScript core from source', 'Checks inside your own Node or Deno application.', 'No service key.'],
+						['Hosted customer API', 'Subscription-gated HTTP validation at /api/v1/validate.', 'An integration key from /dashboard/api.'],
 						['Self-hosted Deno API', 'HTTP access with keys, rate limiting, and quotas you operate.', 'A key issued by that Deno deployment.'],
 						['Python FastAPI wrapper', 'HTTP access to the separately maintained Python library.', 'No built-in key authentication; access controls are your responsibility.']
 					]
 				},
-				note: 'This hosted website does not expose /api/validate. Its /validate route is a browser workspace, not the Deno HTTP endpoint. Do not send API requests to the Pages domain.'
+				note: 'The hosted endpoint is POST /api/v1/validate. Its /validate route is the browser workspace. Follow /docs/hosted-api for the hosted API contract; Deno endpoints below have different keys and response shapes.'
 			},
 			{
 				id: 'typescript',
@@ -119,8 +120,8 @@ export const setupGuides: Guide[] = [
 			},
 			{
 				id: 'self-hosted-data',
-				title: 'Self-hosted APIs have different data flows',
-				paragraphs: ['Calling a Deno or Python HTTP service sends the karyotype to that service. Review the deployment, proxies, logging, access controls, and retention settings before integrating.', 'The Deno request logger omits karyotype payloads, but this does not establish how every proxy or hosting provider handles a request. POST bodies avoid putting the notation into the request URL.', 'This documentation and the repository’s compliance templates do not establish certification, an executed agreement, or suitability for a particular laboratory workflow.'],
+				title: 'Hosted and self-hosted APIs send notation to a server',
+				paragraphs: ['The hosted /api/v1/validate endpoint sends notation to Cloudflare for processing. Its application storage contains hashed integration keys, subscription entitlements and aggregate counts, not notation or results. See /docs/hosted-api for its full contract.', 'Calling a Deno or Python HTTP service sends the karyotype to that service. Review the deployment, proxies, logging, access controls, and retention settings before integrating.', 'The Deno request logger omits karyotype payloads, but this does not establish how every proxy or hosting provider handles a request. POST bodies avoid putting the notation into the request URL.', 'This documentation and the repository’s compliance templates do not establish certification, an executed agreement, or suitability for a particular laboratory workflow.'],
 				links: [{ label: 'Compare integration options', href: '/docs/integration' }]
 			}
 		]
