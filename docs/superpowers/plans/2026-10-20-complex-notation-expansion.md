@@ -61,7 +61,7 @@ engineering regression tests, not clinical validation.
 - [x] Update coverage, API schema, laboratory guides and release evidence.
 - [x] Pin the Python commit/fixture tag, regenerate artifacts, run full checks
   and aislop, and obtain one fresh whole-change review.
-- [ ] Commit/push, deploy Pages and run the live complex corpus.
+- [x] Commit/push, deploy Pages and run the live complex corpus.
 
 ## Review focus
 
