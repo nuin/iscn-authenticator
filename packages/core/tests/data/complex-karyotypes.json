@@ -83,5 +83,10 @@
   {"id":"C82","input":"47,XX,+8[cp5]/47,XY,+9[5]/48,sl2,+10[5]","status":"Review required","purpose":"Composite group does not renumber a usable subsequent source","cells":15,"notes":["composite"]},
   {"id":"C83","input":"47,XX,+8[5]/93,sl1x2[5]","status":"Issues found","purpose":"Numbered reference multiplier uses selected source total","error":"expected total 94"},
   {"id":"C84","input":"47,XX,+8[5]//48,sl1,+9[5]","status":"Issues found","purpose":"Numbered references cannot cross recipient and donor boundary","error":"no preceding reference clone"},
-  {"id":"C85","input":"47,XX,+8[5]/48,sl1,+9[5]/49,idem,+10[5]","status":"Issues found","purpose":"Numbered stemline style cannot mix with idem","error":"Do not mix"}
+  {"id":"C85","input":"47,XX,+8[5]/48,sl1,+9[5]/49,idem,+10[5]","status":"Issues found","purpose":"Numbered stemline style cannot mix with idem","error":"Do not mix"},
+  {"id":"C86","input":"47,XX,+8[5]/48,sl1,+9[5]/48,XX,+10,+11[5]/49,sl2,+12[5]","status":"Review required","purpose":"Explicit descendant leaves one unambiguous new stemline source"},
+  {"id":"C87","input":"47,XX,+8[5]/48,XX,+8,+9[5]/48,XX,+10,+11[5]/49,sl2,+12[5]","status":"Issues found","purpose":"Fully written descendant cannot silently shift another stemline","error":"ambiguous among fully written lines"},
+  {"id":"C88","input":"47,XX,+8[5]/47,XX,+9[5]/48,sl2,+10[5]/47,XX,+11[5]/48,sl3,+12[5]","status":"Review required","purpose":"A third stemline is established after the second"},
+  {"id":"C89","input":"47,XX,+8[5]/47,XX,+9[5]/47,XX,+11[5]/48,sl3,+12[5]","status":"Issues found","purpose":"Skipped numbering cannot guess multiple unwritten family labels","error":"ambiguous among fully written lines"},
+  {"id":"C90","input":"47,XX,+8[5]/47,XX,+9[5]/48,sl2,+10[5]/47,XX,+11[5]/47,XX,+12[5]/48,sl2,+13[5]","status":"Review required","purpose":"An established source stays fixed after further fully written lines"}
 ]

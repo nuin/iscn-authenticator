@@ -14,4 +14,4 @@ dependencies = [
 dev = ["httpx2>=2.13.1,<3.0.0"]
 
 [tool.uv.sources]
-iscn-authenticator = { url = "https://github.com/nuin/iscn-authenticator-py/archive/58f5a26aa94ac8e30744b5a02b062408d410f193.tar.gz" }
+iscn-authenticator = { url = "https://github.com/nuin/iscn-authenticator-py/archive/4c597ba224301aed9da9b8af0320866db45312cb.tar.gz" }

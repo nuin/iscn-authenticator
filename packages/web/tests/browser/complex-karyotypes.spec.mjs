@@ -17,7 +17,7 @@ test('complex notation produces the expected user-visible status for every synth
   await expect(page.locator('#svelte-announcer')).toBeAttached();
   const requests = [];
   page.on('request', (request) => requests.push({ url: request.url(), body: request.postData() }));
-  expect(cases).toHaveLength(85);
+  expect(cases).toHaveLength(90);
   for (const example of cases) {
     await test.step(`${example.id}: ${example.purpose}`, async () => {
       await page.getByLabel('ISCN notation', { exact: true }).fill(example.input);
@@ -51,6 +51,19 @@ test('complex notation produces the expected user-visible status for every synth
         expect(line.abnormalities.map((abn) => [abn.type, abn.chromosome, abn.copy_count]))
           .toEqual([['t', '9;22', 2], ['+', '8', null]]);
         expect(line.changes.map((abn) => abn.raw)).toEqual(['+8']);
+      }
+      if (example.id === 'C86' || example.id === 'C87') {
+        const download = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Download JSON', exact: true }).click();
+        const exported = JSON.parse(await readFile(await (await download).path(), 'utf8'));
+        if (example.id === 'C86') {
+          expect(exported.parsed.cell_lines[3].reference.cell_line).toBe(3);
+          expect(exported.parsed.cell_lines[3].abnormalities.map((abn) => abn.raw)).toEqual(['+10', '+11', '+12']);
+        } else {
+          expect(exported.valid).toBe(false);
+          expect(exported.parsed).toBeNull();
+          expect(exported.errors.join('; ')).toContain('ambiguous among fully written lines');
+        }
       }
     });
   }

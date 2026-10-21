@@ -81,8 +81,8 @@ shared corpus, release that corpus, and advance the fixture pin in
 `packages/core/package.json`. Python library publication belongs in its own repository.
 
 The current validation update uses Python commit
-`58f5a26aa94ac8e30744b5a02b062408d410f193` and the shared corpus tag
-`fixtures-numbered-stemlines-20261020`. The API wrapper pins that Git revision through
+`4c597ba224301aed9da9b8af0320866db45312cb` and the shared corpus tag
+`fixtures-numbered-stemlines-reviewed-20261021`. The API wrapper pins that Git revision through
 `tool.uv.sources` and `api/uv.lock` so it receives the same fixes before a PyPI
 release. Use the documented `uv --locked` commands; a plain pip install of the
 older PyPI release does not include them. This fixture tag does not publish to PyPI.

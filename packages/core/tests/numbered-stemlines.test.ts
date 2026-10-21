@@ -3,6 +3,38 @@ import { validateKaryotypeNative } from "../src/index.ts";
 
 const twoFamilies = "45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2×2[5]/93,sl2x2,+8[2]";
 
+Deno.test("equal source lines retain the selected position", () => {
+  const result = validateKaryotypeNative("47,XX,+8[5]/47,XX,+8[5]/48,sl2,+9[5]/47,XX,+10[5]/48,sl3,+11[5]");
+  assertEquals(result.valid, true, result.errors.join("; "));
+  assertEquals(result.parsed!.cell_lines![2].reference?.cell_line, 2);
+  assertEquals(result.parsed!.cell_lines![4].reference?.cell_line, 4);
+});
+
+Deno.test("fully written descendants cannot silently shift a new numbered stemline", () => {
+  const explicit = validateKaryotypeNative("47,XX,+8[5]/48,sl1,+9[5]/48,XX,+10,+11[5]/49,sl2,+12[5]");
+  assertEquals(explicit.valid, true);
+  assertEquals(explicit.parsed!.cell_lines![3].abnormalities.map((abn) => abn.raw), ["+10", "+11", "+12"]);
+  const rewritten = validateKaryotypeNative("47,XX,+8[5]/48,XX,+8,+9[5]/48,XX,+10,+11[5]/49,sl2,+12[5]");
+  assertEquals(rewritten.valid, false);
+  assertStringIncludes(rewritten.errors.join("; "), "ambiguous among fully written lines");
+});
+
+Deno.test("a third stemline must be established after the second without guessing", () => {
+  const explicit = validateKaryotypeNative("47,XX,+8[5]/47,XX,+9[5]/48,sl2,+10[5]/47,XX,+11[5]/48,sl3,+12[5]");
+  assertEquals(explicit.valid, true, explicit.errors.join("; "));
+  assertEquals(explicit.parsed!.cell_lines![4].reference?.cell_line, 4);
+  const skipped = validateKaryotypeNative("47,XX,+8[5]/47,XX,+9[5]/47,XX,+11[5]/48,sl3,+12[5]");
+  assertEquals(skipped.valid, false);
+  assertStringIncludes(skipped.errors.join("; "), "ambiguous among fully written lines");
+});
+
+Deno.test("an established stemline source stays fixed after further explicit lines", () => {
+  const result = validateKaryotypeNative("47,XX,+8[5]/47,XX,+9[5]/48,sl2,+10[5]/47,XX,+11[5]/47,XX,+12[5]/48,sl2,+13[5]");
+  assertEquals(result.valid, true, result.errors.join("; "));
+  assertEquals(result.parsed!.cell_lines![5].reference?.cell_line, 2);
+  assertEquals(result.parsed!.cell_lines![5].abnormalities.map((abn) => abn.raw), ["+9", "+13"]);
+});
+
 Deno.test("numbered stemlines select independent sources, not intervening sidelines", () => {
   const result = validateKaryotypeNative(twoFamilies);
   assertEquals(result.valid, true, result.errors.join("; "));

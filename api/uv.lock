@@ -222,8 +222,8 @@ wheels = [
 [[package]]
 name = "iscn-authenticator"
 version = "0.2.1"
-source = { url = "https://github.com/nuin/iscn-authenticator-py/archive/58f5a26aa94ac8e30744b5a02b062408d410f193.tar.gz" }
-sdist = { hash = "sha256:85d7ccf5842b3dba8340c1b33865e17bb93eead7c1588140c7368a854de18a09" }
+source = { url = "https://github.com/nuin/iscn-authenticator-py/archive/4c597ba224301aed9da9b8af0320866db45312cb.tar.gz" }
+sdist = { hash = "sha256:102749fab9740296f8f84ed678f7f51ec29111bb300d047335d0712970ca83be" }
 
 [package.metadata]
 requires-dist = [{ name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.100" }]
@@ -248,7 +248,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.143.3,<0.144.0" },
-    { name = "iscn-authenticator", url = "https://github.com/nuin/iscn-authenticator-py/archive/58f5a26aa94ac8e30744b5a02b062408d410f193.tar.gz" },
+    { name = "iscn-authenticator", url = "https://github.com/nuin/iscn-authenticator-py/archive/4c597ba224301aed9da9b8af0320866db45312cb.tar.gz" },
     { name = "pydantic", specifier = ">=2.14.1,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0,<0.55.0" },
 ]

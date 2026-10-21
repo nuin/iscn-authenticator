@@ -46,7 +46,7 @@ Catalogue source: [UCSC hg38 cytoBand download](https://hgdownload.soe.ucsc.edu/
 
 ## Related-clone provenance
 
-`idem` refers to the first clone in its recipient/donor group, including after another fully written clone. `slN` selects the Nth preceding fully written non-reference line in that group; intervening sidelines do not increment the stemline index. Unnumbered `sl` requires one preceding stemline. With a single stemline, sidelines are numbered in written order: `sdl1` references the first preceding resolved sideline, `sdl2` the second. Unnumbered `sdl` requires exactly one preceding sideline. With multiple stemlines, `sdl` and `sdlN` require explicit restatement because this implementation does not infer their family. Mixing `idem` with `sl`/`sdl`, future references and references across a donor boundary are rejected. Numbering follows the submitted text; the implementation does not establish biological clone identity from similarity.
+`idem` refers to the first clone in its recipient/donor group, including after another fully written clone. `sl1` selects that first clone. A new `slN` is resolved sequentially only when exactly one fully written non-reference line follows the last established stemline source. Once selected, a numbered source stays fixed even after further fully written lines. Multiple intervening full lines can include restated descendants, so the implementation rejects that ambiguity instead of counting every full line as an independent stemline. Unnumbered `sl` requires one preceding stemline. With a single stemline, sidelines are numbered in written order: `sdl1` references the first preceding resolved sideline, `sdl2` the second. Unnumbered `sdl` requires exactly one preceding sideline. With multiple stemlines, `sdl` and `sdlN` require explicit restatement because this implementation does not infer their family. Mixing `idem` with `sl`/`sdl`, future references and references across a donor boundary are rejected. Numbering follows the submitted text; the implementation does not establish biological clone identity from similarity.
 
 The AST keeps the original complete input in `raw`. Single-line metaphase counts use `count` and leave `cell_lines: null`. Each explicit cell line keeps `raw`; a resolved related line also carries `reference: { token, cell_line }`, where `cell_line` is one-based within its recipient/donor group, and `changes`, containing the written additional abnormalities. Its `abnormalities` list contains the resolved inherited plus additional findings. Each abnormality retains its literal `raw` text, including accepted Unicode minus and multiplication signs. This expansion represents the written reference and does not establish that the clones are biologically related.
 
@@ -56,19 +56,23 @@ The AST keeps the original complete input in `raw`. Single-line metaphase counts
 45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2x2[5]/93,sl2x2,+8[2]
 ```
 
-Here `sl1` selects line 1. `sl2` selects line 3, because line 2 is a
-reference-derived sideline. Lines 4 and 5 independently double line 3: each
+Here `sl1` selects line 1. `sl2` selects line 3: it is the only fully
+written source after line 1, while line 2 is a reference-derived sideline. Lines 4 and 5 independently double line 3: each
 inherits two copies of its translocation, and only line 5 adds chromosome 8.
 Neither inherits the first family's chromosome 7 loss. Their metadata records
 `reference.cell_line: 3` and `reference.multiplier: 2`; the literal reference token
 and original line remain unchanged. The case retains review coverage for clone
 ordering and expanded arithmetic.
 
-Within a donor group, numbering restarts after `//`. Composite groups occupy
-their written position among fully written lines but cannot supply a reference;
-they are never silently skipped to make an index select a different source.
-For multiple stemlines, use explicit `slN` plus the complete additional changes,
-or write the whole line. These restrictions describe implementation limits,
+Within a donor group, numbering restarts after `//`. Composite groups cannot
+supply a reference and are never silently skipped when checking whether a new
+source is unambiguous.
+Establish sources in sequence: after an existing numbered source, introduce
+one fully written source before its first new `slN` reference. If several full
+lines intervene or an intermediate number has not been established, write out
+the referenced line instead. A fully written descendant must never silently
+change the source of a different family. These are syntactic safeguards, not
+a way of deciding whether biologically distinct stemlines exist. These restrictions describe implementation limits,
 not a claim that all other shorthand is invalid under ISCN.
 
 ## Expanded clones and composite groups

@@ -13,7 +13,7 @@
 ## Global constraints and behavior contract
 
 - Maintain Python/TypeScript validity, errors, coverage and normalized AST parity.
-- `slN` selects the Nth preceding fully written non-reference line, within one recipient/donor group. A composite remains in numbering but cannot be selected as a reference.
+- Review correction: `sl1` selects the first clone. Each new `slN` must be the next number and have exactly one fully written source after the last established source. Previously established sources stay fixed. Multiple candidate full lines can include descendants and require restatement; composites cannot supply a reference or be silently skipped.
 - `sl` is permitted only with one preceding stemline. `idem` always selects the first clone even after an independent line; mixing idem and sl/sdl remains rejected.
 - `sdl`/`sdlN` remain supported with one preceding stemline. With multiple stemlines, reject with a restatement message rather than choose a family implicitly.
 - Preserve source findings, `raw`, `changes`, reference token, one-based group-local `cell_line` and multiplier behavior.
@@ -31,11 +31,11 @@ Check whether fully written lines can be incorrectly treated as stemlines; linea
 
 **Interfaces:** Consume existing `resolveCloneReference(ast, preceding)` / `resolve_clone_reference`; produce unchanged AST fields with selected source and expanded findings.
 
-- [ ] Write failing tests for two independent stemlines, repeated multipliers from sl2, sl1 after sl2, idem after an independent clone, ambiguous sdl, future/huge indexes, composites and donor boundaries. Hand-derive inherited findings and source line numbers.
-- [ ] Run targeted Deno/Python tests. Expected: numbered references and idem-after-independent fail before implementation; ambiguous sdl demonstrates incorrect acceptance.
-- [ ] Implement selection in both runtimes, add corpus cases and advance core coverage revision to `2026-10-20.2`.
-- [ ] Run core and Python suites and normalized parity. Expected: all pass, source findings preserved.
-- [ ] Commit implementation in both repositories.
+- [x] Write failing tests for two independent stemlines, repeated multipliers from sl2, sl1 after sl2, idem after an independent clone, ambiguous sdl, future/huge indexes, composites and donor boundaries. Hand-derive inherited findings and source line numbers.
+- [x] Run targeted Deno/Python tests. Expected: numbered references and idem-after-independent fail before implementation; ambiguous sdl demonstrates incorrect acceptance.
+- [x] Implement selection in both runtimes, add corpus cases and advance core coverage revision to `2026-10-20.2`.
+- [x] Run core and Python suites and normalized parity. Expected: all pass, source findings preserved.
+- [x] Commit implementation in both repositories.
 
 ### Task 2: Workspace documentation and release
 
@@ -43,8 +43,8 @@ Check whether fully written lines can be incorrectly treated as stemlines; linea
 
 **Interfaces:** Consume Task 1 provenance; display original input and the actual referenced line. Keep existing report partial-coverage behavior.
 
-- [ ] Add browser export/provenance assertions for separate stemlines, update full coverage and inline examples, publish immutable Python/fixture pins.
-- [ ] Build and run core, Python, API, Deno, web and browser suites; run `aislop scan -d .`. Expected: all pass; no new findings beyond four existing reference-URL false positives.
-- [ ] Commit release changes, obtain one fresh whole-change review, fix important findings with regression tests.
+- [x] Add browser export/provenance assertions for separate stemlines, update full coverage and inline examples, publish immutable Python/fixture pins.
+- [x] Build and run core, Python, API, Deno, web and browser suites; run `aislop scan -d .`. Expected: all pass; no new findings beyond four existing reference-URL false positives.
+- [x] Commit release changes, obtain one fresh whole-change review, fix important findings with regression tests.
 - [ ] Push and deploy Pages; run the expanded complex corpus against production. Expected: every case matches its intended outcome, with original input and group-local reference metadata intact.
 - [ ] Commit verification evidence and record remaining limits.

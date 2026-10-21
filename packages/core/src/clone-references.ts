@@ -2,6 +2,27 @@ import { ParseError } from "./parse-error.js";
 import { expandClone } from "./clone-arithmetic.js";
 import type { CellLine, KaryotypeAST } from "./types.js";
 
+function numberedStemline(index: number, token: string, preceding: CellLine[]): CellLine {
+  const established = new Map<number, CellLine>([[1, preceding[0]]]);
+  let last = 1;
+  for (const line of preceding) {
+    const numbered = line.reference?.token.match(/^sl([1-9]\d*)(?:[x×]\d+)?$/);
+    if (numbered && line.reference) {
+      const number = Number(numbered[1]);
+      established.set(number, preceding[line.reference.cell_line - 1]);
+      last = Math.max(last, number);
+    }
+  }
+  const known = established.get(index);
+  if (known) return known;
+  const lastSource = established.get(last)!;
+  const candidates = preceding.slice(preceding.indexOf(lastSource) + 1).filter((line) => !line.reference);
+  if (index !== last + 1 || candidates.length !== 1) {
+    throw new ParseError(`Clone reference '${token}' is ambiguous among fully written lines; spell out this cell line`);
+  }
+  return candidates[0];
+}
+
 export function resolveCloneReference(ast: KaryotypeAST, preceding: CellLine[]): void {
   const token = ast.sex_chromosomes;
   if (!/^(idem|sl|sdl)/.test(token)) return;
@@ -31,8 +52,9 @@ export function resolveCloneReference(ast: KaryotypeAST, preceding: CellLine[]):
     reference = sidelines[base === "sdl" ? 0 : Number(base.slice(3)) - 1];
     if (!reference) throw new ParseError(`Clone reference '${token}' has no preceding sideline`);
   } else if (base.startsWith("sl") && base !== "sl") {
-    reference = stemlines[Number(base.slice(2)) - 1];
-    if (!reference) throw new ParseError(`Clone reference '${token}' has no preceding stemline`);
+    const index = Number(base.slice(2));
+    if (index > stemlines.length) throw new ParseError(`Clone reference '${token}' has no preceding stemline`);
+    reference = numberedStemline(index, token, preceding);
   } else if (base === "sl" && stemlines.length > 1) {
     throw new ParseError(`Clone reference '${token}' is ambiguous after an independent clone`);
   }

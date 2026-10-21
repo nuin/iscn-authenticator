@@ -3,8 +3,10 @@
 Core revision: `2026-10-20.2`. Release verification: 2026-10-21.
 
 This extension resolves `sl1`, `sl2` and subsequent numbered stemline references
-within their recipient or donor group. Reference-derived sidelines do not change
-stemline numbering. Each descendant retains its original input, selected source
+within their recipient or donor group. New numbered sources are established sequentially only when there is exactly
+one fully written source after the last established stemline. Multiple full
+lines can include restated descendants and require explicit restatement.
+Previously established numbered sources remain fixed. Each descendant retains its original input, selected source
 line, literal additional changes and any multiplier. `idem` remains anchored to
 the first clone even after another fully written clone.
 
@@ -18,8 +20,8 @@ resolution, not an inference of biological clone identity.
 ## Source and dependency pins
 
 - Main implementation commit: `16393531be316f0060fb6e9ed276414d88359877`.
-- Python implementation: `58f5a26aa94ac8e30744b5a02b062408d410f193`.
-- Shared corpus tag: `fixtures-numbered-stemlines-20261020`.
+- Python implementation: `4c597ba224301aed9da9b8af0320866db45312cb`.
+- Shared corpus tag: `fixtures-numbered-stemlines-reviewed-20261021`.
 - The API lockfile pins the Python archive; both branches remain unmerged.
 
 ## Verification
@@ -32,17 +34,17 @@ was advanced.
 
 | Check | Result |
 |---|---|
-| Complex corpus / Python–TypeScript normalized AST parity | 85/85 |
-| Core Deno / Node tests | 204 / 7 passed |
-| Python library suite, including properties | 301 passed |
+| Complex corpus / Python–TypeScript normalized AST parity | 90/90 |
+| Core Deno / Node tests | 213 / 7 passed |
+| Python library suite, including properties | 304 passed |
 | FastAPI, Python 3.11 and 3.14 with warnings as errors | 21 passed on each |
 | Deno service suite | 288 passed |
 | Web integration suite | 110 passed |
-| Browser suite, including all 85 corpus cases and clone JSON export | 17 passed |
+| Browser suite, including all 90 corpus cases and clone JSON export | 17 passed |
 | TypeScript build, Svelte check, web build, Deno check, bundle freshness | Passed |
 | Aislop | 99/100; zero errors; four existing non-fixable reference-URL warnings |
 
-The corpus contains seven Checks passed, 38 Review required and 40 Issues found
+The corpus contains seven Checks passed, 41 Review required and 42 Issues found
 outcomes. It is synthetic regression evidence. Python and TypeScript share design,
 fixtures and reference data, so agreement establishes parity rather than
 independent ISCN validation. The retained URL warnings concern stable scientific
@@ -60,5 +62,26 @@ references, full assay grammar and clinical classification remain outside this
 extension. Explicit numbered references do not remove ordering or reconstruction
 review notices.
 
-Production deployment and independent review evidence are recorded after their
-checks complete.
+## Independent review and rulings
+
+A fresh reviewer found one important contract defect: counting every fully
+written line as a stemline could select a restated descendant instead of a
+separate family. The paired shorthand/full-text regression failed in both ports.
+Sources are now established sequentially, with exactly one intervening full
+source for a new number; ambiguous or skipped establishment requires restatement.
+Established sources stay fixed. This is intentionally conservative: otherwise
+valid but ambiguous shorthand may need to be written out.
+
+The same fix pass exposed a Python provenance issue with equal dataclass values.
+Source positions now use object identity, matching TypeScript. Its regression
+failed before the fix and passed afterward. The final targeted suites contain
+20 TypeScript tests and six Python tests with subcases. Complete suites were
+rerun after both fixes; no review findings were deferred.
+
+The reviewer set aside general X/Y arithmetic, full derivative reconstruction
+and clinical clone identity. These remain documented manual-review limits;
+the cost is additional laboratory review, not an inferred classification.
+Production behavior was also outside the review: it must be established by the
+live corpus after deployment, rather than inferred from local tests.
+
+Production deployment evidence is recorded after the live checks complete.

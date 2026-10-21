@@ -2,7 +2,7 @@
 
 Updated: 2026-10-21. Core rule revision: `2026-10-20.2`.
 
-The [85-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
+The [90-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
 tests the implemented checks, coverage notices and known exclusions. It contains
 no patient data. Each case records its input, intended user-visible status,
 purpose and, where relevant, required coverage notes, errors or cell total.
@@ -14,13 +14,15 @@ example is a complete, clinically appropriate ISCN description.
 C74–C85 add independent stemlines, explicit source selection after intervening
 sidelines, donor-local numbering, composite source restrictions, oversized and
 forward indices, multiplied totals and reference-style conflicts. The corpus
-now contains seven Checks passed, 38 Review required and 40 Issues found outcomes.
-All 85 agree between runtimes, including normalized resolved structures.
+now contains seven Checks passed, 41 Review required and 42 Issues found outcomes.
+All 90 agree between runtimes, including normalized resolved structures.
 
 An `sdl1` after an independent stemline previously selected a sideline without
 establishing its family. This bounded implementation now rejects that ambiguity.
-Explicit `sl1`/`sl2` select the intended fully written source, while `idem` remains
-anchored to the first clone. The new browser export check verifies that the second
+Explicit `sl1`/`sl2` select unambiguously established sources, while `idem`
+remains anchored to the first clone. C86–C90 cover the review-discovered risk of
+counting fully written descendants as independent stemlines: new sources must
+be established sequentially and previously selected sources stay fixed. The new browser export check verifies that the second
 family inherits its own translocation and does not acquire the first family's
 chromosome 7 loss.
 
@@ -146,7 +148,7 @@ node packages/core/scripts/check-complex-parity.mjs api/.venv/bin/python /tmp/is
 
 The audit exits nonzero on any unexpected status, missing expected diagnostic or
 coverage note, wrong cell total, or Python/TypeScript mismatch. Its optional final
-argument writes measured results for all 85 cases. It refuses an incomplete
+argument writes measured results for all 90 cases. It refuses an incomplete
 corpus.
 
 Core regressions run with `npm --prefix packages/core test`. Browser regressions
@@ -157,7 +159,7 @@ npm --prefix packages/web run build
 npm --prefix packages/web run test:browser
 ```
 
-The browser test exercises all 85 inputs through the visible validation form,
+The browser test exercises all 90 inputs through the visible validation form,
 checks review notices, and checks that no entered payload is sent in a request.
 The existing browser suite also exercises report QC, FISH construction, CNV
 worksheets and account workflows.
