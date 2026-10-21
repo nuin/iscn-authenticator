@@ -78,12 +78,14 @@ async function stripeFetch<T>(
   path: string,
   secretKey: string,
   body: Record<string, string | undefined>,
+  idempotencyKey?: string,
 ): Promise<T> {
   const res = await fetch(`${STRIPE_API}${path}`, {
     method: 'POST',
     headers: {
       ...stripeHeaders(secretKey),
       'Content-Type': 'application/x-www-form-urlencoded',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     body: formEncode(body),
     signal: AbortSignal.timeout(10_000),
@@ -119,6 +121,7 @@ export async function createCheckoutSession(
     successUrl: string;
     cancelUrl: string;
     stripeCustomerId?: string | null;
+    idempotencyKey?: string;
   },
 ): Promise<CheckoutSession> {
   const body: Record<string, string | undefined> = {
@@ -137,7 +140,7 @@ export async function createCheckoutSession(
   } else {
     body.customer_email = args.customerEmail;
   }
-  return await stripeFetch<CheckoutSession>('/checkout/sessions', secretKey, body);
+  return await stripeFetch<CheckoutSession>('/checkout/sessions', secretKey, body, args.idempotencyKey);
 }
 
 export interface BillingPortalSession {

@@ -27,7 +27,7 @@ The JSON error envelope is `{request_id, error: {code, message}}`; see OpenAPI f
 
 ## Database migration and deployment
 
-Run commands from `packages/web`. Existing installations already have `schema.sql` tables. **Do not replay `schema.sql` against production.** For a new installation only, initialize that base schema first. This release adds five tables in an additive, repeatable migration:
+Run commands from `packages/web`. Existing installations already have `schema.sql` tables. **Do not replay `schema.sql` against production.** For a new installation only, initialize that base schema first. This release adds six tables in an additive, repeatable migration:
 
 | Table | Purpose |
 | --- | --- |
@@ -36,24 +36,26 @@ Run commands from `packages/web`. Existing installations already have `schema.sq
 | `api_usage` | Aggregate validation counts per account and period |
 | `api_rate_limit` | Monotonic account-wide minute bucket and transaction reservation |
 | `api_billing_state` | Revision/event marker for optimistic webhook reconciliation |
+| `api_checkout_attempt` | One durable Checkout attempt per account, frozen parameters and Stripe session ID |
 
 Apply the migration before deploying the Worker that reads these tables:
 
 ```sh
 npx wrangler d1 execute DB --remote --file migrations/0001_validation_api.sql
+npx wrangler d1 execute DB --remote --file migrations/0002_checkout_attempts.sql
 npm run check
 npm run build
 npx wrangler pages deploy .svelte-kit/cloudflare --project-name iscn-web --branch master
 ```
 
-The project currently initializes schema through explicit files, not Wrangler's migration-history mechanism. Local test helpers apply the base schema plus each migration to an isolated database. This migration uses `CREATE TABLE IF NOT EXISTS`; it does not alter or delete existing rows. To roll back application code, retain the additive tables. Do not remove usage or entitlement rows as a deployment workaround.
+The project currently initializes schema through explicit files, not Wrangler's migration-history mechanism. Local test helpers apply the base schema plus each migration to an isolated database. Both migrations use `CREATE TABLE IF NOT EXISTS`; it does not alter or delete existing rows. To roll back application code, retain the additive tables. Do not remove usage or entitlement rows as a deployment workaround.
 
 ## Configure billing when commercial terms are approved
 
 1. In Stripe test mode, create an active, fixed-price recurring **monthly** Price (interval count 1), with a positive integer `unit_amount` and currency. Add Price metadata `validations_per_month` as a positive integer string. This is the included allowance; the key must be on the **Price**, not only its Product. Do not edit a live allowance casually: webhook reconciliation reads current Price metadata. Create a new Price when changing commercial terms.
 2. Configure `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_PRO`, `STRIPE_WEBHOOK_SECRET`, and the canonical HTTPS `PUBLIC_BASE_URL` in the existing Pages project. Use the Cloudflare secret interface/CLI; never commit values or paste them into chat. No secret is exposed to the browser. The Price ID and public base URL are nonsecret configuration.
 3. Outbound Stripe requests pin API version `2025-03-31.basil`, which provides item-level billing periods. Configure the webhook with that version and a signed endpoint at the canonical origin plus `/api/webhooks/stripe`. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_succeeded`, `invoice.payment_failed`, and subscription created/updated/deleted/paused/resumed events. Keep retries enabled.
-4. Configure the Stripe customer portal for payment methods, invoices and cancellation. This release supports a single API offering; do not enable arbitrary product/quantity changes in the portal. Existing subscriptions are directed to the portal rather than a second checkout. Before enabling live checkout, add and test durable protection against simultaneous initial checkouts before a customer has been associated; that pre-existing path can still create duplicate subscriptions.
+4. Configure the Stripe customer portal for payment methods, invoices and cancellation. This release supports a single API offering; do not enable arbitrary product/quantity changes in the portal. Existing subscriptions are directed to the portal rather than a second checkout. Simultaneous initial checkouts share a durable per-account attempt and Stripe idempotency key. Repeated clicks resume an open session; a completed session blocks another checkout while payment is reconciled. Confirmed expired sessions and completed sessions whose subscription is confirmed canceled or incomplete-expired can be replaced. Unknown outcomes reuse frozen request parameters for up to 23 hours, then fail closed before Stripe may prune the idempotency key.
 5. Complete the test-mode sequence below. Only then configure live-mode credentials and the approved live Price. Confirm seller identity, customer support and purchase terms before enabling live checkout; these remain operator launch decisions.
 
 Checkout availability reads and validates the configured Price, including its amount, monthly recurrence and allowance. Invalid metadata, an inactive Price or a failed Stripe lookup disables checkout. Actual price/currency/volume appear on pricing and billing pages when available; customers review the final taxes/discounts/total in Stripe.
@@ -89,8 +91,8 @@ The tests include real SQLite concurrency predicates, signed webhook lifecycle/r
 
 ## Data handling and operations
 
-The API sends notation to Cloudflare for processing. Application storage contains key hashes/labels/timestamps, entitlement and aggregate usage; no request bodies or validation results are persisted. The structured request logger accepts only UUID, operation, method, status and duration. Unexpected failures log sanitized operational metadata. Provider access/security metadata remains separate. Avoid patient identifiers and credential-bearing URLs.
+The API sends notation to Cloudflare for processing. Application storage contains key hashes/labels/timestamps, entitlement, aggregate usage and pending Checkout parameters (account/billing IDs, email, Price and callback URLs); no request bodies or validation results are persisted. The structured request logger accepts only UUID, operation, method, status and duration. Unexpected failures log sanitized operational metadata. Provider access/security metadata remains separate. Avoid patient identifiers and credential-bearing URLs.
 
-Watch 503 rates and webhook delivery failures. A missing renewal delivery cannot extend paid access beyond its recorded end. Repair webhook configuration and redeliver after fixing a failure; do not manually set `user.plan = 'pro'` as an API activation shortcut. The API also requires a valid current entitlement.
+Watch 503 rates, pending Checkout conflicts and webhook delivery failures. For a stale unknown Checkout outcome, locate the original session using the attempt ID / Stripe request logs before resetting anything. Confirm it is expired or that its subscription has ended; if it completed, reconcile its webhook. Never delete an unknown attempt just to allow another purchase. A missing renewal delivery cannot extend paid access beyond its recorded end. Repair webhook configuration and redeliver after fixing a failure; do not manually set `user.plan = 'pro'` as an API activation shortcut. The API also requires a valid current entitlement.
 
 References: [Cloudflare D1 batch transactions](https://developers.cloudflare.com/d1/worker-api/d1-database/), [Stripe subscription object](https://docs.stripe.com/api/subscriptions/object), [Stripe subscription lifecycle](https://docs.stripe.com/billing/subscriptions/overview), [Stripe currency units](https://docs.stripe.com/currencies).

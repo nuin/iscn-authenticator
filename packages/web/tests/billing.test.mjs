@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
+import { createTestDatabase } from './helpers/sqlite.mjs';
 
 test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t) => {
   const bindings = {
@@ -19,6 +20,9 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
   t.after(() => hooks.deregister());
   const { actions, load } = await import('../.svelte-kit/output/server/entries/pages/dashboard/billing/_page.server.ts.js');
   const { env } = await import(moduleUrl);
+  const database = createTestDatabase(t);
+  database.sqlite.exec("INSERT INTO user (id, email, created_at) VALUES ('user-test', 'billing@example.test', 1)");
+  env.DB = database.db;
   const event = {
     locals: { user: { id: 'user-test', email: 'billing@example.test', stripe_customer_id: 'cus_test' } },
     url: new URL('https://app.example.test/dashboard/billing'),
@@ -61,7 +65,7 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
         assert.equal(options.method, 'POST');
         assert.equal(options.headers.Authorization, `Bearer ${bindings.STRIPE_SECRET_KEY}`);
         called = true;
-        return Response.json({ id: 'session-test', url: destination });
+        return Response.json({ id: action === 'upgrade' ? 'cs_test' : 'bps_test', url: destination });
       });
       await assert.rejects(actions[action](event), (error) => {
         assert.equal(error.status, 303);

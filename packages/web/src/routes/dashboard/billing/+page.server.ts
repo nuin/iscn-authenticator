@@ -2,9 +2,9 @@ import { env } from 'cloudflare:workers';
 import { redirect, fail, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCheckoutOffering } from '#lib/server/billing-availability.js';
+import { CheckoutPending, createOrResumeCheckout } from '#lib/server/checkout-attempts.ts';
 import {
 	createBillingPortalSession,
-	createCheckoutSession,
 	listCurrentSubscriptions,
 } from '#lib/server/stripe.js';
 
@@ -32,22 +32,25 @@ export const actions: Actions = {
 		}
 
 		try {
+			let endedSubscriptions: string[] = [];
 			if (locals.user.stripe_customer_id) {
 				const subscriptions = await listCurrentSubscriptions(secretKey, locals.user.stripe_customer_id);
+				endedSubscriptions = subscriptions.filter((item) => item.userId === locals.user!.id && ['canceled', 'incomplete_expired'].includes(item.status)).map((item) => item.id);
 				if (subscriptions.some((item) => item.userId === locals.user!.id && item.prices.includes(priceId) && !['canceled', 'incomplete_expired'].includes(item.status))) {
 					return fail(409, { message: 'This account already has a subscription. Use Manage subscription to update it.' });
 				}
 			}
-			const session = await createCheckoutSession(secretKey, {
+			const session = await createOrResumeCheckout(env.DB, secretKey, {
 				priceId,
 				customerEmail: locals.user.email,
 				customerId: locals.user.id,
 				stripeCustomerId: locals.user.stripe_customer_id,
 				successUrl: `${baseUrl}/dashboard/billing?upgrade=success`,
 				cancelUrl: `${baseUrl}/dashboard/billing?upgrade=cancel`,
-			});
+			}, endedSubscriptions);
 			throw redirect(303, session.url, { external: true });
 		} catch (err) {
+			if (err instanceof CheckoutPending) return fail(409, { message: err.message });
 			// SvelteKit redirects throw; let those propagate.
 			if (isRedirect(err)) {
 				throw err;
