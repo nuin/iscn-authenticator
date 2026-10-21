@@ -10,6 +10,7 @@
 	let submitted = $state('');
 	let review = $state<ValidationReview | null>(null);
 	let inputError = $state('');
+	let entryRegion: HTMLDivElement | undefined;
 	let resultRegion: HTMLDivElement | undefined;
 	const reference: KaryotypeAST = { chromosome_count: 46, sex_chromosomes: 'XX', abnormalities: [], cell_lines: null, modifiers: null };
 	const examples = [
@@ -35,6 +36,7 @@
 		submitted = input.trim();
 		review = reviewKaryotype(submitted);
 		await tick();
+		entryRegion?.scrollTo({ top: 0 });
 		resultRegion?.focus({ preventScroll: true });
 		resultRegion?.scrollIntoView({ block: 'start' });
 	}
@@ -59,10 +61,10 @@
 	<header class="page-heading">
 		<p class="section-label">Karyotype workspace</p>
 		<h1>Review the notation.<br /><span>See what was checked.</span></h1>
-		<p>Run supported syntax and consistency checks, inspect the parsed notation, and keep the result with your review.</p>
+		<p>Check your notation and review the result alongside it. Inspect issues, chromosome diagrams and parsed details, then export the result.</p>
 	</header>
 	<div class="workspace">
-		<div class="entry-column">
+		<div class="entry-column" bind:this={entryRegion} role="region" aria-label="Notation and examples">
 			<section class="entry-panel" aria-labelledby="entry-heading">
 				<div class="entry-heading"><span class="step">01</span><h2 id="entry-heading">Enter a karyotype</h2></div>
 				<form onsubmit={(event) => { event.preventDefault(); runCheck(); }}>
@@ -116,6 +118,7 @@
 	.page-heading > p:last-child { max-width: 590px; color: var(--color-text-muted); font-size: 1rem; line-height: 1.7; }
 	.workspace { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(0, 1.35fr); gap: 2rem; align-items: start; }
 	.entry-column, .result-column { min-width: 0; }
+	.entry-column { position: sticky; top: 1rem; max-height: 75dvh; overflow-y: auto; scrollbar-gutter: stable; padding: 4px; margin: -4px; }
 	.result-column { scroll-margin-top: 1rem; }
 	.entry-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.5rem; }
 	.entry-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
@@ -153,5 +156,9 @@
 	.empty-footer p { margin: 0; font-size: .8rem; line-height: 1.8; }
 	.scope-note { max-width: 850px; font-size: .75rem; color: var(--color-text-muted); line-height: 1.7; margin: 2.5rem 0 0; }
 	.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-	@media (max-width: 850px) { .workspace { grid-template-columns: 1fr; gap: 1.5rem; } .validation-page { padding-top: 2rem; } }
+	@media (max-width: 850px) {
+		.workspace { grid-template-columns: 1fr; gap: 1.5rem; }
+		.validation-page { padding-top: 2rem; }
+		.entry-column { position: static; max-height: none; overflow: visible; scrollbar-gutter: auto; }
+	}
 </style>

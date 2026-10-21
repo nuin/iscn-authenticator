@@ -12,7 +12,8 @@ export const reviewGuides: Guide[] = [
 				id: 'open-the-workspace',
 				title: 'Start with an example',
 				paragraphs: ['The single-karyotype workspace is available without an account. Enter notation only; patient names, specimen identifiers, and report text are not needed.'],
-				steps: ['Open the validator and enter 47,XY,+21, or choose a built-in example.', 'Run the check. Review the result, any issues, and the coverage notice.', 'Inspect the parsed notation before copying or downloading the result.'],
+				steps: ['Open the validator and enter 47,XY,+21, or choose a built-in example.', 'Run the check. Review the result, any issues, and the coverage notice alongside the input, or below it on a narrow screen.', 'Inspect the parsed notation before copying or downloading the result.'],
+				note: 'On wider screens, the input stays alongside the result while you scroll through the details. In a short window, scroll within the input panel to reach examples and guides. Editing or clearing the input removes the previous result; run the check again to update it.',
 				links: [{ label: 'Open the validator', href: '/validate' }]
 			},
 			{
