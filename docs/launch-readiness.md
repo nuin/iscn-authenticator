@@ -26,8 +26,10 @@ these limits visible; a passing result is not certification or report approval.
 
 The owner supplied **Bioinformat** as the seller/business name on 2026-10-19.
 It is identified in the website footer, About page and service description.
-The support email, subscription price, legal entity details and jurisdiction
-remain open. This name alone does not enable paid checkout.
+The ISCN support address is `iscn@bioinformat.org`, with Cloudflare forwarding
+configured on 2026-10-21. See [email operations](email.md) for delivery evidence
+and remaining customer-email checks. Support commitments, subscription price,
+legal entity details and jurisdiction remain open. This name alone does not enable paid checkout.
 
 | Decision or evidence | Accountable role | Completion criterion |
 |---|---|---|

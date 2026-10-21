@@ -121,6 +121,9 @@ jobs:
       - name: Check generated Cloudflare binding types are current
         working-directory: packages/web
         run: npm run types:cloudflare -- --check
+      - name: Check generated email binding types are current
+        working-directory: packages/web
+        run: npm run types:email -- --check
       - name: Type-check web app
         working-directory: packages/web
         run: npm run check

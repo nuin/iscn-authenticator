@@ -9,6 +9,10 @@ binding = "DB"
 database_name = "iscn-db"
 database_id = "0f8fe4e8-a80b-4063-9cc5-1054d3d8b961"
 
+[[services]]
+binding = "MAILER"
+service = "iscn-email"
+
 [vars]
 # Axiom for structured logs
 # AXIOM_API_TOKEN = ""

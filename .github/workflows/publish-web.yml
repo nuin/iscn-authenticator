@@ -53,7 +53,9 @@ jobs:
 
       - name: Check generated Cloudflare binding types are current
         working-directory: packages/web
-        run: npm run types:cloudflare -- --check
+        run: |
+          npm run types:cloudflare -- --check
+          npm run types:email -- --check
 
       - name: Type-check
         working-directory: packages/web
@@ -62,6 +64,17 @@ jobs:
       - name: Build (SvelteKit + adapter-cloudflare)
         working-directory: packages/web
         run: npm run build
+
+      - name: Test email service
+        working-directory: packages/web
+        run: node --test tests/email-worker.test.mjs
+
+      - name: Deploy private email service
+        working-directory: packages/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy:email
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
