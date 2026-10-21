@@ -1,13 +1,13 @@
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
 
-export async function startPages(t) {
+export async function startPages(t, { seedSQL } = {}) {
   const root = resolve(import.meta.dirname, '../..');
   const workspace = await mkdtemp(join(tmpdir(), 'iscn-pages-test-'));
   const wrangler = join(root, 'node_modules/wrangler/bin/wrangler.js');
@@ -36,6 +36,16 @@ export async function startPages(t) {
   await writeFile(join(workspace, 'wrangler.toml'), config);
   await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local',
     '--file', join(root, 'schema.sql'), '--persist-to', state], { cwd: workspace, env });
+  for (const file of (await readdir(join(root, 'migrations'))).sort().filter((name) => name.endsWith('.sql'))) {
+    await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local',
+      '--file', join(root, 'migrations', file), '--persist-to', state], { cwd: workspace, env });
+  }
+  if (seedSQL) {
+    const file = join(workspace, 'seed.sql');
+    await writeFile(file, seedSQL);
+    await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local',
+      '--file', file, '--persist-to', state], { cwd: workspace, env });
+  }
   child = spawn(process.execPath, [wrangler, 'pages', 'dev', '--port', '0',
     '--ip', '127.0.0.1', '--inspector-port', '0', '--persist-to', state],
   { cwd: workspace, env, stdio: ['ignore', 'pipe', 'pipe'] });

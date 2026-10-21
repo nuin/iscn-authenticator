@@ -1,7 +1,6 @@
 import { createHmac } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { registerHooks } from 'node:module';
-import { DatabaseSync } from 'node:sqlite';
+import { createTestDatabase } from './sqlite.mjs';
 
 const bindingsUrl = 'data:text/javascript,export const env = {}';
 registerHooks({
@@ -16,57 +15,25 @@ registerHooks({
 });
 const { env } = await import(bindingsUrl);
 const { POST } = await import('../../src/routes/api/webhooks/stripe/+server.ts');
-const schema = await readFile(new URL('../../schema.sql', import.meta.url), 'utf8');
-
-class Statement {
-  constructor(sqlite, sql, gate, values = []) { Object.assign(this, { sqlite, sql, gate, values }); }
-  bind(...values) { return new Statement(this.sqlite, this.sql, this.gate, values); }
-  async first() {
-    const result = this.sqlite.prepare(this.sql).get(...this.values) ?? null;
-    if (this.sql.includes('FROM processed_webhook')) await this.gate();
-    return result;
-  }
-  async run() { return this.execute(); }
-  execute() {
-    const result = this.sqlite.prepare(this.sql).run(...this.values);
-    return { success: true, meta: { changes: Number(result.changes) } };
-  }
-}
-
 export function setup(t, { plan = 'free', customer = null, simultaneousReads = 0 } = {}) {
-  const sqlite = new DatabaseSync(':memory:');
-  t.after(() => sqlite.close());
-  sqlite.exec(schema);
+  const barrier = Promise.withResolvers();
+  let remaining = simultaneousReads;
+  const gate = async (sql) => {
+    if (!sql.includes('FROM processed_webhook') || remaining <= 0) return;
+    remaining -= 1;
+    if (remaining === 0) barrier.resolve();
+    await barrier.promise;
+  };
+  const { sqlite, db } = createTestDatabase(t, gate);
   sqlite.exec('CREATE TABLE billing_updates (user_id TEXT)');
   sqlite.exec(`CREATE TRIGGER count_updates AFTER UPDATE ON user
     BEGIN INSERT INTO billing_updates VALUES (NEW.id); END`);
   sqlite.prepare('INSERT INTO user (id, email, created_at, plan, stripe_customer_id) VALUES (?, ?, 1, ?, ?)')
     .run('account-test', 'billing@example.test', plan, customer);
-  const barrier = Promise.withResolvers();
-  let remaining = simultaneousReads;
-  const gate = async () => {
-    if (remaining <= 0) return;
-    remaining -= 1;
-    if (remaining === 0) barrier.resolve();
-    await barrier.promise;
-  };
   Object.assign(env, {
     STRIPE_WEBHOOK_SECRET: 'whsec_local_fixture', STRIPE_SECRET_KEY: 'sk_test_local_fixture',
     STRIPE_PRICE_ID_PRO: 'price_pro',
-    DB: {
-      prepare: (sql) => new Statement(sqlite, sql, gate),
-      async batch(statements) {
-        sqlite.exec('BEGIN IMMEDIATE');
-        try {
-          const results = statements.map((statement) => statement.execute());
-          sqlite.exec('COMMIT');
-          return results;
-        } catch (error) {
-          sqlite.exec('ROLLBACK');
-          throw error;
-        }
-      },
-    },
+    DB: db,
   });
   t.mock.method(console, 'error', () => {});
   t.mock.method(globalThis, 'fetch', async () => Response.json({ object: 'list',

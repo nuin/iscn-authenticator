@@ -1,4 +1,5 @@
 import { accountMetadata, stripeId, stripeObject } from '#lib/server/stripe-events.js';
+import { parseApiOffering, type ApiOffering } from '#lib/server/api-offering.js';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
 
@@ -7,6 +8,23 @@ export interface CurrentSubscription {
   userId: string | undefined;
   status: string;
   prices: string[];
+  apiPeriods: { offering: ApiOffering; start: number; end: number }[];
+}
+
+function paidApiPeriods(subscription: Record<string, unknown>, items: unknown[]): CurrentSubscription['apiPeriods'] {
+  if (subscription.status !== 'active' || subscription.pause_collection != null ||
+      !subscription.latest_invoice || typeof subscription.latest_invoice !== 'object') return [];
+  const invoice = stripeObject(subscription.latest_invoice);
+  if (invoice.status !== 'paid' || invoice.paid !== true) return [];
+  return items.flatMap((value) => {
+    const item = stripeObject(value);
+    const offering = parseApiOffering(item.price);
+    const start = item.current_period_start;
+    const end = item.current_period_end;
+    if (!offering || item.quantity !== 1 || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
+        Number(start) < 0 || Number(end) <= Number(start)) return [];
+    return [{ offering, start: Number(start), end: Number(end) }];
+  });
 }
 
 function parseSubscription(value: unknown, customerId: string): CurrentSubscription {
@@ -24,11 +42,13 @@ function parseSubscription(value: unknown, customerId: string): CurrentSubscript
   return {
     id: stripeId(subscription.id, 'sub_'), userId: accountMetadata(subscription.metadata), status,
     prices: items.data.map((item) => stripeId(stripeObject(item).price, 'price_')),
+    apiPeriods: paidApiPeriods(subscription, items.data),
   };
 }
 
 export async function listCurrentSubscriptions(secretKey: string, customerId: string): Promise<CurrentSubscription[]> {
   const query = new URLSearchParams({ customer: customerId, status: 'all', limit: '100' });
+  query.append('expand[]', 'data.latest_invoice');
   const response = await fetch(`${STRIPE_API}/subscriptions?${query}`, {
     headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10_000),
   });

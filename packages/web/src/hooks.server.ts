@@ -3,6 +3,11 @@ import type { Handle } from '@sveltejs/kit/hooks';
 import * as db from '#lib/server/db.js';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	if (event.url.pathname.startsWith('/api/v1/')) {
+		event.locals.session = null;
+		event.locals.user = null;
+		return resolve(event);
+	}
 	const sessionId = event.cookies.get('iscn_session');
 
 	if (!sessionId) {
