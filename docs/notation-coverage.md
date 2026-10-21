@@ -6,7 +6,7 @@ The validator checks a bounded subset of ISCN 2024. A result with `valid: true` 
 
 TypeScript exports `getValidationCoverage(parsed)`; Python exports `get_validation_coverage(parsed)`. Both return `level`, `notes`, `reference`, `rule_version`, and `band_reference`. Levels are `supported`, `partial`, and `unparsed`. `supported` describes coverage of the implemented routine checks and is independent of whether those checks passed. A parsed invalid karyotype can therefore have supported coverage.
 
-The reference is `ISCN 2024`; the core rule version is `2026-10-20.1`; the band reference is `UCSC hg38 cytoBand`. Applications must present partial or unparsed results for review. The existing `valid`, `errors`, and `parsed` validation contract is unchanged.
+The reference is `ISCN 2024`; the core rule version is `2026-10-20.2`; the band reference is `UCSC hg38 cytoBand`. Applications must present partial or unparsed results for review. The existing `valid`, `errors`, and `parsed` validation contract is unchanged.
 
 ## Checked and deferred notation
 
@@ -20,7 +20,7 @@ The reference is `ISCN 2024`; the core rule version is `2026-10-20.1`; the band 
 | Polyploid/hypohaploid counts | Positive safe integers and ascending ranges; counts are not restricted to 23–92 | Ploidy and full numerical balance require review; positive arithmetic alone does not establish biological plausibility |
 | Common structural abnormalities | Existing breakpoint-number/arm checks, chromosome identifiers, mapped band checks | This does not check all event-specific biological or nomenclature constraints |
 | Insertions | One chromosome with three concatenated breakpoints, or two chromosomes with a site and a two-breakpoint segment separated by `;` | Other insertion layouts are explicitly rejected as unsupported; no unmatched layout bypasses band checks |
-| Related clones | `idem`, `sl`, `sdlN`, unique unnumbered `sdl`; safe integer `xN`/`×N` multipliers; unique autosomal structural subtraction and opposite numerical cancellation | Multiple stemlines, aggregate references and ambiguous/absent subtraction require explicit restatement; expanded operations retain review coverage |
+| Related clones | `idem`, `sl`, numbered `slN`, `sdlN`, unique unnumbered `sdl`; safe integer `xN`/`×N` multipliers; unique autosomal structural subtraction and opposite numerical cancellation | Ambiguous sideline families, aggregate references and ambiguous/absent subtraction require explicit restatement; expanded operations retain review coverage |
 | Composite counts | Group-local `[cpN]` or legacy `.cp[N]`, including mixed composite/ordinary groups; positive safe counts | Aggregate counts do not establish per-abnormality frequencies or co-occurrence; per-abnormality bracket counts remain unsupported |
 | `der`, `+der`, `-der` | Outer chromosome identifiers, balanced parentheses, recognizable flat component chromosome/band/breakpoint checks and simple junction band lists | Abbreviated components only receive chromosome checks; complete paths, centromere reconstruction, phase and sequential-event consistency require review |
 | `rec`, `cpx`, `cth`, `cpy`, `upd` | Outer form and chromosome identifiers | Complete event structure and interpretation are partial coverage |
@@ -46,9 +46,30 @@ Catalogue source: [UCSC hg38 cytoBand download](https://hgdownload.soe.ucsc.edu/
 
 ## Related-clone provenance
 
-`idem` refers to the first clone in its recipient/donor group, not the immediately previous line. `sl` refers to that group's first stemline. Sidelines are numbered in their written order: `sdl1` references the first preceding resolved sideline, `sdl2` the second. Unnumbered `sdl` requires exactly one preceding sideline. Mixing `idem` with `sl`/`sdl`, referring across the donor boundary, or guessing a stemline after an independent clone is rejected. The implementation does not infer biological clone identity from similarity.
+`idem` refers to the first clone in its recipient/donor group, including after another fully written clone. `slN` selects the Nth preceding fully written non-reference line in that group; intervening sidelines do not increment the stemline index. Unnumbered `sl` requires one preceding stemline. With a single stemline, sidelines are numbered in written order: `sdl1` references the first preceding resolved sideline, `sdl2` the second. Unnumbered `sdl` requires exactly one preceding sideline. With multiple stemlines, `sdl` and `sdlN` require explicit restatement because this implementation does not infer their family. Mixing `idem` with `sl`/`sdl`, future references and references across a donor boundary are rejected. Numbering follows the submitted text; the implementation does not establish biological clone identity from similarity.
 
 The AST keeps the original complete input in `raw`. Single-line metaphase counts use `count` and leave `cell_lines: null`. Each explicit cell line keeps `raw`; a resolved related line also carries `reference: { token, cell_line }`, where `cell_line` is one-based within its recipient/donor group, and `changes`, containing the written additional abnormalities. Its `abnormalities` list contains the resolved inherited plus additional findings. Each abnormality retains its literal `raw` text, including accepted Unicode minus and multiplication signs. This expansion represents the written reference and does not establish that the clones are biologically related.
+
+### Numbered stemline example
+
+```text
+45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2x2[5]/93,sl2x2,+8[2]
+```
+
+Here `sl1` selects line 1. `sl2` selects line 3, because line 2 is a
+reference-derived sideline. Lines 4 and 5 independently double line 3: each
+inherits two copies of its translocation, and only line 5 adds chromosome 8.
+Neither inherits the first family's chromosome 7 loss. Their metadata records
+`reference.cell_line: 3` and `reference.multiplier: 2`; the literal reference token
+and original line remain unchanged. The case retains review coverage for clone
+ordering and expanded arithmetic.
+
+Within a donor group, numbering restarts after `//`. Composite groups occupy
+their written position among fully written lines but cannot supply a reference;
+they are never silently skipped to make an index select a different source.
+For multiple stemlines, use explicit `slN` plus the complete additional changes,
+or write the whole line. These restrictions describe implementation limits,
+not a claim that all other shorthand is invalid under ISCN.
 
 ## Expanded clones and composite groups
 

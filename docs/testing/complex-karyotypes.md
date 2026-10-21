@@ -1,15 +1,30 @@
 # Complex-karyotype test report
 
-Date: 2026-10-20. Core rule revision: `2026-10-20.1`.
+Updated: 2026-10-21. Core rule revision: `2026-10-20.2`.
 
-The [73-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
+The [85-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
 tests the implemented checks, coverage notices and known exclusions. It contains
 no patient data. Each case records its input, intended user-visible status,
 purpose and, where relevant, required coverage notes, errors or cell total.
 These are software regression expectations, not a certification that every
 example is a complete, clinically appropriate ISCN description.
 
-## Current expansion results
+## Numbered stemline expansion
+
+C74–C85 add independent stemlines, explicit source selection after intervening
+sidelines, donor-local numbering, composite source restrictions, oversized and
+forward indices, multiplied totals and reference-style conflicts. The corpus
+now contains seven Checks passed, 38 Review required and 40 Issues found outcomes.
+All 85 agree between runtimes, including normalized resolved structures.
+
+An `sdl1` after an independent stemline previously selected a sideline without
+establishing its family. This bounded implementation now rejects that ambiguity.
+Explicit `sl1`/`sl2` select the intended fully written source, while `idem` remains
+anchored to the first clone. The new browser export check verifies that the second
+family inherits its own translocation and does not acquire the first family's
+chromosome 7 loss.
+
+## Previous 73-case expansion (historical)
 
 All 73 expected outcomes agree between Python and TypeScript, including normalized
 resolved AST fields, original source text, copy counts, clone references and
@@ -101,9 +116,9 @@ Shared validity corpus tag: `fixtures-complex-review-20261020`.
   junction bands are checked. Abbreviated components, chromosome paths, centromere
   identity, phase and sequential-event consistency still require review.
 - **General clone arithmetic:** Unique certain single-autosome structural losses
-  and reference multiplication are expanded. Multiple stemlines, ambiguous
-  losses, multi-chromosome/derivative subtraction and X/Y arithmetic remain
-  outside this bounded expansion.
+  and reference multiplication are expanded. Explicit numbered stemlines are
+  resolved; ambiguous sideline families, ambiguous losses, multi-chromosome/derivative
+  subtraction and X/Y arithmetic remain outside this bounded expansion.
 - **Composite frequencies:** Group totals are parsed independently. Per-event
   bracketed frequencies and co-occurrence are not reconstructed.
 - **Assay grammar and diagnostics:** FISH, appended array and OGM payloads remain
@@ -131,7 +146,7 @@ node packages/core/scripts/check-complex-parity.mjs api/.venv/bin/python /tmp/is
 
 The audit exits nonzero on any unexpected status, missing expected diagnostic or
 coverage note, wrong cell total, or Python/TypeScript mismatch. Its optional final
-argument writes measured results for all 73 cases. It refuses an incomplete
+argument writes measured results for all 85 cases. It refuses an incomplete
 corpus.
 
 Core regressions run with `npm --prefix packages/core test`. Browser regressions
@@ -142,12 +157,12 @@ npm --prefix packages/web run build
 npm --prefix packages/web run test:browser
 ```
 
-The browser test exercises all 48 inputs through the visible validation form,
+The browser test exercises all 85 inputs through the visible validation form,
 checks review notices, and checks that no entered payload is sent in a request.
 The existing browser suite also exercises report QC, FISH construction, CNV
 worksheets and account workflows.
 
-Verification for this change: 118 core Deno tests, 7 core Node tests, 292 Python
+Initial 48-case release verification (historical): 118 core Deno tests, 7 core Node tests, 292 Python
 library tests, 17 API tests on each of Python 3.11 and 3.14, 288 Deno service tests,
 108 web tests and 17 browser tests passed. Svelte and Deno type checks, the
 production build and embedded browser-bundle checks passed. Aislop remained

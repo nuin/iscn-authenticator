@@ -92,7 +92,7 @@ export const reviewGuides: Guide[] = [
 					headings: ['Notation', 'Current behavior'],
 					rows: [
 						['Unknown abnormalities', 'Unrecognized text can be retained as type unknown and still return valid: true.'],
-						['Mosaics and multiple cell lines', 'Counts and normal-last ordering are checked. Supported idem, sl and sdl references resolve to earlier lines while preserving source text. Ambiguous references fail; clone relationships and tie-break ordering still need review.'],
+						['Mosaics and multiple cell lines', 'Counts and normal-last ordering are checked. Supported idem, sl, numbered slN and sdl references resolve to earlier lines while preserving source text. Ambiguous references fail; clone relationships and tie-break ordering still need review.'],
 						['FISH, array, and OGM modifiers', 'Accepted nuc ish, arr, and ogm content is retained as modifier text. Assay-specific content is not fully validated.'],
 						['Chromosome count ranges', 'Ranges such as 45~48 must have ascending positive safe-integer bounds. Composition and numerical coherence are not inferred.'],
 						['Numerical totals', 'Reliable near-diploid cases receive consistency checks. Acquired X/Y changes, polyploid, uncertain, composite and unsupported structural composition require review.'],
@@ -107,6 +107,12 @@ export const reviewGuides: Guide[] = [
 				title: 'Review the cell-line order',
 				paragraphs: ['The example below passes the implemented checks: both cell lines are evaluated, their bracketed metaphase counts are positive, and the normal cell line is last even though more normal cells were counted. Optional mos and chi prefixes are supported.', 'Under ISCN 2024 section 4.5.3, normal cell lines follow abnormal lines. The workspace checks this within each recipient or donor group; a double slash preserves the transplant boundary. Normal XX/XY lines are ordered by decreasing count, with XX first for equal counts.', 'When a group contains multiple abnormal cell lines, their ordering still needs review: clone relationships, constitutional versus acquired findings, and tie-break rules require more context. The tool does not infer those relationships or verify donor identity.'],
 				code: { label: 'Abnormal cell line followed by normal cell line', value: '47,XX,+21[5]/46,XX[10]' }
+			},
+			{
+				id: 'numbered-stemlines',
+				title: 'Keep separate stemline families distinct',
+				paragraphs: ['sl1 selects the first fully written stemline in the current recipient or donor group; sl2 selects the second. Intervening reference-derived sidelines do not change that numbering. In the example, sl2 points to line 3: its doubled descendants inherit the translocation, not the other family’s chromosome 7 loss.', 'idem always points to the group’s first clone, even after another fully written clone. Do not mix idem and sl/sdl notation. Unnumbered sl requires one stemline; with multiple stemlines, this implementation requires sdl references to be written out explicitly so it cannot guess the family.', 'Original notation, selected source line and written additional changes remain in the JSON export. Numbering restarts after the donor boundary //. Composite groups cannot supply a reference and are not silently skipped in numbering. These checks do not establish biological clonality; ordering and transformed clone findings still require review.'],
+				code: { label: 'Two stemlines and separate descendants', value: '45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2x2[5]/93,sl2x2,+8[2]' }
 			},
 			{
 				id: 'expanded-clones',

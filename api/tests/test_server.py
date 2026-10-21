@@ -227,6 +227,28 @@ class ValidationApiTests(unittest.TestCase):
         self.assertEqual([line["count"] for line in result["parsed"]["cell_lines"]], [12, 8])
         self.assertTrue(result["parsed"]["cell_lines"][0]["composite"])
 
+    def test_numbered_stemlines_keep_independent_sources_over_http(self):
+        notation = "45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2x2[5]"
+        for method in ("get", "post"):
+            with self.subTest(method=method):
+                response = (self.client.get("/validate", params={"karyotype": notation}) if method == "get"
+                            else self.client.post("/validate", json={"karyotype": notation}))
+                self.assertEqual(response.status_code, 200)
+                body = response.json()
+                self.assertTrue(body["valid"], body["errors"])
+                line = body["parsed"]["cell_lines"][3]
+                self.assertEqual(line["reference"]["cell_line"], 3)
+                self.assertEqual(line["raw"], "92,sl2x2[5]")
+                self.assertEqual([(a["type"], a["chromosome"], a["copy_count"]) for a in line["abnormalities"]],
+                                 [("t", "9;22", 2)])
+
+    def test_ambiguous_sideline_families_are_rejected_over_http(self):
+        notation = "47,XX,+8[5]/48,sl,+9[5]/47,XX,+10[5]/49,sdl1,+11[5]"
+        response = self.client.post("/validate", json={"karyotype": notation})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["valid"])
+        self.assertIn("Sideline references with multiple stemlines", "; ".join(response.json()["errors"]))
+
     def test_nested_derivative_errors_reach_http_clients(self):
         result = self.validate("POST", "46,XX,der(5)t(5;99)(q13;p13)").json()
         self.assertFalse(result["valid"])
