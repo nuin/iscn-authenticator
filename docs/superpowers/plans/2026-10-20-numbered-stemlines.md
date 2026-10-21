@@ -46,5 +46,5 @@ Check whether fully written lines can be incorrectly treated as stemlines; linea
 - [x] Add browser export/provenance assertions for separate stemlines, update full coverage and inline examples, publish immutable Python/fixture pins.
 - [x] Build and run core, Python, API, Deno, web and browser suites; run `aislop scan -d .`. Expected: all pass; no new findings beyond four existing reference-URL false positives.
 - [x] Commit release changes, obtain one fresh whole-change review, fix important findings with regression tests.
-- [ ] Push and deploy Pages; run the expanded complex corpus against production. Expected: every case matches its intended outcome, with original input and group-local reference metadata intact.
-- [ ] Commit verification evidence and record remaining limits.
+- [x] Push and deploy Pages; run the expanded complex corpus against production. Expected: every case matches its intended outcome, with original input and group-local reference metadata intact.
+- [x] Commit verification evidence and record remaining limits.

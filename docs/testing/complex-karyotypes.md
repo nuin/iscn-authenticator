@@ -15,7 +15,10 @@ C74–C85 add independent stemlines, explicit source selection after intervening
 sidelines, donor-local numbering, composite source restrictions, oversized and
 forward indices, multiplied totals and reference-style conflicts. The corpus
 now contains seven Checks passed, 41 Review required and 42 Issues found outcomes.
-All 90 agree between runtimes, including normalized resolved structures.
+All 90 agree between runtimes, including normalized resolved structures, and
+pass their expected outcomes through the production validation form. See the
+[numbered-stemline release record](../releases/2026-10-21-numbered-stemlines.md)
+for the deployed commit, complete suite results and review decisions.
 
 An `sdl1` after an independent stemline previously selected a sideline without
 establishing its family. This bounded implementation now rejects that ambiguity.

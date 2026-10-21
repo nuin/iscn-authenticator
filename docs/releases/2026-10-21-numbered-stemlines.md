@@ -84,4 +84,23 @@ the cost is additional laboratory review, not an inferred classification.
 Production behavior was also outside the review: it must be established by the
 live corpus after deployment, rather than inferred from local tests.
 
-Production deployment evidence is recorded after the live checks complete.
+## Production verification
+
+Cloudflare Pages production deployment `e06f7da1-5033-4818-816c-7afdc309a844`
+serves source commit `a506f13136c5b64e80d11698c60fbf1474e02d77` on the existing
+production branch label `master`. Immutable deployment:
+<https://e06f7da1.iscn-web.pages.dev>. Canonical product:
+<https://iscn-web.pages.dev>.
+
+All 90 expected outcomes passed through the canonical site's visible validation
+form after deployment. Live JSON exports preserved FISH payloads, original clone
+text, multiplied copies and separate stemline sources. The ambiguous full-text
+rewrite exported no parsed structure. No page errors, entered-payload requests
+or localStorage entries were observed. The live coverage guide contains the
+reviewed sequential-source and ambiguity instructions.
+
+Both source branches and immutable Python fixture tags were pushed. No branch
+was merged and no package was published. The deployment warning about a dirty
+checkout came from the pre-existing untracked `.cairn` file; tracked deployment
+sources were committed and unchanged. Existing custom-domain DNS was not changed
+as part of this release.
