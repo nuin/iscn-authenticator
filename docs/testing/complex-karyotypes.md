@@ -2,7 +2,7 @@
 
 Date: 2026-10-20. Core rule revision: `2026-10-20.1`.
 
-The [72-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
+The [73-case synthetic corpus](../../packages/core/tests/data/complex-karyotypes.json)
 tests the implemented checks, coverage notices and known exclusions. It contains
 no patient data. Each case records its input, intended user-visible status,
 purpose and, where relevant, required coverage notes, errors or cell total.
@@ -11,10 +11,10 @@ example is a complete, clinically appropriate ISCN description.
 
 ## Current expansion results
 
-All 72 expected outcomes agree between Python and TypeScript, including normalized
+All 73 expected outcomes agree between Python and TypeScript, including normalized
 resolved AST fields, original source text, copy counts, clone references and
-composite flags. There are seven Checks passed, 33 Review required and 32 Issues
-found results. The original 48 cases remain; C49–C72 add arithmetic, ambiguity,
+composite flags. There are seven Checks passed, 33 Review required and 33 Issues
+found results. The original 48 cases remain; C49–C73 add arithmetic, ambiguity,
 allocation, derivative-component and composite-context controls.
 
 C40 now rejects its invalid nested chromosome. C41 expands its multiplier, C42
@@ -24,11 +24,16 @@ All three accepted expanded forms retain explicit review coverage.
 
 See [notation coverage](../notation-coverage.md#expanded-clones-and-composite-groups)
 for field semantics, worked examples and implementation boundaries. Existing
-72-case parity and browser tests run the same expected-outcome corpus. Core unit
-tests additionally check source immutability, unsafe arithmetic, optional
-breakpoint disambiguation and dependent sideline behavior. Report tests confirm
+73-case parity and browser tests run the same expected-outcome corpus. Core unit
+tests additionally check source immutability, unsafe arithmetic and
+dependent sideline behavior. Report tests confirm
 that aggregate counts are labelled and transformed clones cannot produce a
 misleading literal longitudinal comparison.
+
+The fresh review exposed unsafe intermediate JavaScript arithmetic before numerical
+cancellation. C73 reproduces it; both ports now reject unsafe intermediate sums
+before applying further operations. The paired regression failed before the fix
+and passed afterward.
 
 ## Initial 48-case release results (historical)
 
@@ -126,7 +131,7 @@ node packages/core/scripts/check-complex-parity.mjs api/.venv/bin/python /tmp/is
 
 The audit exits nonzero on any unexpected status, missing expected diagnostic or
 coverage note, wrong cell total, or Python/TypeScript mismatch. Its optional final
-argument writes measured results for all 72 cases. It refuses an incomplete
+argument writes measured results for all 73 cases. It refuses an incomplete
 corpus.
 
 Core regressions run with `npm --prefix packages/core test`. Browser regressions

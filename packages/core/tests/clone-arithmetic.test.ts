@@ -49,6 +49,7 @@ Deno.test("opposite autosomal changes cancel without altering the source", () =>
 });
 
 const rejected: [string, string][] = [
+  ["46,XX,inv(3)(p21q26)[5]/93,idemx2,+8x9007199254740991,+9x2,-8x9007199254740991[5]", "Clone count change exceeds the safe integer limit"],
   ["47,XX,+8[5]/93,idemx2[5]", "expected total 94"],
   ["46,XX,inv(3)(p21q26)[5]/46,idem,-inv(3)[5]", "expected total 45"],
   ["46,XX,inv(3)(p21q26),inv(3)(p13q21)[5]/45,idem,-inv(3)[5]", "ambiguous"],

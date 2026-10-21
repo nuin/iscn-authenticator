@@ -32,34 +32,34 @@ engineering regression tests, not clinical validation.
 
 ### Task 1: Derivative component checks
 
-- [ ] Add failing cases for nested invalid chromosomes/bands, malformed grouping,
+- [x] Add failing cases for nested invalid chromosomes/bands, malformed grouping,
   and controls for abbreviated and sequential rearrangements.
-- [ ] Add a bounded component checker in both implementations. Keep complex
+- [x] Add a bounded component checker in both implementations. Keep complex
   coverage notes and preserve source text.
-- [ ] Run targeted tests and both complete core suites.
+- [x] Run targeted tests and both complete core suites.
 
 ### Task 2: Group-local composite counts
 
-- [ ] Add failing mixed composite/noncomposite tests, including a bad total in
+- [x] Add failing mixed composite/noncomposite tests, including a bad total in
   a later ordinary clone and references to an aggregate group.
-- [ ] Parse counts per group, construct validation/coverage contexts centrally,
+- [x] Parse counts per group, construct validation/coverage contexts centrally,
   expose group metadata and label aggregate counts in the workspace.
-- [ ] Run core and report tests.
+- [x] Run core and report tests.
 
 ### Task 3: Bounded clone arithmetic
 
-- [ ] Add failing multiplier, subtraction, cancellation, ambiguity, overflow,
+- [x] Add failing multiplier, subtraction, cancellation, ambiguity, overflow,
   source immutability and dependent sideline tests.
-- [ ] Expand clones in both implementations, preserve provenance, check
+- [x] Expand clones in both implementations, preserve provenance, check
   inferable totals and prevent misleading literal comparisons.
-- [ ] Run core, Python, API, report and browser regressions.
+- [x] Run core, Python, API, report and browser regressions.
 
 ### Task 4: Documentation, parity and release
 
-- [ ] Update complex corpus expectations and add adversarial cases; verify
+- [x] Update complex corpus expectations and add adversarial cases; verify
   Python/TypeScript outcomes and expanded structures agree.
-- [ ] Update coverage, API schema, laboratory guides and release evidence.
-- [ ] Pin the Python commit/fixture tag, regenerate artifacts, run full checks
+- [x] Update coverage, API schema, laboratory guides and release evidence.
+- [x] Pin the Python commit/fixture tag, regenerate artifacts, run full checks
   and aislop, and obtain one fresh whole-change review.
 - [ ] Commit/push, deploy Pages and run the live complex corpus.
 

@@ -70,6 +70,7 @@ export function expandClone(ast: KaryotypeAST, reference: CellLine, multiplier: 
     additions.push(change);
     const value = countChange(change);
     delta = delta === null || value === null ? null : delta + value;
+    if (delta !== null && !Number.isSafeInteger(delta)) throw new ParseError("Clone count change exceeds the safe integer limit");
   }
   for (const change of additions) {
     const cancelled = appendNumerical(inherited, change);

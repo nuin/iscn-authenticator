@@ -39,7 +39,7 @@
   },
   "iscn": {
     "fixturesRepo": "nuin/iscn-authenticator-py",
-    "fixturesTag": "fixtures-complex-review-20261020",
+    "fixturesTag": "fixtures-notation-expansion-20261020",
     "fixturesPath": "fixtures/validity.json"
   },
   "repository": {

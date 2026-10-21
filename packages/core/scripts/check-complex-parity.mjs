@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { getValidationCoverage, validateKaryotypeNative } from '../dist/index.js';
 
 const cases = JSON.parse(await readFile(new URL('../tests/data/complex-karyotypes.json', import.meta.url), 'utf8'));
-assert.equal(cases.length, 72, 'The complete synthetic corpus must be loaded');
+assert.equal(cases.length, 73, 'The complete synthetic corpus must be loaded');
 const python = spawnSync(process.argv[2] ?? 'python3', ['-c', `
 import json, sys
 from dataclasses import asdict

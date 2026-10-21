@@ -70,5 +70,6 @@
   {"id":"C69","input":"47,XX,+8[5]/94,idemx0[5]","status":"Issues found","purpose":"Zero clone multiplier","error":"multiplier"},
   {"id":"C70","input":"47,XX,+8[5]/94,idemx1000000000[5]","status":"Issues found","purpose":"Bound expanded sex complement allocation","error":"expansion limit"},
   {"id":"C71","input":"46,XX,inv(3)(p21q26)[5]/45,idem,-t(3;5)[5]","status":"Issues found","purpose":"Unresolved multi-chromosome subtraction requires restatement","error":"Unsupported structural"},
-  {"id":"C72","input":"45~47,XX,+8.cp[12]/46,XX[8]","status":"Review required","purpose":"Legacy composite count stays group local","notes":["composite"]}
+  {"id":"C72","input":"45~47,XX,+8.cp[12]/46,XX[8]","status":"Review required","purpose":"Legacy composite count stays group local","notes":["composite"]},
+  {"id":"C73","input":"46,XX,inv(3)(p21q26)[5]/93,idemx2,+8x9007199254740991,+9x2,-8x9007199254740991[5]","status":"Issues found","purpose":"Unsafe intermediate arithmetic cannot round before cancellation","error":"Clone count change exceeds the safe integer limit"}
 ]

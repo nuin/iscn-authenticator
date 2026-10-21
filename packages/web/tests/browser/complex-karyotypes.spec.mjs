@@ -17,7 +17,7 @@ test('complex notation produces the expected user-visible status for every synth
   await expect(page.locator('#svelte-announcer')).toBeAttached();
   const requests = [];
   page.on('request', (request) => requests.push({ url: request.url(), body: request.postData() }));
-  expect(cases).toHaveLength(72);
+  expect(cases).toHaveLength(73);
   for (const example of cases) {
     await test.step(`${example.id}: ${example.purpose}`, async () => {
       await page.getByLabel('ISCN notation', { exact: true }).fill(example.input);
@@ -26,6 +26,19 @@ test('complex notation produces the expected user-visible status for every synth
       if (example.status === 'Review required') {
         await expect(page.getByLabel('Coverage limitations')).toBeVisible();
       }
+      if (example.id === 'C49') {
+        await expect(page.locator('.cell-lines')).toContainText('94,idemx2[5]');
+        await expect(page.locator('.cell-lines')).toContainText('References line 1 × 2');
+        const download = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Download JSON', exact: true }).click();
+        const exported = JSON.parse(await readFile(await (await download).path(), 'utf8'));
+        const line = exported.parsed.cell_lines[1];
+        expect(line.raw).toBe('94,idemx2[5]');
+        expect(line.sex_chromosomes).toBe('XXYY');
+        expect(line.abnormalities[0].copy_count).toBe(2);
+        expect(line.abnormalities[0].raw).toBe('+8');
+      }
+      if (example.id === 'C42') await expect(page.locator('.cell-lines')).toContainText('Composite group');
     });
   }
   expect(errors).toEqual([]);

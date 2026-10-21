@@ -57,7 +57,7 @@ complement to `XXYY` and the inherited gain to `copy_count: 2`. The original
 `+8` raw token is retained. Multipliers compose when an explicitly selected
 sideline is multiplied again. Expanded sex complements are capped at 4096
 characters; this is an allocation limit, not an ISCN ploidy limit. Unsafe integer
-arithmetic is rejected. `U` remains undisclosed.
+arithmetic, including intermediate sums before cancellation, is rejected. `U` remains undisclosed.
 
 Subtraction currently supports a unique, certain inherited single-autosome
 `del`, `dup`, `inv`, `add`, `trp`, `qdp`, `i`, `r` or `idic`. An optional complete
