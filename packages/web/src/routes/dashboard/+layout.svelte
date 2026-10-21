@@ -6,7 +6,7 @@
 	const navigation = [
 		{ href: '/dashboard', label: 'Overview' },
 		{ href: '/dashboard/batch', label: 'Batch review' },
-		{ href: '/dashboard/keys', label: 'Account keys' },
+		{ href: '/dashboard/keys', label: 'Account access' },
 		{ href: '/dashboard/api', label: 'API access' },
 		{ href: '/dashboard/billing', label: 'Billing' }
 	];

@@ -3,31 +3,31 @@ import type { Guide } from './types.js';
 export const setupGuides: Guide[] = [
 	{
 		slug: 'accounts-and-keys',
-		title: 'Manage your account and keys',
-		description: 'Save your first key, sign in, and replace a key safely.',
+		title: 'Sign in and recover your account',
+		description: 'Verify your email, sign in with a code, and recover access.',
 		group: 'Set up your workflow',
 		keywords: ['signup', 'login', 'password', 'revoke', 'rotate', 'billing', 'lost'],
 		sections: [
-			{
-				id: 'save-your-first-key',
-				title: 'Save your first key before continuing',
-				steps: ['Create an account with your email address.', 'Copy the key shown after signup and store it in your password manager or approved secret store.', 'Continue to the dashboard after saving the key. You will use an active key to sign in again.'],
-				paragraphs: ['The full key is shown once. The application stores its SHA-256 hash, not a recoverable copy of the key. Treat it as an account credential.'],
-				links: [{ label: 'Create an account', href: '/signup' }, { label: 'Sign in', href: '/login' }]
-			},
-			{
-				id: 'replace-a-key',
-				title: 'Create a replacement, then revoke the old key',
-				steps: ['Open Account keys in your dashboard and create a new key.', 'Save the new key before leaving the page.', 'Confirm you can sign in with the replacement before revoking a key you still need.', 'Revoke the old key. It can no longer be used to sign in.'],
-				note: 'Keep at least one active key that you have saved. There is no self-service email recovery flow. Revoking a key does not sign out sessions that already exist.',
-				links: [{ label: 'Manage keys', href: '/dashboard/keys' }]
-			},
-			{
-				id: 'which-service',
-				title: 'Use credentials with the service that issued them',
-				paragraphs: ['Keys created in this hosted Pages application authenticate your account here. For hosted API access, create an integration key at /dashboard/api and activate a paid subscription when checkout is available.', 'A self-hosted Deno service has separate customers, keys, sessions, and quotas in Deno KV. Hosted account keys are stored in Cloudflare D1. The two stores are not connected, even though the key formats look similar.'],
-				links: [{ label: 'Choose an integration option', href: '/docs/integration' }]
-			},
+            {
+                id: 'verify-email',
+                title: 'Verify your email before opening an account',
+                steps: ['Open Create an account and enter an email address you control.', 'Look for an email from iscn@bioinformat.org. Enter its eight-digit code in the same browser within ten minutes.', 'After verification, your account opens in the dashboard. No password or account key is required.'],
+                paragraphs: ['An account and session are created only after verification. Signup with an existing address signs you in to that account after the same email check.', 'Check your spam folder if the code does not arrive. Wait at least one minute before sending another. Use the newest code requested in that browser; five incorrect attempts require a new code. Never share codes with support or paste them into chat.'],
+                links: [{ label: 'Create an account', href: '/signup' }, { label: 'Sign in', href: '/login' }]
+            },
+            {
+                id: 'recover-access',
+                title: 'Recover access and sign out other browsers',
+                steps: ['Open Recover account access and enter your account email.', 'Enter the recovery code in the browser that requested it.', 'Recovery signs out other browser sessions and opens a fresh session.'],
+                paragraphs: ['For an email-verified account, recovery preserves your subscription and API integration keys. If an integration key may be compromised, revoke it separately on API access.', 'If you cannot access the email inbox, contact iscn@bioinformat.org. Email changes require an identity review; there is no automatic recovery through another address.'],
+                links: [{ label: 'Recover account access', href: '/recover' }, { label: 'Manage API keys', href: '/dashboard/api' }]
+            },
+            {
+                id: 'existing-accounts',
+                title: 'Moving from account keys to email codes',
+                paragraphs: ['Old website account keys no longer sign you in. Use the email recorded on the account. The first email verification invalidates all pre-verification sessions and keys, including API integration keys, because those credentials were issued before email ownership was checked. Recreate API keys after that first verification.', 'Account identifiers, subscription details and usage records are preserved. Later sign-ins keep other verified sessions active. Recovery explicitly signs them out.', 'Email addresses are matched without case differences. If multiple older accounts share the same address with different capitalization, contact support; the service never merges them automatically. A self-hosted Deno service keeps its own separate account system.'],
+                links: [{ label: 'Account access settings', href: '/dashboard/keys' }]
+            },
 			{
 				id: 'access-and-billing',
 				title: 'Check current commercial availability',
@@ -109,9 +109,9 @@ export const setupGuides: Guide[] = [
 				table: {
 					headings: ['Action', 'Data flow'],
 					rows: [
-						['Create an account', 'Your email and account records are stored in Cloudflare D1. A key hash is stored for authentication.'],
-						['Sign in', 'The entered key is sent to the server for verification. A session cookie keeps you signed in.'],
-						['Create or revoke keys', 'Account and key metadata are read or updated on the server.'],
+						['Create an account', 'A code is emailed through Cloudflare. Your email is stored with a short-lived challenge; an account is created only after verification.'],
+						['Sign in', 'Your email and code are sent to the server. A verified code starts a session lasting up to 30 days.'],
+						['Recover access or manage API keys', 'Recovery invalidates other sessions. API key metadata and hashes are stored on the server.'],
 						['Use configured billing', 'The server creates a Stripe session. Payment details are entered on Stripe’s pages.'],
 						['Visit pages or the example library', 'The host receives normal page requests and associated request metadata.']
 					]

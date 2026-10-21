@@ -3,10 +3,8 @@ import test from 'node:test';
 import { startPages } from './helpers/pages.mjs';
 
 test('Cloudflare Pages build serves the dashboard with local D1 bindings', { timeout: 60_000 }, async (t) => {
-  const { origin, request } = await startPages(t);
+  const { origin, request, emailCode, executeSQL } = await startPages(t);
   let cookie = '';
-  let initialKey;
-  let keyId;
   const post = (path, values = {}) => request(path, {
     method: 'POST', body: new URLSearchParams(values), headers: { origin, cookie, accept: 'text/html' },
   });
@@ -49,32 +47,32 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
     assert.equal((await request('/evaluation/missing.txt')).status, 404);
   });
 
-  await t.test('signup creates a key and secure session', async () => {
-    const response = await post('/signup', { email: 'upgrade@example.test' });
+  await t.test('signup waits for email verification and then creates a secure session', async () => {
+    const response = await post('/signup?/request', { email: 'upgrade@example.test' });
     assert.equal(response.status, 200);
     const html = await response.text();
-    assert.match(html, /Account created/);
-    initialKey = html.match(/iscn_live_[a-f0-9]{32}/)?.[0];
-    assert.ok(initialKey);
-    const session = response.headers.get('set-cookie');
-    assert.match(session, /HttpOnly/i);
-    assert.match(session, /Secure/i);
-    cookie = session.split(';')[0];
+    assert.match(html, /Check your email/);
+    assert.doesNotMatch(html, /iscn_live_/);
+    const challenge = response.headers.get('set-cookie');
+    assert.match(challenge, /HttpOnly/i);
+    assert.match(challenge, /Secure/i);
+    assert.doesNotMatch(challenge, /iscn_session=/);
+    cookie = challenge.split(';')[0];
+    assert.equal((await request('/dashboard', { headers: { cookie } })).status, 302);
+    const verify = await post('/signup?/verify', { code: await emailCode('upgrade@example.test') });
+    assert.equal(verify.status, 303);
+    assert.equal(verify.headers.get('location'), '/dashboard');
+    cookie = verify.headers.getSetCookie().find((value) => value.startsWith('iscn_session=')).split(';')[0];
     const dashboard = await request('/dashboard', { headers: { cookie } });
     assert.equal(dashboard.status, 200);
+    assert.equal(dashboard.headers.get('cache-control'), 'private, no-store');
     assert.match(await dashboard.text(), /upgrade@example\.test/);
   });
 
-  await t.test('keys can be created and revoked', async () => {
-    const created = await post('/dashboard/keys?/create');
-    assert.equal(created.status, 200);
-    const html = await created.text();
-    assert.match(html, /iscn_live_[a-f0-9]{32}/);
-    keyId = html.match(/Manual key[\s\S]*?name="key_id" value="([^"]+)"/)?.[1];
-    assert.ok(keyId);
-    const revoked = await post('/dashboard/keys?/revoke', { key_id: keyId });
-    assert.equal(revoked.status, 200);
-    assert.match(await revoked.text(), /Revoked/);
+  await t.test('retired account-key creation is unavailable and email access is explained', async () => {
+    assert.equal((await post('/dashboard/keys?/create')).status, 405);
+    const access = await request('/dashboard/keys', { headers: { cookie } });
+    assert.match(await access.text(), /one-time code/);
   });
 
   await t.test('billing reports missing configuration', async () => {
@@ -83,17 +81,29 @@ test('Cloudflare Pages build serves the dashboard with local D1 bindings', { tim
     assert.match(await response.text(), /Paid checkout is not available/);
   });
 
-  await t.test('logout invalidates the session and API-key login works', async () => {
+  await t.test('logout invalidates the session and email-code login works', async () => {
     const logout = await post('/dashboard?/logout');
     assert.equal(logout.status, 302);
     assert.equal(logout.headers.get('location'), '/login');
-    const expired = await request('/dashboard', { headers: { cookie } });
-    assert.equal(expired.status, 302);
+    assert.equal((await request('/dashboard', { headers: { cookie } })).status, 302);
     cookie = '';
-    const login = await post('/login', { api_key: initialKey });
-    assert.equal(login.status, 302);
-    assert.equal(login.headers.get('location'), '/dashboard');
-    assert.match(login.headers.get('set-cookie'), /iscn_session=/);
+    await executeSQL('UPDATE email_auth_limit SET resets_at = 0');
+    const login = await post('/login?/request', { email: 'upgrade@example.test' });
+    assert.equal(login.status, 200);
+    cookie = login.headers.get('set-cookie').split(';')[0];
+    const signedIn = await post('/login?/verify', { code: await emailCode('upgrade@example.test') });
+    assert.equal(signedIn.status, 303);
+    assert.match(signedIn.headers.get('set-cookie'), /iscn_session=/);
+    const oldKey = await post('/login', { api_key: 'iscn_live_retired' });
+    assert.equal(oldKey.status, 404);
+  });
+
+  await t.test('cross-origin code requests and oversized forms are rejected', async () => {
+    const crossOrigin = await request('/signup?/request', {
+      method: 'POST', headers: { origin: 'https://other.example.test' }, body: new URLSearchParams({ email: 'csrf@example.test' }),
+    });
+    assert.equal(crossOrigin.status, 403);
+    assert.equal((await post('/signup?/request', { email: 'x'.repeat(9000) })).status, 413);
   });
 
   await t.test('explanation miss endpoint validates JSON input', async () => {

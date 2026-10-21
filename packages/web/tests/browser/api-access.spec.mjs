@@ -2,11 +2,13 @@ import { expect, test } from '@playwright/test';
 import { startPages } from '../helpers/pages.mjs';
 
 let origin;
+let emailCode;
 let cleanup;
 test.beforeAll(async () => {
   const now = Math.floor(Date.now() / 1000);
-  ({ origin } = await startPages({ after(fn) { cleanup = fn; } }, { seedSQL: `
+  ({ origin, emailCode } = await startPages({ after(fn) { cleanup = fn; } }, { seedSQL: `
     INSERT INTO user (id, email, created_at, plan) VALUES ('paid-ui', 'paid-ui@example.test', ${now}, 'pro');
+    INSERT INTO account_email_verification VALUES ('paid-ui', 'paid-ui@example.test', ${now});
     INSERT INTO session VALUES ('paid-ui-session', 'paid-ui', ${now + 3600});
     INSERT INTO api_entitlement VALUES ('paid-ui', 'sub_ui', 'price_ui', ${now - 60}, ${now + 3600}, 100);
     INSERT INTO api_usage VALUES ('paid-ui', ${now - 60}, 32);
@@ -18,8 +20,11 @@ test('customers create, retain, copy and revoke integration keys without activat
   await page.goto(`${origin}/signup`);
   await expect(page.locator('#svelte-announcer')).toBeAttached();
   await page.getByLabel('Email').fill('api-browser@example.test');
-  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
-  await page.getByRole('link', { name: 'Continue to dashboard' }).click();
+  await page.getByRole('button', { name: 'Send email code', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByLabel('Email code', { exact: true }).fill(await emailCode('api-browser@example.test'));
+  await page.getByRole('button', { name: 'Verify email and continue' }).click();
+  await expect(page).toHaveURL(`${origin}/dashboard`);
   await page.getByRole('link', { name: 'API access', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'API access', exact: true })).toBeVisible();
   await expect(page.getByText('No active API subscription', { exact: true })).toBeVisible();

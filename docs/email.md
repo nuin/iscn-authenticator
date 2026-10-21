@@ -13,10 +13,11 @@ service binding. The sender and Reply-To are fixed to `iscn@bioinformat.org`.
 There is no public Worker URL, route, preview URL, SMTP password or API token
 stored in the application. Do not expose the Worker through a public proxy.
 
-This is email infrastructure. Signup and login remain account-key based;
-automatic welcome mail, email verification and recovery are not implemented.
-Account flows must enforce recipient ownership and sending limits before calling
-the mailer. Do not forward browser-supplied message bodies directly to it.
+Signup, sign-in and recovery use eight-digit codes sent by this private service.
+No account or session is created before verification. Pages supplies fixed
+message templates; browser input cannot choose the subject or body.
+See the [account authentication guide](email-authentication.md) for the lifecycle,
+migration behavior, rate limits and deployment procedure.
 
 Cloudflare's [Email Sending documentation](https://developers.cloudflare.com/email-service/get-started/send-emails/)
 describes domain activation. Sending to arbitrary customers requires Workers Paid
@@ -66,10 +67,12 @@ Run from `packages/web` using the existing project-local Wrangler installation:
 npm run types:email
 npm run types:cloudflare
 npm run check
-node --test tests/email-worker.test.mjs
+npm test
 npm run deploy:email -- --dry-run
 npm run deploy:email
 npm run build
+npx wrangler d1 execute iscn-db --remote --file migrations/0003_email_auth.sql
+# Provision EMAIL_AUTH_SECRET once before enabling email authentication.
 npx wrangler pages deploy .svelte-kit/cloudflare --project-name iscn-web --branch master
 ```
 
@@ -108,5 +111,6 @@ laboratory records. Transactional email must not contain karyotypes or patient d
   the inbox. No automatic resends were performed.
 - The private `iscn-email` Worker was deployed and its `/health` route was checked
   through a remote service binding. It returned `status: "running"`.
-- Customer verification/recovery flows and arbitrary-recipient delivery have
-  not been validated. Do not advertise those workflows as available.
+- Email verification, sign-in and recovery now have local Worker/D1 integration
+  and browser tests. Arbitrary-recipient inbox delivery remains a separate live
+  operational check; the verified-destination test above does not prove it.

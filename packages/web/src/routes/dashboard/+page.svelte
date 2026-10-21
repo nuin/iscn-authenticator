@@ -30,15 +30,12 @@
 <p><a href="/dashboard/api">Connect a laboratory system with the hosted API →</a></p>
 
 <section class="account-section" aria-labelledby="account-heading">
-	<div class="section-heading"><h2 id="account-heading">Your account</h2><a href="/dashboard/keys">Manage keys <span aria-hidden="true">→</span></a></div>
+	<div class="section-heading"><h2 id="account-heading">Your account</h2><a href="/dashboard/keys">Account access <span aria-hidden="true">→</span></a></div>
 	<dl class="panel account-facts">
-		<div><dt>Active account keys</dt><dd>{data.activeKeyCount}<span>of {data.keys.length} created</span></dd></div>
+		<div><dt>Sign-in method</dt><dd class="date-value">Email code<span>Email ownership verified</span></dd></div>
 		<div><dt>Account plan</dt><dd class="plan-value">{data.user.plan}<a href="/dashboard/billing">Billing details</a></dd></div>
 		<div><dt>Account created</dt><dd class="date-value">{dateFormat.format(new Date(data.user.created_at * 1000))}<span>UTC</span></dd></div>
 	</dl>
-	{#if data.activeKeyCount === 0}
-		<p class="notice">You have no active account keys. <a href="/dashboard/keys">Create a key</a> before logging out so you can sign in again.</p>
-	{/if}
 </section>
 
 <section class="panel review-note" aria-labelledby="review-note-heading">

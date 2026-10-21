@@ -22,9 +22,13 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
   const { env } = await import(moduleUrl);
   const database = createTestDatabase(t);
   database.sqlite.exec("INSERT INTO user (id, email, created_at) VALUES ('user-test', 'billing@example.test', 1)");
+  database.sqlite.exec("INSERT INTO account_email_verification VALUES ('user-test', 'billing@example.test', 1)");
+  const restoreSession = () => database.sqlite.prepare("INSERT OR REPLACE INTO session VALUES ('billing-session', 'user-test', ?)")
+    .run(Math.floor(Date.now() / 1000) + 3600);
+  restoreSession();
   env.DB = database.db;
   const event = {
-    locals: { user: { id: 'user-test', email: 'billing@example.test', stripe_customer_id: 'cus_test' } },
+    locals: { user: { id: 'user-test', email: 'billing@example.test', stripe_customer_id: 'cus_test' }, session: { id: 'billing-session' } },
     url: new URL('https://app.example.test/dashboard/billing'),
   };
 
@@ -87,4 +91,17 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
     assert.equal(result.status, 409);
     assert.match(result.data.message, /Manage subscription/);
   });
+  for (const action of ['upgrade', 'manage']) {
+    await t.test(`${action} never discloses a billing credential after recovery`, async (subtest) => {
+      restoreSession();
+      database.sqlite.exec('DELETE FROM api_checkout_attempt');
+      subtest.mock.method(globalThis, 'fetch', async (url) => {
+        if (String(url).includes('/prices/')) return Response.json(price);
+        if (String(url).includes('/subscriptions?')) return Response.json({ object: 'list', data: [], has_more: false });
+        database.sqlite.exec("DELETE FROM session WHERE id = 'billing-session'");
+        return Response.json({ id: action === 'upgrade' ? 'cs_recovered' : 'bps_recovered', url: 'https://billing.stripe.com/private-test' });
+      });
+      await assert.rejects(actions[action](event), (error) => error.status === 302 && error.location === '/login');
+    });
+  }
 });

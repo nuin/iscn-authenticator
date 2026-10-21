@@ -16,7 +16,7 @@ const quotaHeaders = Object.fromEntries(['X-Quota-Limit', 'X-Quota-Used', 'X-Quo
 export const openapi = {
   openapi: '3.1.0',
   info: { title: 'ISCN Authenticator customer API', version: '1.0.0',
-    description: 'Subscription-gated notation validation. Browser tools remain free. Each accepted validation consumes one unit, including invalid notation. No automatic overage charges. API keys are separate from website account keys. Read status and coverage, not valid alone.' },
+    description: 'Subscription-gated notation validation. Browser tools remain free. Each accepted validation consumes one unit, including invalid notation. No automatic overage charges. API keys are separate from website email-code sign-in. Read status and coverage, not valid alone.' },
   servers: [{ url: '/api/v1' }],
   security: [{ integrationKey: [] }],
   paths: {

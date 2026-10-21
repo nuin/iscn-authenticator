@@ -15,11 +15,11 @@ export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
 
 export const actions: Actions = {
   create: async ({ locals, request }) => {
-    if (!locals.user) throw redirect(302, '/login');
+    if (!locals.user || !locals.session) throw redirect(302, '/login');
     const label = (await request.formData()).get('label');
     if (typeof label !== 'string') return fail(400, { message: 'Enter a key label.' });
     try {
-      const key = await createIntegrationKey(env.DB, locals.user.id, label);
+      const key = await createIntegrationKey(env.DB, locals.user.id, label, locals.session.id);
       return { success: true, plaintext: key.plaintext };
     } catch (error) {
       if (error instanceof ApiError) return fail(error.status, { message: error.message });

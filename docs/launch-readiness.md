@@ -41,7 +41,7 @@ legal entity details and jurisdiction remain open. This name alone does not enab
 | Subscription lifecycle | Engineering/billing owners | Checkout, event replay, cancellation, and payment-failure evidence from the configured environment |
 | Laboratory acceptance scope | Laboratory/quality owner | Representative cases, known failures, coverage exclusions, and review procedure documented |
 | Data handling and retention | Security/operations owners | Actual data map, processor configuration, access controls, and retention/deletion process recorded |
-| Account recovery | Product/security owners | A documented way to handle lost keys and identity verification; no unsupported recovery promises |
+| Account recovery | Product/security owners | Email-code recovery is implemented; exercise delivery to a customer inbox and establish an operator identity-review process for lost inbox access |
 | Incident response and deployment recovery | Operations owner | Named responders, monitoring, rollback procedure, and exercised recovery steps |
 | HTTP service, if sold | Product/engineering owners | Deployed origin, service-specific keys, limits, monitoring, integration docs, and operating commitments |
 | Evidence and claims review | Release owner | Public statements trace to current functionality or reviewed evidence |

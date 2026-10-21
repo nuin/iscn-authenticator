@@ -5,7 +5,7 @@ name: Deploy iscn-web to Cloudflare Pages
 #   - workflow_dispatch for manual hotfix deploys from any branch.
 #
 # Required repository secrets:
-#   CLOUDFLARE_API_TOKEN   - scoped to "Edit Cloudflare Workers" + Pages
+#   CLOUDFLARE_API_TOKEN   - scoped to Workers + Pages + D1 edit permissions
 #   CLOUDFLARE_ACCOUNT_ID  - your Cloudflare account ID
 #
 # One-time bootstrap (per Cloudflare account, do this once):
@@ -18,6 +18,7 @@ name: Deploy iscn-web to Cloudflare Pages
 #   wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name iscn-web
 #   wrangler pages secret put STRIPE_PRICE_ID_PRO --project-name iscn-web
 #   wrangler pages secret put PUBLIC_BASE_URL --project-name iscn-web
+#   wrangler pages secret put EMAIL_AUTH_SECRET --project-name iscn-web
 #   (optional) wrangler pages secret put AXIOM_API_TOKEN AXIOM_DATASET ...
 
 on:
@@ -65,9 +66,9 @@ jobs:
         working-directory: packages/web
         run: npm run build
 
-      - name: Test email service
+      - name: Test web application and email service
         working-directory: packages/web
-        run: node --test tests/email-worker.test.mjs
+        run: npm test
 
       - name: Deploy private email service
         working-directory: packages/web
@@ -75,6 +76,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npm run deploy:email
+
+      - name: Apply additive database migrations
+        working-directory: packages/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          for migration in migrations/*.sql; do
+            npx wrangler d1 execute iscn-db --remote --file "$migration"
+          done
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4

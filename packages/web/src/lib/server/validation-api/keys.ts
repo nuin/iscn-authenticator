@@ -14,7 +14,7 @@ async function hashKey(plaintext: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function createIntegrationKey(db: D1Database, userId: string, label: string) {
+export async function createIntegrationKey(db: D1Database, userId: string, label: string, requiredSessionId?: string) {
   if (!label.trim() || label.trim().length > 80) {
     throw new ApiError(400, 'invalid_label', 'Use a key label between 1 and 80 characters.');
   }
@@ -23,9 +23,19 @@ export async function createIntegrationKey(db: D1Database, userId: string, label
   const plaintext = `iscn_api_${entropy}`;
   const createdAt = Math.floor(Date.now() / 1000);
   const result = await db.prepare(`INSERT INTO validation_api_key (id, user_id, label, hash, created_at)
-    SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM validation_api_key WHERE user_id = ? AND revoked_at IS NULL) < 10`)
-    .bind(id, userId, label.trim(), await hashKey(plaintext), createdAt, userId).run();
-  if (!result.meta.changes) throw new ApiError(409, 'key_limit', 'Revoke an unused key before creating another; ten active keys are allowed.');
+    SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM validation_api_key WHERE user_id = ? AND revoked_at IS NULL) < 10
+      AND (? IS NULL OR EXISTS (SELECT 1 FROM session s JOIN user u ON u.id = s.user_id
+        JOIN account_email_verification v ON v.user_id = u.id
+        WHERE s.id = ? AND s.user_id = ? AND s.expires_at > ? AND v.email = lower(trim(u.email))))`)
+    .bind(id, userId, label.trim(), await hashKey(plaintext), createdAt, userId,
+      requiredSessionId ?? null, requiredSessionId ?? null, userId, createdAt).run();
+  if (!result.meta.changes) {
+    if (requiredSessionId && !(await db.prepare('SELECT id FROM session WHERE id = ? AND user_id = ? AND expires_at > ?')
+      .bind(requiredSessionId, userId, createdAt).first())) {
+      throw new ApiError(401, 'session_expired', 'Your session has ended. Sign in again to create an API key.');
+    }
+    throw new ApiError(409, 'key_limit', 'Revoke an unused key before creating another; ten active keys are allowed.');
+  }
   return { id, plaintext };
 }
 

@@ -3,9 +3,10 @@ import { expect, test } from '@playwright/test';
 import { startPages } from '../helpers/pages.mjs';
 
 let origin;
+let emailCode;
 let cleanup;
 test.beforeAll(async () => {
-  ({ origin } = await startPages({ after(fn) { cleanup = fn; } }));
+  ({ origin, emailCode } = await startPages({ after(fn) { cleanup = fn; } }));
 });
 test.afterAll(async () => { await cleanup?.(); });
 
@@ -126,23 +127,14 @@ test('lab evaluation guide exposes a downloadable starter kit', async ({ page })
   expect(inputs).toContain('47,XX,+21[10]/47,XX,+99[5]');
 });
 
-test('account key copy states and batch exports preserve the review', async ({ page }) => {
+test('verified email access and batch exports preserve the review', async ({ page }) => {
   await open(page, '/signup');
   await page.getByLabel('Email').fill('lab-workflow@example.test');
-  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Account created' })).toBeVisible();
-  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
-    configurable: true, value: { writeText: async () => { throw new Error('Unavailable'); } }
-  }));
-  await page.getByRole('button', { name: 'Copy account key' }).click();
-  await expect(page.getByText('Copy was unavailable.', { exact: false })).toBeVisible();
-  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
-    configurable: true, value: { writeText: async () => {} }
-  }));
-  await page.getByRole('button', { name: 'Copy account key' }).click();
-  await expect(page.getByText('Account key copied.', { exact: false })).toBeVisible();
-  await expect(page).toHaveURL(`${origin}/signup`);
-  await page.getByRole('link', { name: 'Continue to dashboard' }).click();
+  await page.getByRole('button', { name: 'Send email code', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByLabel('Email code', { exact: true }).fill(await emailCode('lab-workflow@example.test'));
+  await page.getByRole('button', { name: 'Verify email and continue' }).click();
+  await expect(page).toHaveURL(`${origin}/dashboard`);
   await expect(page.locator('header.site-header').getByRole('link', { name: 'Workspace', exact: true })).toBeVisible();
   await expect(page.locator('header.site-header').getByRole('link', { name: 'Log in', exact: true })).toHaveCount(0);
   await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('link', { name: 'Batch review' }).click();

@@ -1,5 +1,5 @@
-import { execFile, spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { execFile } from 'node:child_process';
+import { startDev } from './dev-server.mjs';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -20,20 +20,22 @@ export async function startPages(t, { seedSQL } = {}) {
     WRANGLER_SEND_METRICS: 'false',
     CI: 'true',
   };
-  let child;
+  const cleanup = [];
   t.after(async () => {
-    if (child && child.exitCode === null) {
-      const exited = once(child, 'exit');
-      child.kill('SIGTERM');
-      await exited;
-    }
+    for (const stop of cleanup.reverse()) await stop();
     await rm(workspace, { recursive: true, force: true });
   });
+  const mailerName = `iscn-mail-test-${crypto.randomUUID()}`;
   const config = (await readFile(join(root, 'wrangler.toml'), 'utf8')).replace(
     'pages_build_output_dir = ".svelte-kit/cloudflare"',
     `pages_build_output_dir = ${JSON.stringify(join(root, '.svelte-kit/cloudflare'))}`,
   );
-  await writeFile(join(workspace, 'wrangler.toml'), config);
+  await writeFile(join(workspace, 'wrangler.toml'), config.replace('service = "iscn-email"', `service = "${mailerName}"`));
+  await writeFile(join(workspace, '.dev.vars'), `EMAIL_AUTH_SECRET=${crypto.randomUUID()}${crypto.randomUUID()}\n`);
+  const mailerConfig = join(workspace, 'mailer.json');
+  await writeFile(mailerConfig, JSON.stringify({ name: mailerName, main: join(root, 'tests/helpers/capture-mailer.mjs'), compatibility_date: '2026-10-16' }));
+  const mailOrigin = await startDev(process.execPath, [wrangler, 'dev', '--config', mailerConfig,
+    '--port', '0', '--ip', '127.0.0.1', '--inspector-port', '0'], { cwd: workspace, env }, cleanup);
   await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local',
     '--file', join(root, 'schema.sql'), '--persist-to', state], { cwd: workspace, env });
   for (const file of (await readdir(join(root, 'migrations'))).sort().filter((name) => name.endsWith('.sql'))) {
@@ -46,30 +48,21 @@ export async function startPages(t, { seedSQL } = {}) {
     await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local',
       '--file', file, '--persist-to', state], { cwd: workspace, env });
   }
-  child = spawn(process.execPath, [wrangler, 'pages', 'dev', '--port', '0',
-    '--ip', '127.0.0.1', '--inspector-port', '0', '--persist-to', state],
-  { cwd: workspace, env, stdio: ['ignore', 'pipe', 'pipe'] });
-  const origin = await new Promise((resolveReady, reject) => {
-    let output = '';
-    const timer = setTimeout(() => reject(new Error(`Pages startup timed out:\n${output}`)), 30_000);
-    const collect = (chunk) => {
-      output += chunk;
-      const match = output.match(/Ready on (http:\/\/127\.0\.0\.1:\d+)/);
-      if (match) {
-        clearTimeout(timer);
-        resolveReady(match[1]);
-      }
-    };
-    child.stdout.on('data', collect);
-    child.stderr.on('data', collect);
-    child.once('error', (error) => { clearTimeout(timer); reject(error); });
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Pages exited (${code}):\n${output}`));
-    });
-  });
+  const origin = await startDev(process.execPath, [wrangler, 'pages', 'dev', '--port', '0',
+    '--ip', '127.0.0.1', '--inspector-port', '0', '--persist-to', state], { cwd: workspace, env }, cleanup);
   return {
     origin,
+    async executeSQL(sql) {
+      const file = join(workspace, 'test-update.sql');
+      await writeFile(file, sql);
+      await run(process.execPath, [wrangler, 'd1', 'execute', 'DB', '--local', '--file', file, '--persist-to', state], { cwd: workspace, env });
+    },
+    async emailCode(address) {
+      const messages = await (await fetch(mailOrigin)).json();
+      const message = messages.findLast((value) => value.to === address);
+      if (!message) throw new Error('No email captured for test recipient');
+      return message.text.match(/^\d{8}$/m)[0];
+    },
     request: (path, options = {}) => fetch(new URL(path, origin), {
       ...options, redirect: 'manual', signal: AbortSignal.timeout(10_000),
     }),

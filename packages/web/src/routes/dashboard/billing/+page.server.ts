@@ -3,10 +3,16 @@ import { redirect, fail, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCheckoutOffering } from '#lib/server/billing-availability.js';
 import { CheckoutPending, createOrResumeCheckout } from '#lib/server/checkout-attempts.ts';
+import { authenticateSession } from '#lib/server/db.ts';
 import {
 	createBillingPortalSession,
 	listCurrentSubscriptions,
 } from '#lib/server/stripe.js';
+
+async function requireActiveSession(locals: App.Locals) {
+  const authenticated = locals.session && await authenticateSession(env.DB, locals.session.id);
+  if (!authenticated || authenticated.user.id !== locals.user?.id) redirect(302, '/login');
+}
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/login');
@@ -32,6 +38,7 @@ export const actions: Actions = {
 		}
 
 		try {
+			await requireActiveSession(locals);
 			let endedSubscriptions: string[] = [];
 			if (locals.user.stripe_customer_id) {
 				const subscriptions = await listCurrentSubscriptions(secretKey, locals.user.stripe_customer_id);
@@ -40,6 +47,7 @@ export const actions: Actions = {
 					return fail(409, { message: 'This account already has a subscription. Use Manage subscription to update it.' });
 				}
 			}
+			await requireActiveSession(locals);
 			const session = await createOrResumeCheckout(env.DB, secretKey, {
 				priceId,
 				customerEmail: locals.user.email,
@@ -48,6 +56,7 @@ export const actions: Actions = {
 				successUrl: `${baseUrl}/dashboard/billing?upgrade=success`,
 				cancelUrl: `${baseUrl}/dashboard/billing?upgrade=cancel`,
 			}, endedSubscriptions);
+			await requireActiveSession(locals);
 			throw redirect(303, session.url, { external: true });
 		} catch (err) {
 			if (err instanceof CheckoutPending) return fail(409, { message: err.message });
@@ -77,10 +86,12 @@ export const actions: Actions = {
 		}
 
 		try {
+			await requireActiveSession(locals);
 			const session = await createBillingPortalSession(secretKey, {
 				stripeCustomerId: locals.user.stripe_customer_id,
 				returnUrl: `${baseUrl}/dashboard/billing`,
 			});
+			await requireActiveSession(locals);
 			throw redirect(303, session.url, { external: true });
 		} catch (err) {
 			if (isRedirect(err)) {
