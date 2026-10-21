@@ -47,7 +47,7 @@ test('duplicates, renewal and stale events never reset usage or revive canceled 
   let state = current();
   t.mock.method(globalThis, 'fetch', async () => Response.json({ object: 'list', data: [state], has_more: false }));
   await deliver(event());
-  db.sqlite.prepare('INSERT INTO api_usage VALUES (?, ?, 73, ?, 1)').run('account-test', start, start);
+  db.sqlite.prepare('INSERT INTO api_usage VALUES (?, ?, 73)').run('account-test', start);
   await deliver(event());
   await deliver(event('customer.subscription.updated', state, 'evt_repeat'));
   assert.equal(db.sqlite.prepare('SELECT validations FROM api_usage').get().validations, 73);
@@ -87,3 +87,20 @@ test('a delayed active snapshot cannot overwrite a newer cancellation', async (t
   assert.equal((await deliver(event('customer.subscription.updated', current(), 'evt_delayed'))).status, 200);
   assert.equal(db.sqlite.prepare('SELECT * FROM api_entitlement').get(), undefined);
 });
+
+for (const mutation of ['price', 'metadata']) {
+  test(`an entitled subscription losing its ${mutation} match is reconciled`, async (t) => {
+    const db = setup(t);
+    let state = current();
+    t.mock.method(globalThis, 'fetch', async () => Response.json({ object: 'list', data: [state], has_more: false }));
+    await deliver(event());
+    if (mutation === 'price') state.items.data[0].price = { ...price, id: 'price_other' };
+    else state.metadata = {};
+    await deliver(event('customer.subscription.updated', state, 'evt_replaced'));
+    assert.equal(db.sqlite.prepare('SELECT * FROM api_entitlement').get(), undefined);
+    assert.equal(db.account().plan, 'free');
+    state.status = 'canceled';
+    await deliver(event('customer.subscription.deleted', state, 'evt_deleted'));
+    assert.equal(db.sqlite.prepare('SELECT * FROM api_entitlement').get(), undefined);
+  });
+}

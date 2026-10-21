@@ -6,6 +6,7 @@ interface BillingAccount {
   id: string;
   stripe_customer_id: string | null;
   revision: number;
+  entitled_subscription_id: string | null;
 }
 
 interface AccountChange {
@@ -19,8 +20,10 @@ interface AccountChange {
 async function accountChange(
   db: D1Database, target: BillingTarget, secretKey: string, priceId: string,
 ): Promise<AccountChange | null> {
-  const account = await db.prepare(`SELECT u.id, u.stripe_customer_id, COALESCE(s.revision, 0) AS revision
+  const account = await db.prepare(`SELECT u.id, u.stripe_customer_id, COALESCE(s.revision, 0) AS revision,
+    e.subscription_id AS entitled_subscription_id
     FROM user u LEFT JOIN api_billing_state s ON s.user_id = u.id
+    LEFT JOIN api_entitlement e ON e.user_id = u.id
     WHERE ${target.userId ? 'u.id' : 'u.stripe_customer_id'} = ?`)
     .bind(target.userId ?? target.customerId).first<BillingAccount>();
   if (!account || (account.stripe_customer_id && account.stripe_customer_id !== target.customerId)) {
@@ -31,7 +34,8 @@ async function accountChange(
     subscription.userId === account.id && subscription.prices.includes(priceId));
   const triggering = subscriptions.find((subscription) => subscription.id === target.subscriptionId);
   if (!triggering) throw new Error('Subscription missing from current state');
-  if (!relevant.some((subscription) => subscription.id === target.subscriptionId)) return null;
+  if (!relevant.some((subscription) => subscription.id === target.subscriptionId) &&
+      account.entitled_subscription_id !== target.subscriptionId) return null;
   const plan = relevant.some((subscription) => ['active', 'trialing'].includes(subscription.status))
     ? 'pro' : relevant.some((subscription) => subscription.status === 'past_due') ? 'past_due' : 'free';
   const candidates = relevant.flatMap((subscription) => subscription.apiPeriods

@@ -18,7 +18,9 @@ class Statement {
   async all() { return { results: this.sqlite.prepare(this.sql).all(...this.values), success: true }; }
   async run() { return this.execute(); }
   execute() {
-    const result = this.sqlite.prepare(this.sql).run(...this.values);
+    const statement = this.sqlite.prepare(this.sql);
+    if (statement.columns().length) return { success: true, results: statement.all(...this.values) };
+    const result = statement.run(...this.values);
     return { success: true, meta: { changes: Number(result.changes) } };
   }
 }

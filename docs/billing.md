@@ -114,6 +114,10 @@ These tests do not replace a Stripe test-mode purchase/portal/cancellation run
 against the deployed event destination. No live payment was made to establish
 the automated test results.
 
+Concurrent initial checkout attempts before customer association still need durable
+deduplication before enabling live sales; the existing-subscription check alone
+cannot prevent that race.
+
 Account deletion, support response times, price-change notice, refunds, and
 commercial terms require owner decisions. Do not infer commitments from the
 unreviewed legal templates. See [launch readiness](launch-readiness.md).

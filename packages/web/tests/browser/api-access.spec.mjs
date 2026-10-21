@@ -9,7 +9,7 @@ test.beforeAll(async () => {
     INSERT INTO user (id, email, created_at, plan) VALUES ('paid-ui', 'paid-ui@example.test', ${now}, 'pro');
     INSERT INTO session VALUES ('paid-ui-session', 'paid-ui', ${now + 3600});
     INSERT INTO api_entitlement VALUES ('paid-ui', 'sub_ui', 'price_ui', ${now - 60}, ${now + 3600}, 100);
-    INSERT INTO api_usage VALUES ('paid-ui', ${now - 60}, 32, ${now}, 1);
+    INSERT INTO api_usage VALUES ('paid-ui', ${now - 60}, 32);
   ` }));
 });
 test.afterAll(async () => { await cleanup?.(); });

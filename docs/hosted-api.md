@@ -19,7 +19,7 @@ Website `iscn_live_…` account keys and cookies never authenticate this API. In
 
 Successful checks return HTTP 200 with `api_version`, `request_id`, `result`, `status`, `coverage`, and `validation` metadata (rule version, reference, coverage level and cytoband reference). Notation errors are successful HTTP responses with `result.valid: false`. A true valid flag with coverage notes remains **Review required**. Partial coverage and errors in later cell lines match browser behavior.
 
-Each accepted validation consumes one unit, including invalid notation. Envelope/auth/subscription/limit rejections consume none. The allowance and 60-per-fixed-UTC-minute limit are account-wide across all keys. The allowance follows the paid subscription period, not calendar months, and unused units do not carry over. Consumption is an atomic conditional D1 upsert that rechecks the key, account and current entitlement. New period rows preserve prior aggregate counts. No automatic overage charges or usage-based Stripe invoices are generated.
+Each accepted validation consumes one unit, including invalid notation. Envelope/auth/subscription/limit rejections consume none. The allowance and 60-per-fixed-UTC-minute limit are account-wide across all keys. The allowance follows the paid subscription period, not calendar months, and unused units do not carry over. Consumption uses one atomic D1 batch transaction: conditionally reserve a minute slot while checking the key, account, entitlement and period quota, then consume a unit only for that reservation. A failed write rolls both counters back. The minute bucket is per account, independent of renewal, and never moves backward for a delayed request. New period rows preserve prior aggregate counts. No automatic overage charges or usage-based Stripe invoices are generated.
 
 Inputs are limited to 4096 JavaScript string code units and 16384 UTF-8 body bytes, enforced while streaming. Empty input, extra fields, query strings, arrays, compressed bodies and non-JSON media types are rejected. There is no batch endpoint, browser CORS support, request idempotency or result retrieval in v1. Send individual requests with bounded concurrency. A retried accepted request consumes another unit; a timeout or unexpected failure may occur after consumption. Respect `Retry-After`, use bounded backoff, and do not retry authentication or subscription failures automatically.
 
@@ -27,13 +27,14 @@ The JSON error envelope is `{request_id, error: {code, message}}`; see OpenAPI f
 
 ## Database migration and deployment
 
-Run commands from `packages/web`. Existing installations already have `schema.sql` tables. **Do not replay `schema.sql` against production.** For a new installation only, initialize that base schema first. This release adds four tables in an additive, repeatable migration:
+Run commands from `packages/web`. Existing installations already have `schema.sql` tables. **Do not replay `schema.sql` against production.** For a new installation only, initialize that base schema first. This release adds five tables in an additive, repeatable migration:
 
 | Table | Purpose |
 | --- | --- |
 | `validation_api_key` | Dedicated hashed integration credentials and timestamps |
 | `api_entitlement` | Current paid period, Stripe subscription/price and allowance |
-| `api_usage` | Aggregate counts per account and period, with current minute bucket |
+| `api_usage` | Aggregate validation counts per account and period |
+| `api_rate_limit` | Monotonic account-wide minute bucket and transaction reservation |
 | `api_billing_state` | Revision/event marker for optimistic webhook reconciliation |
 
 Apply the migration before deploying the Worker that reads these tables:
@@ -52,7 +53,7 @@ The project currently initializes schema through explicit files, not Wrangler's 
 1. In Stripe test mode, create an active, fixed-price recurring **monthly** Price (interval count 1), with a positive integer `unit_amount` and currency. Add Price metadata `validations_per_month` as a positive integer string. This is the included allowance; the key must be on the **Price**, not only its Product. Do not edit a live allowance casually: webhook reconciliation reads current Price metadata. Create a new Price when changing commercial terms.
 2. Configure `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_PRO`, `STRIPE_WEBHOOK_SECRET`, and the canonical HTTPS `PUBLIC_BASE_URL` in the existing Pages project. Use the Cloudflare secret interface/CLI; never commit values or paste them into chat. No secret is exposed to the browser. The Price ID and public base URL are nonsecret configuration.
 3. Outbound Stripe requests pin API version `2025-03-31.basil`, which provides item-level billing periods. Configure the webhook with that version and a signed endpoint at the canonical origin plus `/api/webhooks/stripe`. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_succeeded`, `invoice.payment_failed`, and subscription created/updated/deleted/paused/resumed events. Keep retries enabled.
-4. Configure the Stripe customer portal for payment methods, invoices and cancellation. This release supports a single API offering; do not enable arbitrary product/quantity changes in the portal. Existing subscriptions are directed to the portal rather than a second checkout.
+4. Configure the Stripe customer portal for payment methods, invoices and cancellation. This release supports a single API offering; do not enable arbitrary product/quantity changes in the portal. Existing subscriptions are directed to the portal rather than a second checkout. Before enabling live checkout, add and test durable protection against simultaneous initial checkouts before a customer has been associated; that pre-existing path can still create duplicate subscriptions.
 5. Complete the test-mode sequence below. Only then configure live-mode credentials and the approved live Price. Confirm seller identity, customer support and purchase terms before enabling live checkout; these remain operator launch decisions.
 
 Checkout availability reads and validates the configured Price, including its amount, monthly recurrence and allowance. Invalid metadata, an inactive Price or a failed Stripe lookup disables checkout. Actual price/currency/volume appear on pricing and billing pages when available; customers review the final taxes/discounts/total in Stripe.
