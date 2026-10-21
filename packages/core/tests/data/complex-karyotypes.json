@@ -71,5 +71,17 @@
   {"id":"C70","input":"47,XX,+8[5]/94,idemx1000000000[5]","status":"Issues found","purpose":"Bound expanded sex complement allocation","error":"expansion limit"},
   {"id":"C71","input":"46,XX,inv(3)(p21q26)[5]/45,idem,-t(3;5)[5]","status":"Issues found","purpose":"Unresolved multi-chromosome subtraction requires restatement","error":"Unsupported structural"},
   {"id":"C72","input":"45~47,XX,+8.cp[12]/46,XX[8]","status":"Review required","purpose":"Legacy composite count stays group local","notes":["composite"]},
-  {"id":"C73","input":"46,XX,inv(3)(p21q26)[5]/93,idemx2,+8x9007199254740991,+9x2,-8x9007199254740991[5]","status":"Issues found","purpose":"Unsafe intermediate arithmetic cannot round before cancellation","error":"Clone count change exceeds the safe integer limit"}
+  {"id":"C73","input":"46,XX,inv(3)(p21q26)[5]/93,idemx2,+8x9007199254740991,+9x2,-8x9007199254740991[5]","status":"Issues found","purpose":"Unsafe intermediate arithmetic cannot round before cancellation","error":"Clone count change exceeds the safe integer limit"},
+  {"id":"C74","input":"45,XY,-7[5]/46,sl1,+8[6]/46,XY,t(9;22)(q34;q11.2)[3]/92,sl2×2[5]/93,sl2x2,+8[2]","status":"Review required","purpose":"Separate stemlines with independent doubled descendants","cells":21,"notes":["clone_resolution","clone_order"]},
+  {"id":"C75","input":"47,XY,+8[5]/47,XX,+9[5]/48,sl2,+10[5]/48,sl1,+11[5]","status":"Review required","purpose":"Return explicitly to the first stemline after the second family","cells":20},
+  {"id":"C76","input":"47,XY,+8[5]/47,XX,+9[5]/48,idem,+10[5]","status":"Review required","purpose":"Idem still selects the first clone after an independent clone","cells":15},
+  {"id":"C77","input":"47,XX,+8[5]//47,XY,+9[5]/47,XY,+10[5]/48,sl2,+11[5]","status":"Review required","purpose":"Stemline numbering restarts within the donor group","cells":20,"notes":["donor"]},
+  {"id":"C78","input":"47,XX,+8[5]/48,sl,+9[5]/47,XX,+10[5]/49,sdl1,+11[5]","status":"Issues found","purpose":"Ambiguous sideline family after another stemline","error":"Sideline references with multiple stemlines"},
+  {"id":"C79","input":"47,XX,+8[5]/48,sl2,+9[5]/47,XX,+10[5]","status":"Issues found","purpose":"Forward stemline references cannot borrow later findings","error":"no preceding stemline"},
+  {"id":"C80","input":"47,XX,+8[5]/48,sl9007199254740992,+9[5]","status":"Issues found","purpose":"Oversized stemline index cannot select an existing clone","error":"no preceding stemline"},
+  {"id":"C81","input":"47,XX,+8[cp5]/47,XX,+9[5]/48,sl1,+10[5]","status":"Issues found","purpose":"Numbering does not permit selection of aggregate composite source","error":"Composite groups cannot use clone references"},
+  {"id":"C82","input":"47,XX,+8[cp5]/47,XY,+9[5]/48,sl2,+10[5]","status":"Review required","purpose":"Composite group does not renumber a usable subsequent source","cells":15,"notes":["composite"]},
+  {"id":"C83","input":"47,XX,+8[5]/93,sl1x2[5]","status":"Issues found","purpose":"Numbered reference multiplier uses selected source total","error":"expected total 94"},
+  {"id":"C84","input":"47,XX,+8[5]//48,sl1,+9[5]","status":"Issues found","purpose":"Numbered references cannot cross recipient and donor boundary","error":"no preceding reference clone"},
+  {"id":"C85","input":"47,XX,+8[5]/48,sl1,+9[5]/49,idem,+10[5]","status":"Issues found","purpose":"Numbered stemline style cannot mix with idem","error":"Do not mix"}
 ]

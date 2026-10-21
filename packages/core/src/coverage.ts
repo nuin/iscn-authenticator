@@ -8,7 +8,7 @@ export interface ValidationCoverage {
   level: "supported" | "partial" | "unparsed";
   notes: CoverageNote[];
   reference: "ISCN 2024";
-  rule_version: "2026-10-20.1";
+  rule_version: "2026-10-20.2";
   band_reference: "UCSC hg38 cytoBand";
 }
 
@@ -47,6 +47,6 @@ export function getValidationCoverage(ast: KaryotypeAST | null): ValidationCover
   }
   return {
     level: !ast ? "unparsed" : notes.length ? "partial" : "supported",
-    notes, reference: "ISCN 2024", rule_version: "2026-10-20.1", band_reference: "UCSC hg38 cytoBand",
+    notes, reference: "ISCN 2024", rule_version: "2026-10-20.2", band_reference: "UCSC hg38 cytoBand",
   };
 }

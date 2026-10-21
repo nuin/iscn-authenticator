@@ -16,7 +16,7 @@ const cases: ComplexCase[] = JSON.parse(
 );
 
 Deno.test("complex corpus has unique cases and all three outcomes", () => {
-  assertEquals(cases.length, 73);
+  assertEquals(cases.length, 85);
   assertEquals(new Set(cases.map((test) => test.id)).size, cases.length);
   assertEquals(new Set(cases.map((test) => test.status)).size, 3);
 });
