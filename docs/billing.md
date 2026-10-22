@@ -7,8 +7,9 @@ library, accounts and keys, signed-in browser batch review, and a subscription-g
 customer API. It does not provide saved validation history or team roles. See
 [hosted API setup](hosted-api.md) for the current paid-access contract.
 
-The pricing and account billing pages show checkout availability from server
-configuration and a verified monthly Stripe Price with an included allowance. Price,
+The pricing and account billing pages show checkout availability only when
+`BILLING_CHECKOUT_ENABLED=true` and server configuration includes a verified
+monthly Stripe Price with an included allowance. Price,
 currency and volume remain pending owner decisions. Unconfigured checkout is unavailable.
 Do not present a commercial price, purchase entitlement, API quota, or service
 level that has not been decided and implemented. A database `free` or `pro` label
@@ -28,10 +29,17 @@ needed to create those sessions; it does not send validation input to Stripe.
 
 | Configuration | Purpose |
 |---|---|
+| `BILLING_CHECKOUT_ENABLED` | Explicit customer launch switch; only `true` enables new checkout |
 | `STRIPE_SECRET_KEY` | Server API credential for Stripe |
 | `STRIPE_PRICE_ID_PRO` | Monthly licensed Price with positive `validations_per_month` metadata |
 | `STRIPE_WEBHOOK_SECRET` | Verify events at `/api/webhooks/stripe` |
 | `PUBLIC_BASE_URL` | Optional callback origin; otherwise the request origin is used |
+
+For setup before customer launch, use the [private sandbox checkout command](private-checkout.md).
+It accepts only test credentials and never updates production account data.
+Keep the launch switch closed while adding live billing configuration. Closing
+new checkout does not disable subscription maintenance webhooks or the existing
+customer portal, cancel renewals, or invalidate previously issued Checkout URLs.
 
 Checkout configuration is not evidence that a subscription is active. The server
 updates account state from verified webhook events. Test checkout, cancellation,

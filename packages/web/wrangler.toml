@@ -18,6 +18,8 @@ service = "iscn-email"
 # AXIOM_API_TOKEN = ""
 # AXIOM_DATASET = ""
 # Stripe
+# Customer checkout stays closed unless BILLING_CHECKOUT_ENABLED is exactly "true".
+# BILLING_CHECKOUT_ENABLED = "false"
 # STRIPE_SECRET_KEY = ""
 # STRIPE_WEBHOOK_SECRET = ""
 # STRIPE_PRICE_ID_PRO = ""

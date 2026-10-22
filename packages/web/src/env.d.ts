@@ -1,5 +1,6 @@
 declare namespace Cloudflare {
 	interface Env {
+		BILLING_CHECKOUT_ENABLED?: string;
 		EMAIL_AUTH_SECRET?: string;
 		AXIOM_API_TOKEN?: string;
 		AXIOM_DATASET?: string;

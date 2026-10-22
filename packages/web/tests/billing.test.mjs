@@ -5,6 +5,7 @@ import { createTestDatabase } from './helpers/sqlite.mjs';
 
 test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t) => {
   const bindings = {
+    BILLING_CHECKOUT_ENABLED: 'true',
     STRIPE_SECRET_KEY: 'sk_test_migration',
     STRIPE_PRICE_ID_PRO: 'price_test_migration',
     STRIPE_WEBHOOK_SECRET: 'whsec_test_migration',
@@ -35,6 +36,20 @@ test('billing actions redirect to Stripe after the SvelteKit upgrade', async (t)
   const price = { id: bindings.STRIPE_PRICE_ID_PRO, object: 'price', active: true, type: 'recurring', billing_scheme: 'per_unit', unit_amount: 2500,
     currency: 'cad', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, metadata: { validations_per_month: '500' } };
   t.mock.method(globalThis, 'fetch', async () => Response.json(price));
+  await t.test('closed checkout hides pricing and rejects a direct upgrade POST without reserving a purchase', async (subtest) => {
+    const pricing = await import('../.svelte-kit/output/server/entries/pages/pricing/_page.server.ts.js');
+    delete env.BILLING_CHECKOUT_ENABLED;
+    const requests = subtest.mock.method(globalThis, 'fetch', async () => Response.json(price));
+    try {
+      assert.equal((await pricing.load()).offering, null);
+      assert.equal((await load(event)).checkoutAvailable, false);
+      assert.equal((await actions.upgrade(event)).status, 503);
+      assert.equal(database.sqlite.prepare('SELECT COUNT(*) AS n FROM api_checkout_attempt').get().n, 0);
+      assert.equal(requests.mock.callCount(), 0);
+    } finally {
+      env.BILLING_CHECKOUT_ENABLED = 'true';
+    }
+  });
   await t.test('checkout requires a valid configured monthly price and allowance', async () => {
     const available = await load(event);
     assert.equal(available.offering.monthlyLimit, 500);

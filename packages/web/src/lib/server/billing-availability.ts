@@ -1,4 +1,5 @@
 interface BillingConfiguration {
+	BILLING_CHECKOUT_ENABLED?: string;
 	STRIPE_SECRET_KEY?: string;
 	STRIPE_PRICE_ID_PRO?: string;
 	STRIPE_WEBHOOK_SECRET?: string;
@@ -6,6 +7,7 @@ interface BillingConfiguration {
 
 export function checkoutAvailable(configuration: BillingConfiguration): boolean {
 	return Boolean(
+		configuration.BILLING_CHECKOUT_ENABLED === 'true' &&
 		configuration.STRIPE_SECRET_KEY?.trim() &&
 		configuration.STRIPE_PRICE_ID_PRO?.trim() &&
 		configuration.STRIPE_WEBHOOK_SECRET?.trim()

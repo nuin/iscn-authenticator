@@ -5,7 +5,15 @@ import { getCheckoutOffering } from '../src/lib/server/billing-availability.ts';
 
 const price = { id: 'price_test', object: 'price', type: 'recurring', active: true, currency: 'usd', unit_amount: 1000,
   billing_scheme: 'per_unit', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, metadata: { validations_per_month: '100' } };
-const config = { STRIPE_SECRET_KEY: 'sk_test_fixture', STRIPE_PRICE_ID_PRO: price.id, STRIPE_WEBHOOK_SECRET: 'whsec_fixture' };
+const config = { BILLING_CHECKOUT_ENABLED: 'true', STRIPE_SECRET_KEY: 'sk_test_fixture', STRIPE_PRICE_ID_PRO: price.id, STRIPE_WEBHOOK_SECRET: 'whsec_fixture' };
+
+test('configured credentials do not publish an offering before the checkout launch switch is enabled', async (t) => {
+  const requests = t.mock.method(globalThis, 'fetch', async () => Response.json(price));
+  for (const value of [undefined, '', 'false', '0', 'TRUE']) {
+    assert.equal(await getCheckoutOffering({ ...config, BILLING_CHECKOUT_ENABLED: value }), null);
+  }
+  assert.equal(requests.mock.callCount(), 0);
+});
 
 test('only a fixed monthly licensed price with a finite allowance enables checkout', async (t) => {
   let response = price;
